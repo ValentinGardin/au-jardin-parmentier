@@ -392,7 +392,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=14" rel="stylesheet">
+<link href="admin.css?v=15" rel="stylesheet">
 </head>
 <body>
 
@@ -428,17 +428,15 @@ if ($logged) {
 <header class="barre-haut">
   <a class="logo" href="<?= ESPACE ?>/"><img src="favicon.svg" alt="" width="34" height="34"><span>Gestion du site</span></a>
   <nav class="onglets" role="tablist" aria-label="Rubriques">
-    <!-- Rangées par usage : le quotidien de la boutique, puis le contenu du site, puis les chiffres -->
+    <!-- Rangées par usage : la boutique, puis les menus du site, puis le reste dans « Plus » -->
     <button role="tab" data-onglet="resas" aria-selected="false"><svg class="ico"><use href="#i-resa"/></svg>Réservations</button>
-    <button role="tab" data-onglet="semaine" aria-selected="false"><svg class="ico"><use href="#i-cal"/></svg>Menu de la semaine</button>
     <button role="tab" data-onglet="clients" aria-selected="false"><svg class="ico"><use href="#i-clients"/></svg>Clients</button>
     <span class="sep" aria-hidden="true"></span>
-    <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
+    <button role="tab" data-onglet="semaine" aria-selected="false"><svg class="ico"><use href="#i-cal"/></svg>Menu de la semaine</button>
     <button role="tab" data-onglet="menus" aria-selected="false"><svg class="ico"><use href="#i-livre"/></svg>Cartes traiteur</button>
-    <button role="tab" data-onglet="avis" aria-selected="false"><svg class="ico"><use href="#i-etoile"/></svg>Avis</button>
-    <button role="tab" data-onglet="mots" aria-selected="false"><svg class="ico"><use href="#i-mots"/></svg>Mots défilants</button>
+    <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
     <span class="sep" aria-hidden="true"></span>
-    <button role="tab" data-onglet="stats" aria-selected="false"><svg class="ico"><use href="#i-stats"/></svg>Statistiques</button>
+    <button type="button" class="plus-btn" id="plus-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-liste"><span id="plus-txt">Plus</span><svg class="ico fleche"><use href="#i-bas"/></svg></button>
   </nav>
   <div class="haut-actions">
     <button type="button" class="qui" data-onglet="comptes" aria-selected="false" title="<?= $estAdmin ? 'Utilisateurs et mon compte' : 'Mon compte' ?> (<?= h($moi['email']) ?>)"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span><span class="qui-role"><?= $estAdmin ? 'Utilisateurs' : 'Mon compte' ?></span></button>
@@ -446,6 +444,11 @@ if ($logged) {
     <form method="post"><input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="logout"><button class="btn btn-discret" title="Se déconnecter"><svg class="ico"><use href="#i-sortie"/></svg><span>Quitter</span></button></form>
   </div>
 </header>
+<div class="plus-liste" id="plus-liste" role="menu" aria-labelledby="plus-btn" hidden>
+  <button role="menuitem" data-onglet="avis" aria-selected="false"><svg class="ico"><use href="#i-etoile"/></svg>Avis</button>
+  <button role="menuitem" data-onglet="mots" aria-selected="false"><svg class="ico"><use href="#i-mots"/></svg>Mots défilants</button>
+  <button role="menuitem" data-onglet="stats" aria-selected="false"><svg class="ico"><use href="#i-stats"/></svg>Statistiques</button>
+</div>
 
 <main id="app" class="app" aria-live="polite"></main>
 
@@ -458,7 +461,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=14"></script>
+<script src="admin.js?v=15"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

@@ -439,7 +439,7 @@
     var chips = PERIODES.map(function (p) { return '<button type="button" data-act="periodeStats" data-i="' + p[0] + '" aria-pressed="' + (p[0] === periodeStats) + '">' + p[1] + '</button>'; }).join('');
     var d = cache[periodeStats];
     if (!d) charger(periodeStats);
-    return tete('Tableau de bord', 'La fréquentation de votre site et ce que font vos visiteurs. Mesure anonyme, sans cookie.', '<div class="periodes" role="group" aria-label="Période">' + chips + '</div>') +
+    return tete('Statistiques', 'La fréquentation de votre site et ce que font vos visiteurs. Mesure anonyme, sans cookie.', '<div class="periodes" role="group" aria-label="Période">' + chips + '</div>') +
       '<div id="stats">' + (d ? stats(d) : '<p class="chargement">Chargement des statistiques…</p>') + '</div>';
   }
   function charger(n) {
@@ -1094,10 +1094,14 @@
   var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
   function render(garderScroll) {
     var y = window.scrollY;
-    document.querySelectorAll('.barre-haut [data-onglet]').forEach(function (b) {
+    document.querySelectorAll('[data-onglet]').forEach(function (b) {
       b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
       b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante')));
     });
+    // « Plus » : affiché en violet (avec le nom de la rubrique) quand on est dans l'un de ses onglets
+    var dansPlus = document.querySelector('#plus-liste [data-onglet="' + onglet + '"]');
+    document.getElementById('plus-btn').classList.toggle('actif', !!dansPlus);
+    document.getElementById('plus-txt').textContent = dansPlus ? dansPlus.textContent : 'Plus';
     app.innerHTML = (VISITE ? '<p class="bandeau-visite">' + ico('oeil') + '<span><b>Mode visite</b> : explorez librement, essayez les champs et les aperçus. Rien n’est enregistré sur le site.</span></p>' : '') +
       '<div class="panneau" data-panneau="' + onglet + '">' + VUES[onglet]() + '</div>';
     if (garderScroll) window.scrollTo(0, y); else window.scrollTo(0, 0);
@@ -1110,7 +1114,7 @@
     barTxt.textContent = VISITE ? 'Mode visite : ces essais ne seront pas enregistrés' : 'Modifications non enregistrées sur ' + NOMS[partActive()];
     document.getElementById('enregistrer').hidden = VISITE;
     document.getElementById('annuler').textContent = VISITE ? 'Revenir à l’original' : 'Annuler';
-    document.querySelectorAll('.barre-haut [data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante'))); });
+    document.querySelectorAll('[data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante'))); });
     document.querySelectorAll('.choix-sem [data-s]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.s)); });
   }
   function apresSaisie() {
@@ -1247,6 +1251,32 @@
   });
 
   // =============== Événements ===============
+  // Menu « Plus » (Avis, Mots défilants, Statistiques)
+  var plusBtn = document.getElementById('plus-btn'), plusListe = document.getElementById('plus-liste');
+  function plusOuvrir(o) {
+    plusListe.hidden = !o; plusBtn.setAttribute('aria-expanded', String(o));
+    if (!o) return;
+    var r = plusBtn.getBoundingClientRect();
+    plusListe.style.top = (r.bottom + 6) + 'px';
+    plusListe.style.left = Math.max(8, Math.min(r.left, window.innerWidth - plusListe.offsetWidth - 8)) + 'px';
+    plusListe.querySelector('[aria-selected="true"]') ? plusListe.querySelector('[aria-selected="true"]').focus() : plusListe.querySelector('button').focus();
+  }
+  plusBtn.addEventListener('click', function (e) { e.stopPropagation(); plusOuvrir(plusListe.hidden); });
+  plusListe.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-onglet]'); if (!b) return;
+    e.stopPropagation();
+    plusOuvrir(false);
+    onglet = b.dataset.onglet; ecrire('onglet', onglet); carteOuverte = null; render();
+  });
+  plusListe.addEventListener('keydown', function (e) {
+    var l = Array.prototype.slice.call(plusListe.querySelectorAll('button')), i = l.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); l[(i + (e.key === 'ArrowDown' ? 1 : l.length - 1)) % l.length].focus(); }
+    if (e.key === 'Escape' || e.key === 'Tab') { plusOuvrir(false); if (e.key === 'Escape') plusBtn.focus(); }
+  });
+  document.addEventListener('click', function (e) { if (!plusListe.hidden && !plusListe.contains(e.target)) plusOuvrir(false); });
+  window.addEventListener('resize', function () { plusOuvrir(false); });
+  document.querySelector('.onglets').addEventListener('scroll', function () { plusOuvrir(false); });
+
   document.querySelector('.barre-haut').addEventListener('click', function (e) {
     var b = e.target.closest('[data-onglet]'); if (!b) return;
     onglet = b.dataset.onglet; ecrire('onglet', onglet);
