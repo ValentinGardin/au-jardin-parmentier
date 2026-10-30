@@ -408,3 +408,8 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .g-min{flex-direction:row;align-items:center;gap:.6rem;margin:0}
 .g-min select{width:auto}
 .g-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+
+/* Compte visiteur (démonstration) */
+.bandeau-visite{display:flex;align-items:center;gap:.7rem;margin:0 0 1.5rem;padding:.8rem 1rem;border-radius:12px;background:var(--bleu-pale);color:var(--bleu);font-size:.92rem}
+.bandeau-visite .ico{width:20px;height:20px}
+.enreg .btn[hidden]{display:none}

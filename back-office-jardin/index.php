@@ -32,10 +32,12 @@ function ouvrir_session($u) {
     comptes_enregistrer($l);
 }
 function repondre($code, $data) { http_response_code($code); header('Content-Type: application/json; charset=utf-8'); echo json_encode($data, JSON_UNESCAPED_UNICODE); exit; }
+// Toutes les actions qui modifient quelque chose passent par ici : le compte « visiteur » est refusé
 function api_garde($admin = false) {
-    global $logged, $estAdmin;
+    global $logged, $estAdmin, $moi;
     if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page pour vous reconnecter (vos modifications non enregistrées seront perdues).']);
     if (!hash_equals($_SESSION['csrf'], (string)($_SERVER['HTTP_X_CSRF'] ?? ''))) repondre(403, ['erreur' => 'Session expirée : rechargez la page.']);
+    if ($moi['role'] === 'visiteur') repondre(403, ['erreur' => 'Mode visite : les modifications ne sont pas enregistrées.']);
     if ($admin && !$estAdmin) repondre(403, ['erreur' => 'Réservé aux administrateurs.']);
 }
 function entree() { $in = json_decode((string)file_get_contents('php://input'), true); return is_array($in) ? $in : []; }
@@ -239,7 +241,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=10" rel="stylesheet">
+<link href="admin.css?v=11" rel="stylesheet">
 </head>
 <body>
 
@@ -301,7 +303,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=10"></script>
+<script src="admin.js?v=11"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

@@ -12,6 +12,7 @@
   var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis' };
   var onglet = lire('onglet') || 'stats';
   var PARTS = ['evenements', 'semaine', 'menus', 'mots', 'avis'];
+  var VISITE = E.moi.role === 'visiteur';   // compte de démonstration : on peut tout essayer, rien n'est enregistré
   var carteOuverte = null;          // index de la carte en cours de modification
   var catsOuvertes = {};            // catégories dépliées : { "carte-cat": true }
   var specialOuvert = !!(site.semaine.special.nom || site.semaine.special.lignes.length || site.semaine.special.titre);
@@ -293,6 +294,8 @@
   function etoiles(n) { var p = Math.round((n || 0) / 5 * 100); return '<span class="g-etoiles"><span>★★★★★</span><span style="width:' + p + '%">★★★★★</span></span>'; }
   function blocGoogle() {
     var admin = E.moi.role === 'admin', h = '<div class="bloc-tete"><h2>Avis Google</h2>';
+    if (VISITE && G.cle && G.place_id) return h + '<span class="statut statut-vert">Connecté</span></div><div class="g-resume"><div class="g-note">' + (G.note ? String(G.note).replace('.', ',') : '–') + '</div><div>' + etoiles(G.note) + '<p><strong>' + (G.nombre || 0) + ' avis</strong> · ' + esc(G.nom) + '</p><small>Mis à jour automatiquement chaque jour.</small></div></div>';
+    if (VISITE) return h + '</div><p class="aide">La note Google s’affiche ici une fois Google connecté par un administrateur.</p>';
     if (!G.cle) {
       if (!admin) return h + '</div><p class="aide">Pas encore configuré. Un administrateur peut le faire depuis cet onglet.</p>';
       return h + '<span class="statut statut-gris">Non configuré</span></div>' +
@@ -512,6 +515,7 @@
 
   function envoyerPhoto(input) {
     var f = input.files[0]; if (!f) return;
+    if (VISITE) { input.value = ''; return toast('Mode visite : l’envoi de photos est désactivé.'); }
     var lab = input.closest('.envoyer'); lab.classList.add('envoi');
     lab.querySelector('.sans').textContent = 'Envoi…';
     var fd = new FormData(); fd.append('photo', f);
@@ -534,6 +538,7 @@
   }
   function dateHeure(s) { if (!s) return 'jamais'; var d = s.slice(0, 10); return dateFr(d) + ' ' + d.slice(0, 4) + (s.length > 10 ? ' à ' + s.slice(11, 16).replace(':', 'h') : ''); }
   function vueComptes() {
+    if (VISITE) return tete('Mon compte', '') + '<section class="bloc"><p><b>Compte visiteur</b> (' + esc(E.moi.email) + ')</p><p class="aide">Ce compte sert à découvrir le back-office : vous pouvez parcourir tous les onglets et essayer les champs, mais aucune modification n’est enregistrée sur le site.</p></section>';
     var admin = E.moi.role === 'admin';
     var liste = admin ? '<section class="bloc"><div class="bloc-tete"><h2>Utilisateurs</h2><span class="compte">' + pluriel(E.comptes.length, 'compte') + '</span></div><div class="comptes-liste">' +
       E.comptes.map(function (u) {
@@ -561,7 +566,7 @@
       '<div class="grille-2"><label class="champ"><span>Prénom ou nom</span><input name="nom" value="' + esc(u.nom) + '" placeholder="ex. Angel"></label>' +
       '<label class="champ"><span>Identifiant</span><input name="identifiant" required value="' + esc(u.identifiant) + '" placeholder="ex. angel" autocomplete="off"></label></div>' +
       '<label class="champ"><span>Adresse e-mail</span><input type="email" name="email" required value="' + esc(u.email) + '" autocomplete="off"></label>' +
-      '<label class="champ"><span>Rôle</span><select name="role"' + (u.id === E.moi.id ? ' disabled' : '') + '>' + Object.keys(E.roles).map(function (r) { return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + E.roles[r] + (r === 'admin' ? ' : tout, y compris les comptes' : ' : contenu du site uniquement') + '</option>'; }).join('') + '</select></label>' +
+      '<label class="champ"><span>Rôle</span><select name="role"' + (u.id === E.moi.id ? ' disabled' : '') + '>' + Object.keys(E.roles).map(function (r) { return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + E.roles[r] + ({ admin: ' : tout, y compris les comptes', editeur: ' : contenu du site uniquement', visiteur: ' : découverte, aucune modification possible' }[r] || '') + '</option>'; }).join('') + '</select></label>' +
       '<label class="champ"><span>' + (nouveau ? 'Mot de passe' : 'Nouveau mot de passe <em>laisser vide pour ne pas changer</em>') + '</span><span class="mdp-zone"><input name="mdp" type="text" autocomplete="new-password"' + (nouveau ? ' required' : '') + '><button type="button" class="voir-mdp" data-gen>Générer</button></span><small>10 caractères minimum, avec au moins une lettre et un chiffre. Communiquez-le à la personne, elle pourra le changer dans « Mon compte ».</small></label>' +
       '<p class="alerte" hidden></p><div class="modale-actions"><button type="button" class="btn btn-discret" data-r="0">Annuler</button><button class="btn btn-violet">' + (nouveau ? 'Créer le compte' : 'Enregistrer') + '</button></div></form>';
     document.body.appendChild(d);
@@ -592,7 +597,8 @@
       b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
       b.classList.toggle('modifie', sale(b.dataset.onglet));
     });
-    app.innerHTML = '<div class="panneau" data-panneau="' + onglet + '">' + VUES[onglet]() + '</div>';
+    app.innerHTML = (VISITE ? '<p class="bandeau-visite">' + ico('oeil') + '<span><b>Mode visite</b> : explorez librement, essayez les champs et les aperçus. Rien n’est enregistré sur le site.</span></p>' : '') +
+      '<div class="panneau" data-panneau="' + onglet + '">' + VUES[onglet]() + '</div>';
     if (garderScroll) window.scrollTo(0, y); else window.scrollTo(0, 0);
     barre();
     if (onglet === 'semaine') dessinerApercus();
@@ -600,7 +606,9 @@
   var bar = document.getElementById('enreg'), barTxt = document.getElementById('enreg-txt');
   function barre() {
     bar.hidden = !sale(onglet);
-    barTxt.textContent = 'Modifications non enregistrées sur ' + NOMS[onglet];
+    barTxt.textContent = VISITE ? 'Mode visite : ces essais ne seront pas enregistrés' : 'Modifications non enregistrées sur ' + NOMS[onglet];
+    document.getElementById('enregistrer').hidden = VISITE;
+    document.getElementById('annuler').textContent = VISITE ? 'Revenir à l’original' : 'Annuler';
     document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet)); });
   }
   function apresSaisie() {
@@ -693,6 +701,7 @@
   // =============== Enregistrement ===============
   var enCours = false;
   function enregistrer(part) {
+    if (VISITE) { toast('Mode visite : les modifications ne sont pas enregistrées.'); return Promise.resolve(false); }
     if (enCours) return Promise.resolve(false);
     enCours = true;
     var btn = document.getElementById('enregistrer');
@@ -730,6 +739,7 @@
     if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (sale(onglet)) enregistrer(onglet); }
   });
   window.addEventListener('beforeunload', function (e) {
+    if (VISITE) return;
     if (PARTS.some(sale)) { e.preventDefault(); e.returnValue = ''; }
   });
 
@@ -895,6 +905,7 @@
 
   // Ouvre une page à imprimer, après avoir enregistré les modifications en cours (elle lit les données enregistrées)
   function ouvrirApres(part, url) {
+    if (VISITE) { window.open(url, '_blank'); return; }
     var w = window.open('about:blank', '_blank');
     (sale(part) ? enregistrer(part) : Promise.resolve(true)).then(function (ok) {
       if (!w) return toast('Autorisez les fenêtres pop-up pour imprimer.', true);

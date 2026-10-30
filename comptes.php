@@ -1,8 +1,9 @@
 <?php
 // Comptes du back-office : data/utilisateurs.json (jamais dans Git, jamais lisible depuis le navigateur)
-// Rôles : « admin » (tout, y compris les comptes) et « editeur » (contenu du site uniquement).
+// Rôles : « admin » (tout, y compris les comptes), « editeur » (contenu du site uniquement)
+// et « visiteur » (démonstration : peut tout parcourir, mais rien n'est jamais enregistré).
 const COMPTES = DATA . '/utilisateurs.json';
-const ROLES = ['admin' => 'Administrateur', 'editeur' => 'Éditeur'];
+const ROLES = ['admin' => 'Administrateur', 'editeur' => 'Éditeur', 'visiteur' => 'Visiteur'];
 
 function comptes_charger() {
     $d = is_file(COMPTES) ? json_decode((string)file_get_contents(COMPTES), true) : null;
