@@ -26,6 +26,14 @@ RewriteRule ^affiche$ affiche.php [L]
 RewriteRule ^carte-traiteur$ carte.php [L]
 </IfModule>
 
+# Site de test (test.lejardinparmentier.fr) : jamais référencé par Google
+<IfModule mod_setenvif.c>
+  SetEnvIfNoCase Host "^test\." SITE_TEST
+</IfModule>
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow" env=SITE_TEST
+</IfModule>
+
 # ---- Performance : compression et mise en cache ----
 AddType font/woff2 .woff2
 AddType application/manifest+json .webmanifest
