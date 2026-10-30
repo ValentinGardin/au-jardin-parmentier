@@ -363,6 +363,50 @@ if ($api !== '') {
             repondre(200, ['ok' => true, 'n' => $n, 'avert' => $e] + $listeClients());
         }
     }
+    // ---- Plat épuisé (bouton rapide de l'onglet Réservations) ----
+    if ($api === 'epuise' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        api_garde();
+        $in = entree(); $date = date_ok($in['date'] ?? '');
+        $res = verrou(function () use ($date, $in) {
+            $d = site_load(); $nom = JOURS[(int)date('N', strtotime($date)) - 1];
+            foreach (['semaine', 'semaine_suivante'] as $k) {
+                $s = $d[$k];
+                if ($s['du'] === '' || $date < $s['du'] || ($s['au'] !== '' && $date > $s['au'])) continue;
+                foreach ($d[$k]['jours'] as $i => $j) if (norm($j['jour']) === norm($nom) && $j['nom'] !== '') {
+                    $d[$k]['jours'][$i]['epuise'] = !empty($in['valeur']);
+                    sauvegarder();
+                    json_save(DATA . '/site.json', site_clean($d));
+                    return [$k, site_load()[$k]];
+                }
+            }
+            return null;
+        });
+        if (!$res) repondre(400, ['erreur' => 'Pas de plat du jour prévu ce jour-là dans le menu de la semaine.']);
+        repondre(200, ['ok' => true, 'part' => $res[0], 'data' => $res[1]]);
+    }
+    // ---- Notifications récentes (cloche en haut du back-office) ----
+    if ($api === 'notifs') {
+        if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
+        $moiNom = $moi['nom'] ?: $moi['identifiant']; $depuis = date('Y-m-d H:i', strtotime('-14 days'));
+        $clients = clients_charger(); $n = [];
+        $nomDe = function ($id) use ($clients) { $i = client_par_id($clients, $id); return $i === null ? 'Client supprimé' : (client_nom($clients[$i]) ?: 'Client'); };
+        foreach (resas_charger() as $r) {
+            if ($r['cree'] < $depuis) continue;
+            $txt = ' n° ' . $r['num'] . ' · ' . $nomDe($r['client']) . ', pour ' . date_fr($r['date'], true);
+            if (($r['source'] ?? '') === 'site') $n[] = ['t' => $r['cree'], 'type' => 'web', 'txt' => 'Nouvelle réservation en ligne' . $txt, 'date' => $r['date']];
+            elseif ($r['par'] !== $moiNom && $r['cree'] >= date('Y-m-d H:i', strtotime('-3 days'))) $n[] = ['t' => $r['cree'], 'type' => 'resa', 'txt' => $r['par'] . ' a pris la réservation' . $txt, 'date' => $r['date']];
+        }
+        foreach ($clients as $c) foreach ($c['lettre']['historique'] ?? [] as $h) {
+            if ($h['date'] < $depuis || !in_array($h['source'], ['site', 'désinscription'], true)) continue;
+            $n[] = ['t' => $h['date'], 'type' => $h['statut'] === 'oui' ? 'lettre' : 'desabo', 'txt' => (client_nom($c) ?: $c['email']) . ($h['statut'] === 'oui' ? ' s’est inscrit(e) au menu par e-mail' : ' s’est désinscrit(e) du menu par e-mail'), 'onglet' => 'clients'];
+        }
+        foreach (lettre_config()['envois'] as $e) if (($e['mode'] ?? '') !== 'test' && ($e['date'] ?? '') >= $depuis)
+            $n[] = ['t' => $e['date'], 'type' => 'envoi', 'txt' => 'Menu de la semaine envoyé par e-mail à ' . (int)$e['ok'] . ' inscrit(s)' . (($e['mode'] ?? '') === 'auto' ? ' (automatique)' : ''), 'onglet' => 'clients'];
+        foreach (sms_config()['envois'] as $e) if (strpos($e['mode'], 'essai') !== 0 && $e['date'] >= $depuis && ($e['ok'] || $e['erreur']))
+            $n[] = ['t' => $e['date'], 'type' => $e['erreur'] && !$e['ok'] ? 'erreur' : 'sms', 'txt' => $e['ok'] ? (int)$e['ok'] . ' SMS de rappel envoyé(s)' . ($e['mode'] === 'automatique' ? ' (automatique)' : ' par ' . $e['mode']) : 'SMS non envoyés : ' . $e['erreur'], 'onglet' => 'clients'];
+        usort($n, function ($a, $b) { return strcmp($b['t'], $a['t']); });
+        repondre(200, ['ok' => true, 'notifs' => array_slice($n, 0, 40)]);
+    }
     // ---- Réservation en ligne : ouverte ou fermée, heure limite la veille ----
     if ($api === 'commande-options' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         api_garde();
@@ -519,7 +563,7 @@ if ($logged) {
     $photos = [];
     foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
-             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant'],
+             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant'], 'forte' => FORTE_DEMANDE,
              'commande' => commande_config() + ['jours' => count(commande_jours(site_load()))]];
 }
 ?>
@@ -535,7 +579,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=19" rel="stylesheet">
+<link href="admin.css?v=20" rel="stylesheet">
 </head>
 <body>
 
@@ -599,11 +643,13 @@ if ($logged) {
     <button type="button" class="plus-btn" id="plus-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-liste"><span id="plus-txt">Plus</span><svg class="ico fleche"><use href="#i-bas"/></svg></button>
   </nav>
   <div class="haut-actions">
-    <button type="button" class="qui" data-onglet="comptes" aria-selected="false" title="<?= $estAdmin ? 'Utilisateurs et mon compte' : 'Mon compte' ?> (<?= h($moi['email']) ?>)"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span><span class="qui-role"><?= $estAdmin ? 'Utilisateurs' : 'Mon compte' ?></span></button>
+    <button type="button" class="cloche" id="cloche" aria-haspopup="true" aria-expanded="false" aria-controls="notifs" title="Notifications récentes"><svg class="ico"><use href="#i-cloche"/></svg><span class="sr-only">Notifications</span><span class="cloche-nb" id="cloche-nb" hidden></span></button>
+    <button type="button" class="qui" data-onglet="comptes" aria-selected="false" title="<?= $estAdmin ? 'Utilisateurs et mon compte' : 'Mon compte' ?> (<?= h($moi['email']) ?>)"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span></button>
     <a class="btn btn-discret" href="./" target="_blank" rel="noopener"><svg class="ico"><use href="#i-oeil"/></svg><span>Voir le site</span></a>
     <form method="post"><input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="logout"><button class="btn btn-discret" title="Se déconnecter"><svg class="ico"><use href="#i-sortie"/></svg><span>Quitter</span></button></form>
   </div>
 </header>
+<div class="notifs" id="notifs" role="dialog" aria-label="Notifications récentes" hidden></div>
 <div class="plus-liste" id="plus-liste" role="menu" aria-labelledby="plus-btn" hidden>
   <button role="menuitem" data-onglet="avis" aria-selected="false"><svg class="ico"><use href="#i-etoile"/></svg>Avis</button>
   <button role="menuitem" data-onglet="mots" aria-selected="false"><svg class="ico"><use href="#i-mots"/></svg>Mots défilants</button>
@@ -621,7 +667,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=19"></script>
+<script src="admin.js?v=20"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -654,6 +700,8 @@ if ($logged) {
     <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></g></symbol>
     <symbol id="i-envoyer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></g></symbol>
     <symbol id="i-telecharger" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></g></symbol>
+    <symbol id="i-sac" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></g></symbol>
+    <symbol id="i-cloche" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></g></symbol>
   </defs>
 </svg>
 </body>

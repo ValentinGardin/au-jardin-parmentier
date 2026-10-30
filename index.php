@@ -31,6 +31,7 @@ $galerie = photos_galerie();
 $cmdJours = commande_config()['actif'] ? commande_jours($s) : [];
 $cmd = (bool)$cmdJours;
 $cmdDates = array_column($cmdJours, 'date');
+$parts = parts_reservees();   // parts réservées par jour (signal « forte demande »)
 // Date d'un jour du menu (« Mardi » de la semaine du 27 au 31 octobre → 2026-10-27)
 $dateDuJour = function ($sw, $nom) {
     if ($sw['du'] === '') return '';
@@ -57,7 +58,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=13" rel="stylesheet">
+<link href="style.css?v=14" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -106,7 +107,7 @@ $dateDuJour = function ($sw, $nom) {
 <?php if ($platDuJour): ?>
       <a class="du-jour anim" style="--d:4" href="#semaine">
         <span class="du-jour-tag">Aujourd’hui</span>
-        <span class="du-jour-nom"><?= h($platDuJour['nom']) ?></span>
+        <span class="du-jour-nom"><?= h($platDuJour['nom']) ?><?= $platDuJour['epuise'] ? ' · épuisé' : '' ?></span>
         <?php if ($platDuJour['prix'] !== ''): ?><span class="du-jour-px"><?= h($platDuJour['prix']) ?></span><?php endif; ?>
       </a>
 <?php endif; ?>
@@ -226,8 +227,9 @@ $dateDuJour = function ($sw, $nom) {
           <span class="jour-plat"><strong><?= h($j['motif'] ?: 'Fermé') ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span>
           <span class="jour-px"><span class="badge-ferme">Fermé</span></span>
 <?php else: ?>
-          <span class="jour-plat"><strong><?= h($j['nom']) ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span>
-          <span class="jour-px"><?= h($j['prix']) ?><?php if ($cmd): $dj = $dateDuJour($semW, $j['jour']);
+<?php $dj = $dateDuJour($semW, $j['jour']); ?>
+          <span class="jour-plat"><strong><?= h($j['nom']) ?><?php if ($j['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($dj >= date('Y-m-d') && ($parts[$dj] ?? 0) >= FORTE_DEMANDE): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span>
+          <span class="jour-px"><?= h($j['prix']) ?><?php if ($cmd && !$j['epuise']):
             if (in_array($dj, $cmdDates, true)): ?><button type="button" class="jour-resa" data-reserver="<?= $dj ?>" aria-label="Réserver le plat du <?= h(strtolower($j['jour'])) ?>">Réserver</button><?php
             elseif ($dj === date('Y-m-d')): ?><a class="jour-resa tel" href="<?= $telHref ?>">Par téléphone</a><?php endif; endif; ?></span>
 <?php endif; ?>
@@ -556,6 +558,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=12" defer></script>
+<script src="main.js?v=13" defer></script>
 </body>
 </html>

@@ -2,7 +2,8 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.21 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
+const VERSION = '1.22 · 30 octobre 2026';
+const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');
@@ -58,7 +59,8 @@ function semaine_clean($s) {
     foreach (liste($s['jours'] ?? []) as $j) {
         // « ferme » : jour férié ou fermeture exceptionnelle, avec un titre (motif) et un message à la place du plat
         $j = ['jour' => txt($j['jour'] ?? '', 30), 'nom' => txt($j['nom'] ?? '', 140), 'desc' => txt($j['desc'] ?? '', 200), 'prix' => txt($j['prix'] ?? '', 20),
-              'ferme' => !empty($j['ferme']), 'motif' => txt($j['motif'] ?? '', 60), 'message' => txt($j['message'] ?? '', 200)];
+              'ferme' => !empty($j['ferme']), 'motif' => txt($j['motif'] ?? '', 60), 'message' => txt($j['message'] ?? '', 200),
+              'epuise' => !empty($j['epuise'])];   // plus disponible (tout est parti) : plus réservable
         if ($j['jour'] !== '' || $j['nom'] !== '') $jours[] = $j;
     }
     $sp = is_array($s['special'] ?? null) ? $s['special'] : [];

@@ -563,3 +563,13 @@ body.rs-ouvert{overflow:hidden}
 .rs-idees{display:flex;flex-wrap:wrap;gap:.4rem;margin:-.35rem 0 .9rem}
 .rs-idees button{border:1px solid var(--trait);background:var(--blanc);border-radius:999px;padding:.35rem .75rem;font:500 .82rem var(--texte);color:var(--gris);cursor:pointer;transition:border-color .2s,color .2s}
 .rs-idees button:hover{border-color:var(--violet);color:var(--violet)}
+/* Plat épuisé, forte demande */
+.etiq{display:inline-block;margin-left:.35rem;padding:.12rem .55rem;border-radius:999px;font:700 .72rem var(--texte);font-style:normal;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle;white-space:nowrap}
+.etiq-epuise{background:#fde8e1;color:#b42318}
+.etiq-forte{background:#ffedd5;color:#c2410c;animation:pulse-orange 2.4s ease-in-out infinite}
+@keyframes pulse-orange{0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,0)}50%{box-shadow:0 0 0 4px rgba(234,88,12,.15)}}
+.jour:has(.etiq-epuise) .jour-plat strong{color:var(--gris)}
+.rs-jours button.forte{position:relative}
+.rs-jours button.forte::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ea580c}
+.rs-forte{font-style:normal;margin-left:.3rem;padding:.08rem .45rem;border-radius:999px;background:#ffedd5;color:#c2410c;letter-spacing:0;text-transform:none;font-weight:700}
+@media (prefers-reduced-motion:reduce){.etiq-forte{animation:none}}

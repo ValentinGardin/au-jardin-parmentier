@@ -284,7 +284,7 @@ function special_le_jour($sp, $jour) {
 }
 // Jours réservables en ligne : à partir du lendemain (jusqu'à la veille à l'heure limite), uniquement les jours avec un plat
 function commande_jours($d) {
-    $c = commande_config(); $out = [];
+    $c = commande_config(); $out = []; $parts = parts_reservees();
     $demain = date('Y-m-d', strtotime('tomorrow'));
     $semaines = [$d['semaine']];
     if ($d['semaine_suivante']['publie'] && semaine_remplie($d['semaine_suivante'])) $semaines[] = $d['semaine_suivante'];
@@ -296,7 +296,8 @@ function commande_jours($d) {
             $nomJour = JOURS[(int)date('N', strtotime($date)) - 1];
             foreach ($s['jours'] as $j) {
                 if (norm($j['jour']) !== norm($nomJour) || $j['nom'] === '' || $j['ferme']) continue;
-                $out[$date] = ['date' => $date, 'jour' => $nomJour, 'libelle' => date_fr($date, true), 'plat' => ['nom' => $j['nom'], 'desc' => $j['desc'], 'prix' => $j['prix']],
+                if ($j['epuise']) break;   // épuisé : plus réservable
+                $out[$date] = ['date' => $date, 'jour' => $nomJour, 'forte' => ($parts[$date] ?? 0) >= FORTE_DEMANDE, 'libelle' => date_fr($date, true), 'plat' => ['nom' => $j['nom'], 'desc' => $j['desc'], 'prix' => $j['prix']],
                                'special' => special_le_jour($s['special'], $nomJour) ? ['nom' => $s['special']['nom'], 'prix' => $s['special']['prix'], 'titre' => $s['special']['titre'], 'lignes' => $s['special']['lignes']] : null];
                 break;
             }
@@ -314,4 +315,15 @@ function limite_ip($quoi, $max) {
     $t[$k . '-' . bin2hex(random_bytes(3))] = time();
     json_save($f, $t);
     return false;
+}
+
+// Parts réservées par jour pour le plat du jour (y compris les plats mis de côté pour un autre jour) : [date => nombre]
+function parts_reservees() {
+    $n = [];
+    foreach (resas_charger() as $r) foreach ($r['lignes'] as $l) {
+        if ($l['type'] !== 'plat') continue;
+        $d = ($l['jour'] ?? '') !== '' ? $l['jour'] : $r['date'];
+        $n[$d] = ($n[$d] ?? 0) + (int)$l['qte'];
+    }
+    return $n;
 }

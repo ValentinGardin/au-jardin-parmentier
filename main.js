@@ -143,10 +143,10 @@
       entete(1, 'Réserver mon plat');
       corps.innerHTML = '<p class="rs-q">Pour quel jour ?</p><div class="rs-jours" role="radiogroup" aria-label="Jour de retrait">' + D.jours.map(function (x) {
           var c = court(x.date);
-          return '<button type="button" role="radio" aria-checked="' + (x.date === j.date) + '" data-rs="jour" data-d="' + x.date + '"><span>' + c.j + '</span><b>' + c.n + '</b><small>' + c.m + '</small></button>';
+          return '<button type="button" role="radio" aria-checked="' + (x.date === j.date) + '" data-rs="jour" data-d="' + x.date + '"' + (x.forte ? ' class="forte" title="Forte demande"' : '') + '><span>' + c.j + '</span><b>' + c.n + '</b><small>' + c.m + '</small></button>';
         }).join('') + '</div>' +
         '<p class="rs-q">Votre commande <span>pour ' + esc(j.libelle) + '</span></p>' +
-        '<div class="rs-plat' + (etat.plat ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">Plat du jour</span><strong>' + esc(j.plat.nom) + '</strong>' + (j.plat.desc ? '<small>' + esc(j.plat.desc) + '</small>' : '') + '</div>' +
+        '<div class="rs-plat' + (etat.plat ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">Plat du jour' + (j.forte ? ' <em class="rs-forte">Forte demande · réservez vite</em>' : '') + '</span><strong>' + esc(j.plat.nom) + '</strong>' + (j.plat.desc ? '<small>' + esc(j.plat.desc) + '</small>' : '') + '</div>' +
           '<div class="rs-plat-fin">' + (j.plat.prix ? '<span class="rs-px">' + esc(j.plat.prix) + '</span>' : '') + qte('plat', etat.plat, 0) + '</div></div>' +
         (j.special ? '<div class="rs-plat rs-offre' + (etat.special ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">' + esc(j.special.titre || 'Offre spéciale') + '</span><strong>' + esc(j.special.nom) + '</strong>' + (j.special.lignes.length ? '<small>' + esc(j.special.lignes.join(' · ')) + '</small>' : '') + '</div>' +
           '<div class="rs-plat-fin">' + (j.special.prix ? '<span class="rs-px">' + esc(j.special.prix) + '</span>' : '') + qte('special', etat.special, 0) + '</div></div>' : '') +
