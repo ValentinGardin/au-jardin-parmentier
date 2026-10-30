@@ -1430,12 +1430,23 @@
       '<div class="deux-cols"><section class="bloc"><div class="bloc-tete"><h2>' + pluriel(n, 'question') + '</h2><span class="compte">Flèches : changer l’ordre</span></div><div class="faq-liste">' +
         (liste || '<p class="vide">Aucune question : la rubrique est masquée sur le site.</p>') + '</div>' +
         '<button type="button" class="btn-ajout" data-act="add" data-p="faq" data-tpl="faq">' + ico('plus') + 'Ajouter une question</button></section>' +
-      '<aside class="bloc a-retenir"><h2>Pour plaire à Google</h2><ul>' +
+      '<aside class="faq-cote"><div class="bloc apercu-faq"><div class="bloc-tete"><h2>Aperçu sur le site</h2><a class="lien" href="./#faq" target="_blank" rel="noopener">Ouvrir ↗</a></div>' +
+        '<div id="faq-apercu">' + faqApercu() + '</div></div>' +
+        '<details class="bloc a-retenir faq-conseils"><summary>Conseils pour plaire à Google</summary><ul>' +
         '<li>Écrivez la question <b>comme un client la tape</b> : « Où acheter un plat du jour à Montdidier ? »</li>' +
         '<li>Commencez la réponse par <b>la réponse directe</b>, puis le détail. 2 à 4 phrases suffisent.</li>' +
         '<li>Glissez naturellement les mots qu’on recherche : <b>Montdidier, traiteur, plat du jour, buffet, épicerie fine</b>…</li>' +
         '<li>Une question par sujet. 8 à 12 questions, c’est idéal.</li>' +
-        '<li>Ne mettez que des informations exactes (horaires, délais…) : Google les affiche telles quelles.</li></ul></aside></div>';
+        '<li>Ne mettez que des informations exactes (horaires, délais…) : Google les affiche telles quelles.</li></ul></details></aside></div>';
+  }
+  // Aperçu fidèle à la rubrique du site : la question en cours de saisie est ouverte
+  var faqOuverte = 0;
+  function faqApercu() {
+    var l = site.faq.filter(function (x) { return x.q.trim() && x.r.trim(); });
+    if (!l.length) return '<p class="aide">Aucune question complète : la rubrique est masquée sur le site.</p>';
+    return '<p class="ap-eyebrow">Questions fréquentes</p><p class="ap-titre">Vous vous demandez peut-être…</p><div class="ap-faq">' + l.map(function (x, i) {
+      return '<details class="ap-q"' + (i === faqOuverte ? ' open' : '') + '><summary><span>' + esc(x.q) + '</span><i aria-hidden="true"></i></summary><p>' + esc(x.r).replace(/\n/g, '<br>') + '</p></details>';
+    }).join('') + '</div>' + (l.length < site.faq.length ? '<p class="aide petit">' + pluriel(site.faq.length - l.length, 'question incomplète') + ' (sans question ou sans réponse) : pas affichée.</p>' : '');
   }
 
   // =============== Affichage ===============
@@ -1469,6 +1480,11 @@
     barre();
     if (onglet === 'semaine') { var a = document.getElementById('apercu'); if (a) a.innerHTML = apercu(); clearTimeout(apercusT); apercusT = setTimeout(dessinerApercus, 450); }
     if (onglet === 'mots') { var m = document.getElementById('mots-apercu'); if (m) m.innerHTML = motsApercu(); }
+    if (onglet === 'faq') {
+      var fa = document.getElementById('faq-apercu'), af = document.activeElement;
+      if (af && af.dataset && /^faq\.\d+\./.test(af.dataset.p || '')) faqOuverte = site.faq.slice(0, +af.dataset.p.split('.')[1]).filter(function (x) { return x.q.trim() && x.r.trim(); }).length;
+      if (fa) fa.innerHTML = faqApercu();
+    }
   }
   var toastT;
   function toast(msg, erreur) {
