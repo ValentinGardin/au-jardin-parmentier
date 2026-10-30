@@ -380,3 +380,13 @@ body.pop-ouvert{overflow:hidden}
 .plan-attente p{margin:0;color:var(--gris);max-width:22rem;font-size:.95rem}
 .plan-attente a{font-size:.9rem;font-weight:600}
 .pop[hidden],.cookies[hidden]{display:none}
+
+/* Réseaux sociaux */
+.reseaux{display:flex;align-items:center;gap:.6rem;margin-top:1.4rem}
+.reseaux span{font-weight:600;color:var(--gris);margin-right:.3rem}
+.reseau{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--blanc);color:var(--violet);border:1px solid var(--trait);transition:transform .3s var(--ease),background-color .2s,color .2s,border-color .2s}
+.reseau svg{width:22px;height:22px}
+.reseau:hover{transform:translateY(-3px);background:var(--violet);border-color:var(--violet);color:#fff}
+.pied-reseaux{display:flex;gap:.5rem}
+.pied .reseau{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+.pied .reseau:hover{background:#fff;color:var(--violet)}

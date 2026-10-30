@@ -299,7 +299,7 @@
         '</section>';
     }).join('');
     return tete('Événements et menus spéciaux', 'Beaujolais nouveau, Noël, Pâques… Un événement activé apparaît en grand en haut du site, avec une annonce dans le haut de page.',
-        '<a class="btn btn-discret" href="index.php#evenements" target="_blank" rel="noopener">' + ico('oeil') + 'Voir sur le site</a>' +
+        '<a class="btn btn-discret" href="./#evenements" target="_blank" rel="noopener">' + ico('oeil') + 'Voir sur le site</a>' +
         '<button type="button" class="btn btn-violet" data-act="add" data-p="evenements" data-tpl="evenement">' + ico('plus') + 'Nouvel événement</button>') +
       (liste || '<p class="vide">Aucun événement. Créez-en un pour Noël, Pâques, le Beaujolais nouveau…</p>');
   }
@@ -350,6 +350,7 @@
         barres('Réservations d’événements', d.evenements, null, 'Clics sur « Réserver » (appel téléphonique).') +
         colonnes('Jours de visite', d.semaine, JCOURTS) +
         colonnes('Heures de visite', d.heures, d.heures.map(function (x, h) { return h % 3 ? '' : h + 'h'; }), d.heures.map(function (x, h) { return h + ' h – ' + (h + 1) + ' h'; })) +
+        barres('Clics vers vos réseaux', (function () { var r = {}; if (T.insta) r.Instagram = T.insta; if (T.fb) r.Facebook = T.fb; if (T.avis) r['Avis Google'] = T.avis; return r; })(), null, 'Visiteurs partis voir vos pages depuis le site.') +
         (Object.keys(d.sites).length ? barres('Autres sites qui vous envoient des visiteurs', d.sites) : '') +
       '</div>' +
       '<p class="stats-pied">Statistiques enregistrées depuis le ' + dateFr(d.premier) + ' ' + d.premier.slice(0, 4) + '. Mesure anonyme et sans cookie : aucune adresse IP n’est conservée, les robots et vos propres visites (quand vous êtes connecté ici) ne sont pas comptés. Les données de plus de 13 mois sont effacées automatiquement.</p>';
@@ -785,7 +786,7 @@
       var w = window.open('about:blank', '_blank');
       (sale('semaine') ? enregistrer('semaine') : Promise.resolve(true)).then(function (ok) {
         if (!w) return toast('Autorisez les fenêtres pop-up pour imprimer l’affiche.', true);
-        if (ok) w.location.href = 'affiche.php'; else w.close();
+        if (ok) w.location.href = 'affiche'; else w.close();
       });
     }
   });

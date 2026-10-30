@@ -213,7 +213,7 @@ if ($logged) {
 <?php endif; ?>
     <button class="btn btn-violet btn-plein"><?= $setup ? 'Créer le compte' : 'Se connecter' ?></button>
 <?php if (!$setup): ?>    <p class="aide petit-aide">Mot de passe oublié ? Demandez à un administrateur de le réinitialiser dans l’onglet « Utilisateurs ».</p>
-<?php endif; ?>    <a class="lien-site" href="index.php">← Retour au site</a>
+<?php endif; ?>    <a class="lien-site" href="./">← Retour au site</a>
     <p class="version">Version <?= h(VERSION) ?></p>
   </form>
 </main>
@@ -232,7 +232,7 @@ if ($logged) {
   </nav>
   <div class="haut-actions">
     <span class="qui" title="<?= h($moi['email']) ?>"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span></span>
-    <a class="btn btn-discret" href="index.php" target="_blank" rel="noopener"><svg class="ico"><use href="#i-oeil"/></svg><span>Voir le site</span></a>
+    <a class="btn btn-discret" href="./" target="_blank" rel="noopener"><svg class="ico"><use href="#i-oeil"/></svg><span>Voir le site</span></a>
     <form method="post"><input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="logout"><button class="btn btn-discret" title="Se déconnecter"><svg class="ico"><use href="#i-sortie"/></svg><span>Quitter</span></button></form>
   </div>
 </header>

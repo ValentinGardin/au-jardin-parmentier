@@ -1,0 +1,24 @@
+# Adresses propres : https://www.lejardinparmentier.fr/ (sans index.php), /mentions-legales, /affiche
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Fichiers techniques jamais accessibles depuis le navigateur (Git, réglages, bibliothèques PHP)
+RewriteRule (^|/)\.(?!well-known/) - [R=404,L]
+RewriteRule ^(lib|stats|comptes)\.php$ - [R=404,L]
+
+# Anciennes adresses en .php : redirection définitive vers l'adresse propre
+RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.php[\s?] [NC]
+RewriteRule ^(.*/)?index\.php$ /$1 [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+mentions\.php[\s?] [NC]
+RewriteRule ^ /mentions-legales [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+affiche\.php[\s?] [NC]
+RewriteRule ^ /affiche [R=301,L]
+
+# Adresses propres servies par les fichiers PHP
+RewriteRule ^(mentions-legales|affiche)/$ /$1 [R=301,L]
+RewriteRule ^mentions-legales$ mentions.php [L]
+RewriteRule ^affiche$ affiche.php [L]
+</IfModule>

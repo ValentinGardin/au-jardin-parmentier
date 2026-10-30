@@ -62,6 +62,7 @@
     else if (h.indexOf('mailto:') === 0) suivre('mail');
     else if (/google\.[a-z]+\/maps/.test(h)) suivre('itin');
     else if (/facebook\.com/.test(h)) suivre('fb');
+    else if (/instagram\.com/.test(h)) suivre('insta');
     else if (/share\.google/.test(h)) suivre('avis');
   });
   tabs.forEach(function (t) { t.addEventListener('click', function () { suivre('carte', t.textContent.trim()); }); });

@@ -33,6 +33,7 @@ $galerie = photos_galerie();
 <meta property="og:title" content="Au Jardin Parmentier · épicerie fine et traiteur">
 <meta property="og:description" content="Épicerie fine et traiteur au cœur de Montdidier.">
 <meta property="og:image" content="img/og-image.png">
+<link rel="canonical" href="https://www.lejardinparmentier.fr/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -40,7 +41,7 @@ $galerie = photos_galerie();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="style.css?v=5" rel="stylesheet">
+<link href="style.css?v=6" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -347,7 +348,11 @@ $galerie = photos_galerie();
       </ul>
       <div class="ctas reveal">
         <a class="btn btn-violet" href="<?= h($maps) ?>" target="_blank" rel="noopener">Itinéraire</a>
-        <a class="btn btn-ligne" href="https://www.facebook.com/Au-Jardin-Parmentier-1641585952790089/?fref=ts" target="_blank" rel="noopener">Facebook</a>
+      </div>
+      <div class="reseaux reveal">
+        <span>Suivez-nous</span>
+        <a class="reseau" href="https://www.instagram.com/au_jardin_parmentier/" target="_blank" rel="noopener" aria-label="Instagram : @au_jardin_parmentier"><svg aria-hidden="true"><use href="#i-insta"/></svg></a>
+        <a class="reseau" href="https://www.facebook.com/p/Au-Jardin-Parmentier-100045063797396/" target="_blank" rel="noopener" aria-label="Facebook : Au Jardin Parmentier"><svg aria-hidden="true"><use href="#i-fb"/></svg></a>
       </div>
     </div>
     <div class="plan reveal">
@@ -369,7 +374,11 @@ $galerie = photos_galerie();
   <div class="wrap pied-in">
     <img src="img/logo/logo-blanc.svg" alt="Au Jardin Parmentier" width="150" height="95">
     <p>Épicerie fine · Traiteur<br>9, place Parmentier – 80500 Montdidier<br><a href="<?= $telHref ?>"><?= $tel ?></a></p>
-    <p class="pied-liens"><a href="mentions.php">Mentions légales</a> · <button type="button" class="lien-cookies" data-cookies="gerer">Gérer les cookies</button> · Réalisation G’agency</p>
+    <p class="pied-reseaux">
+      <a class="reseau" href="https://www.instagram.com/au_jardin_parmentier/" target="_blank" rel="noopener" aria-label="Instagram"><svg aria-hidden="true"><use href="#i-insta"/></svg></a>
+      <a class="reseau" href="https://www.facebook.com/p/Au-Jardin-Parmentier-100045063797396/" target="_blank" rel="noopener" aria-label="Facebook"><svg aria-hidden="true"><use href="#i-fb"/></svg></a>
+    </p>
+    <p class="pied-liens"><a href="mentions-legales">Mentions légales</a> · <button type="button" class="lien-cookies" data-cookies="gerer">Gérer les cookies</button> · Réalisation G’agency</p>
   </div>
 </footer>
 
@@ -406,7 +415,7 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
 
 <!-- Bandeau cookies : seule la carte Google Maps en dépose ; les statistiques du site sont anonymes et sans cookie -->
 <div class="cookies" id="cookies" hidden role="region" aria-label="Cookies">
-  <p><strong>Les cookies, en bref.</strong> Nos statistiques de visite sont anonymes et sans cookie. Seule la carte Google Maps peut en déposer : acceptez-vous de l’afficher ? <a href="mentions.php#cookies">En savoir plus</a></p>
+  <p><strong>Les cookies, en bref.</strong> Nos statistiques de visite sont anonymes et sans cookie. Seule la carte Google Maps peut en déposer : acceptez-vous de l’afficher ? <a href="mentions-legales#cookies">En savoir plus</a></p>
   <div class="cookies-actions">
     <button type="button" class="btn btn-ligne btn-sm" data-cookies="refuser">Refuser</button>
     <button type="button" class="btn btn-violet btn-sm" data-cookies="accepter">Accepter</button>
@@ -417,8 +426,10 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-tel" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></g></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></g></symbol>
+  <symbol id="i-insta" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.4" r=".6" fill="currentColor"/></g></symbol>
+  <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=5" defer></script>
+<script src="main.js?v=6" defer></script>
 </body>
 </html>

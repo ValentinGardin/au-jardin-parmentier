@@ -21,23 +21,24 @@ $realisation = 'G’agency';
 <title>Mentions légales · Au Jardin Parmentier</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#ffffff">
+<link rel="canonical" href="https://www.lejardinparmentier.fr/mentions-legales">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="style.css?v=4" rel="stylesheet">
+<link href="style.css?v=6" rel="stylesheet">
 </head>
 <body>
 
 <header class="nav plein">
   <div class="wrap nav-in">
-    <a class="brand" href="index.php" aria-label="Au Jardin Parmentier, accueil">
+    <a class="brand" href="./" aria-label="Au Jardin Parmentier, accueil">
       <img src="favicon.svg" alt="" width="40" height="40">
       <span>Au Jardin Parmentier</span>
     </a>
-    <a class="btn btn-ligne btn-sm" href="index.php">← Retour au site</a>
+    <a class="btn btn-ligne btn-sm" href="./">← Retour au site</a>
   </div>
 </header>
 
@@ -98,7 +99,7 @@ $realisation = 'G’agency';
   <div class="wrap pied-in">
     <img src="img/logo/logo-blanc.svg" alt="Au Jardin Parmentier" width="150" height="95">
     <p>Épicerie fine · Traiteur<br>9, place Parmentier – 80500 Montdidier</p>
-    <p class="pied-liens"><a href="index.php">Retour au site</a></p>
+    <p class="pied-liens"><a href="./">Retour au site</a></p>
   </div>
 </footer>
 </body>
