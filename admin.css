@@ -71,6 +71,7 @@ button{font:inherit;color:inherit}
   .onglets button[aria-selected="true"]{background:transparent;box-shadow:inset 0 -2px 0 var(--violet)!important}
 }
 @media (max-width:560px){.haut-actions .btn span{display:none}.onglets button .ico{display:none}}
+@media (max-width:1180px){.onglets .sep{margin:.8rem .2rem}}
 
 /* Panneaux */
 .app{max-width:1180px;margin:0 auto;padding:2rem 1.25rem 7rem}
@@ -333,11 +334,17 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .pastille-couleur .arc{background:conic-gradient(#e63946,#f4a261,#e9c46a,#2a9d8f,#457b9d,#9d4edd,#e63946)}
 
 /* Utilisateurs */
-.qui{display:flex;align-items:center;gap:.5rem;margin-right:.4rem;font-weight:600;font-size:.88rem}
+.qui{display:flex;align-items:center;gap:.5rem;margin-right:.3rem;padding:.3rem .7rem .3rem .3rem;border:0;border-radius:999px;background:transparent;font-weight:600;font-size:.88rem;color:var(--gris);cursor:pointer;white-space:nowrap}
+.qui:hover{background:var(--fond);color:var(--encre)}
+.qui[aria-selected="true"]{background:var(--violet-pale);color:var(--violet)}
+.qui-nom{display:none}
+.onglets .sep{flex:none;width:1px;margin:.45rem .3rem;background:var(--trait)}
 .avatar{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--violet-pale);color:var(--violet);font:700 .9rem var(--titre);flex-shrink:0}
 .avatar.grand{width:42px;height:42px;font-size:1.15rem}
-@media (max-width:1560px){.qui-nom{display:none}.logo span{display:none}}
-@media (max-width:1380px) and (min-width:1181px){.onglets button .ico{display:none}.onglets button{padding:.55rem .7rem}.haut-actions .btn span{display:none}}
+@media (max-width:1560px){.logo span{display:none}}
+@media (max-width:1640px){.qui-role{display:none}.qui{padding:.3rem}}
+@media (min-width:1181px){.onglets button .ico{display:none}}
+@media (max-width:1640px) and (min-width:1181px){.onglets button{padding:.55rem .7rem}.haut-actions .btn span{display:none}}
 .comptes-liste{display:grid;gap:.5rem}
 .compte-ligne{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:1rem;align-items:center;padding:.75rem;border-radius:12px;background:var(--fond)}
 .compte-txt strong{display:block}
@@ -598,3 +605,18 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
   .r-etat{min-width:0;border-style:solid}
 }
 @media (max-width:640px){.modale-resa .grille-2{grid-template-columns:1fr 1fr;gap:0 .6rem}.modale-resa .modale-actions{flex-wrap:nowrap}.modale-resa .modale-actions .btn-violet{flex:1}}
+
+/* Accords e-mail / SMS */
+.accords{display:flex;gap:.3rem}
+.accord{display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .6rem;border-radius:999px;font-size:.76rem;font-weight:600;white-space:nowrap}
+.accord .ico{width:13px;height:13px}
+.accord-oui{background:var(--vert-pale);color:var(--vert)}
+.accord-non{background:var(--orange-pale);color:var(--orange);text-decoration:line-through}
+.accord-vide{background:var(--fond);color:var(--gris-clair)}
+.fc-accord{padding:.75rem .85rem;border:1px solid var(--trait);border-radius:12px;margin-bottom:.5rem}
+.fc-accord-t{display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.55rem}
+.fc-accord-t .ico{color:var(--violet);margin-top:.15rem}
+.fc-accord-t span{display:grid}
+.fc-accord-t small{color:var(--gris);font-size:.8rem}
+@media (max-width:700px){.accord{font-size:0;gap:0;padding:.35rem}.accord .ico{width:14px;height:14px}}
+.lettre-bloc .aide.petit{margin-top:.8rem}

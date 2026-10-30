@@ -231,12 +231,13 @@ if ($api !== '') {
             if ($masquer) repondre(403, ['erreur' => 'Mode visite : export désactivé.']);
             $l = $listeClients()['clients'];
             if (($_GET['f'] ?? '') === 'lettre') $l = array_filter($l, function ($c) { return $c['lettre']['statut'] === 'oui' && $c['email'] !== ''; });
+            if (($_GET['f'] ?? '') === 'sms') $l = array_filter($l, function ($c) { return $c['sms']['statut'] === 'oui' && $c['tel'] !== ''; });
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="clients-' . date('Y-m-d') . '.csv"');
             $o = fopen('php://output', 'w');
             fwrite($o, "\xEF\xBB\xBF");   // pour qu'Excel lise bien les accents
-            fputcsv($o, ['Prénom', 'Nom', 'Téléphone', 'E-mail', 'Menu par e-mail', 'Depuis le', 'Commandes', 'Dernière commande', 'Note'], ';');
-            foreach ($l as $c) fputcsv($o, [$c['prenom'], $c['nom'], $c['tel'], $c['email'], $c['lettre']['statut'] === 'oui' ? 'oui' : ($c['lettre']['statut'] === 'non' ? 'non' : ''), $c['lettre']['date'], $c['nb'], $c['der'], $c['note']], ';');
+            fputcsv($o, ['Prénom', 'Nom', 'Téléphone', 'E-mail', 'Menu par e-mail', 'Depuis le', 'SMS', 'Depuis le', 'Commandes', 'Dernière commande', 'Note'], ';');
+            foreach ($l as $c) fputcsv($o, [$c['prenom'], $c['nom'], $c['tel'], $c['email'], $c['lettre']['statut'], $c['lettre']['date'], $c['sms']['statut'], $c['sms']['date'], $c['nb'], $c['der'], $c['note']], ';');
             exit;
         }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') repondre(405, ['erreur' => 'Méthode non autorisée.']);
@@ -259,6 +260,7 @@ if ($api !== '') {
                     $clients[$i] = client_clean($m, $clients[$i]);
                 }
                 if (in_array($ci['lettre'] ?? '', ['oui', 'non'], true) && $clients[$i]['email'] !== '') client_lettre($clients[$i], $ci['lettre'] === 'oui', 'back-office · ' . $qui);
+                if (in_array($ci['sms'] ?? '', ['oui', 'non'], true) && $clients[$i]['tel'] !== '') client_accord($clients[$i], 'sms', $ci['sms'] === 'oui', 'back-office · ' . $qui);
                 $l = resas_charger(); $k = null;
                 foreach ($l as $j => $r) if ($r['id'] === ($in['id'] ?? '')) $k = $j;
                 $r = resa_clean(['client' => $clients[$i]['id']] + $in, $k === null ? null : $l[$k], $qui);
@@ -296,6 +298,10 @@ if ($api !== '') {
                 if (in_array($in['lettre'] ?? '', ['oui', 'non'], true)) {
                     if ($in['lettre'] === 'oui' && $c['email'] === '') return 'Ajoutez une adresse e-mail pour l’inscrire au menu de la semaine.';
                     client_lettre($c, $in['lettre'] === 'oui', 'back-office · ' . $qui);
+                }
+                if (in_array($in['sms'] ?? '', ['oui', 'non'], true)) {
+                    if ($in['sms'] === 'oui' && $c['tel'] === '') return 'Ajoutez un numéro de téléphone pour lui envoyer des SMS.';
+                    client_accord($c, 'sms', $in['sms'] === 'oui', 'back-office · ' . $qui);
                 }
                 if ($i === null) $l[] = $c; else $l[$i] = $c;
                 return clients_enregistrer($l) ? null : 'Enregistrement impossible : le dossier data/ n’est pas modifiable.';
@@ -386,7 +392,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=13" rel="stylesheet">
+<link href="admin.css?v=14" rel="stylesheet">
 </head>
 <body>
 
@@ -422,18 +428,20 @@ if ($logged) {
 <header class="barre-haut">
   <a class="logo" href="<?= ESPACE ?>/"><img src="favicon.svg" alt="" width="34" height="34"><span>Gestion du site</span></a>
   <nav class="onglets" role="tablist" aria-label="Rubriques">
-    <button role="tab" data-onglet="stats" aria-selected="true"><svg class="ico"><use href="#i-stats"/></svg>Tableau de bord</button>
+    <!-- Rangées par usage : le quotidien de la boutique, puis le contenu du site, puis les chiffres -->
     <button role="tab" data-onglet="resas" aria-selected="false"><svg class="ico"><use href="#i-resa"/></svg>Réservations</button>
-    <button role="tab" data-onglet="clients" aria-selected="false"><svg class="ico"><use href="#i-clients"/></svg>Clients</button>
-    <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
     <button role="tab" data-onglet="semaine" aria-selected="false"><svg class="ico"><use href="#i-cal"/></svg>Menu de la semaine</button>
+    <button role="tab" data-onglet="clients" aria-selected="false"><svg class="ico"><use href="#i-clients"/></svg>Clients</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
     <button role="tab" data-onglet="menus" aria-selected="false"><svg class="ico"><use href="#i-livre"/></svg>Cartes traiteur</button>
-    <button role="tab" data-onglet="mots" aria-selected="false"><svg class="ico"><use href="#i-mots"/></svg>Mots</button>
     <button role="tab" data-onglet="avis" aria-selected="false"><svg class="ico"><use href="#i-etoile"/></svg>Avis</button>
-    <button role="tab" data-onglet="comptes" aria-selected="false"><svg class="ico"><use href="#i-user"/></svg><?= $estAdmin ? 'Utilisateurs' : 'Mon compte' ?></button>
+    <button role="tab" data-onglet="mots" aria-selected="false"><svg class="ico"><use href="#i-mots"/></svg>Mots défilants</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button role="tab" data-onglet="stats" aria-selected="false"><svg class="ico"><use href="#i-stats"/></svg>Statistiques</button>
   </nav>
   <div class="haut-actions">
-    <span class="qui" title="<?= h($moi['email']) ?>"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span></span>
+    <button type="button" class="qui" data-onglet="comptes" aria-selected="false" title="<?= $estAdmin ? 'Utilisateurs et mon compte' : 'Mon compte' ?> (<?= h($moi['email']) ?>)"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span><span class="qui-role"><?= $estAdmin ? 'Utilisateurs' : 'Mon compte' ?></span></button>
     <a class="btn btn-discret" href="./" target="_blank" rel="noopener"><svg class="ico"><use href="#i-oeil"/></svg><span>Voir le site</span></a>
     <form method="post"><input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="logout"><button class="btn btn-discret" title="Se déconnecter"><svg class="ico"><use href="#i-sortie"/></svg><span>Quitter</span></button></form>
   </div>
@@ -450,7 +458,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=13"></script>
+<script src="admin.js?v=14"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

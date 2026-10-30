@@ -10,7 +10,7 @@
   var app = document.getElementById('app');
   var JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
   var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', semaine_suivante: 'le menu de la semaine suivante', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis' };
-  var onglet = lire('onglet') || 'stats';
+  var onglet = lire('onglet') || 'resas';
   var PARTS = ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis'];
   var SEM = lire('sem') === 'semaine_suivante' ? 'semaine_suivante' : 'semaine';   // semaine affichée dans l'onglet Menu de la semaine
   function partActive() { return onglet === 'semaine' ? SEM : onglet; }
@@ -772,9 +772,9 @@
   }
   function formResa(r, clientInit) {
     var nouveau = !r;
-    var f = r ? { id: r.id, date: r.date, c: { id: r.c.id, prenom: r.c.prenom, nom: r.c.nom, tel: r.c.tel, email: r.c.email, lettre: '' }, lignes: clone(r.lignes), note: r.note, paye: r.paye }
-              : { id: '', date: R.date, c: { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '' }, lignes: [ligneVide(R.date)], note: '', paye: false };
-    if (clientInit) f.c = { id: clientInit.id, prenom: clientInit.prenom, nom: clientInit.nom, tel: clientInit.tel, email: clientInit.email, lettre: '' };
+    var f = r ? { id: r.id, date: r.date, c: { id: r.c.id, prenom: r.c.prenom, nom: r.c.nom, tel: r.c.tel, email: r.c.email, lettre: '', sms: '' }, lignes: clone(r.lignes), note: r.note, paye: r.paye }
+              : { id: '', date: R.date, c: { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '', sms: '' }, lignes: [ligneVide(R.date)], note: '', paye: false };
+    if (clientInit) f.c = { id: clientInit.id, prenom: clientInit.prenom, nom: clientInit.nom, tel: clientInit.tel, email: clientInit.email, lettre: '', sms: '' };
     var d = document.createElement('div');
     d.className = 'modale-fond';
     document.body.appendChild(d);
@@ -794,7 +794,16 @@
         return '<button type="button" data-f="choisir" data-id="' + c.id + '"><span class="avatar">' + esc((nomClient(c) || '?').charAt(0).toUpperCase()) + '</span><span><b>' + esc(nomClient(c)) + '</b><small>' + esc([c.tel, c.email].filter(Boolean).join(' · ')) + (c.nb ? ' · ' + pluriel(c.nb, 'commande') : '') + '</small></span>' + ico('suivant') + '</button>';
       }).join('') + '</div>' : '';
     }
-    function htmlLettre() {
+    function htmlLettre() { return htmlSms() + htmlMail(); }
+    function htmlSms() {
+      var k = connu();
+      if (f.c.tel.replace(/\D/g, '').length < 10) return '';
+      if (k && k.sms.statut === 'oui') return '<p class="fr-lettre deja">' + ico('ok') + 'Accepte de recevoir des SMS</p>';
+      return '<div class="fr-lettre"><span>Accepte de recevoir des SMS de la boutique ?</span><div class="seg" role="group" aria-label="SMS">' +
+        '<button type="button" data-f="sms" data-v="oui" aria-pressed="' + (f.c.sms === 'oui') + '">Oui</button>' +
+        '<button type="button" data-f="sms" data-v="non" aria-pressed="' + (f.c.sms === 'non') + '">Non</button></div></div>';
+    }
+    function htmlMail() {
       var k = connu();
       if (!f.c.email.trim()) return '';
       if (k && k.lettre.statut === 'oui' && k.email === f.c.email.trim().toLowerCase()) return '<p class="fr-lettre deja">' + ico('ok') + 'Reçoit déjà le menu de la semaine par e-mail</p>';
@@ -886,10 +895,10 @@
       if (a === 'fermer') fin();
       else if (a === 'choisir') {
         var c = CL.filter(function (x) { return x.id === b.dataset.id; })[0];
-        f.c = { id: c.id, prenom: c.prenom, nom: c.nom, tel: c.tel, email: c.email, lettre: '' };
+        f.c = { id: c.id, prenom: c.prenom, nom: c.nom, tel: c.tel, email: c.email, lettre: '', sms: '' };
         dessiner(); d.querySelector('[data-l="0"][data-k="qte"]').focus();
-      } else if (a === 'oublier') { f.c = { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '' }; dessiner(); d.querySelector('[data-c="prenom"]').focus(); }
-      else if (a === 'lettre') { f.c.lettre = f.c.lettre === b.dataset.v ? '' : b.dataset.v; part('fr-lettre', htmlLettre()); }
+      } else if (a === 'oublier') { f.c = { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '', sms: '' }; dessiner(); d.querySelector('[data-c="prenom"]').focus(); }
+      else if (a === 'lettre' || a === 'sms') { f.c[a] = f.c[a] === b.dataset.v ? '' : b.dataset.v; part('fr-lettre', htmlLettre()); }
       else if (a === 'date') {
         f.date = b.dataset.d;
         // le plat du jour suit le jour choisi
@@ -934,11 +943,21 @@
       '<button type="button" class="btn btn-violet" data-act="client-fiche">' + ico('plus') + 'Nouveau client</button>') +
       '<div id="clients">' + clientsContenu() + '</div>';
   }
-  function statutLettre(c) {
-    var s = c.lettre.statut;
-    if (s === 'oui') return ['vert', 'Reçoit le menu'];
-    if (s === 'non') return ['orange', c.lettre.source === 'désinscription' ? 'Désinscrit' : 'A refusé'];
-    return ['gris', 'Pas demandé'];
+  // Pastilles « E-mail » et « SMS » : vert = accepte, barré orange = refuse, gris = pas encore demandé
+  function pastilles(c) {
+    return '<span class="accords">' + [['lettre', 'mail', 'E-mail', 'le menu par e-mail'], ['sms', 'tel', 'SMS', 'les SMS']].map(function (x) {
+      var s = (c[x[0]] || {}).statut || '';
+      var t = s === 'oui' ? 'Accepte ' + x[3] : s === 'non' ? 'Refuse ' + x[3] : 'Pas encore demandé pour ' + x[3];
+      return '<span class="accord accord-' + (s || 'vide') + '" title="' + t + '">' + ico(x[1]) + x[2] + '</span>';
+    }).join('') + '</span>';
+  }
+  function filtreClient(c) {
+    var l = c.lettre.statut, m = (c.sms || {}).statut || '';
+    if (clFiltre === 'oui') return l === 'oui';
+    if (clFiltre === 'sms') return m === 'oui';
+    if (clFiltre === 'non') return l === 'non' || m === 'non';
+    if (clFiltre === '') return l === '' || m === '';
+    return true;
   }
   function blocLettre() {
     var L = LETTRE, s = L.semaine, txt;
@@ -960,14 +979,15 @@
   }
   function clientsContenu() {
     if (CL === null) return '<p class="chargement">Chargement…</p>';
-    var nb = { tout: CL.length, oui: 0, non: 0, '': 0 };
-    CL.forEach(function (c) { nb[c.lettre.statut]++; });
+    var nb = {}, garde = clFiltre;
+    ['tout', 'oui', 'sms', 'non', ''].forEach(function (k) { clFiltre = k; nb[k] = CL.filter(filtreClient).length; });
+    clFiltre = garde;
     var q = sansAccent(clQ).trim(), qc = q.replace(/\D/g, '');
     var l = CL.filter(function (c) {
-      if (clFiltre !== 'tout' && c.lettre.statut !== clFiltre) return false;
+      if (!filtreClient(c)) return false;
       return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
     });
-    var f = [['tout', 'Tous'], ['oui', 'Reçoivent le menu'], ['non', 'Ont refusé'], ['', 'Pas demandé']];
+    var f = [['tout', 'Tous'], ['oui', 'Menu par e-mail'], ['sms', 'SMS'], ['non', 'Ont refusé'], ['', 'À demander']];
     return blocLettre() +
       '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
         return '<button type="button" data-act="cl-filtre" data-f="' + x[0] + '" aria-pressed="' + (clFiltre === x[0]) + '">' + x[1] + ' <span>' + nb[x[0]] + '</span></button>';
@@ -978,10 +998,9 @@
     if (!CL.length) return '<div class="vide grand">Pas encore de client. Ils s’ajoutent tout seuls à chaque réservation et à chaque inscription au menu par e-mail.</div>';
     if (!l.length) return '<p class="vide">Aucun client ne correspond.</p>';
     return '<div class="cl-liste">' + l.map(function (c) {
-      var st = statutLettre(c);
       return '<button type="button" class="cl-ligne" data-act="client-fiche" data-id="' + c.id + '"><span class="avatar grand">' + esc((nomClient(c) || '?').charAt(0).toUpperCase()) + '</span>' +
         '<span class="cl-nom"><strong>' + esc(nomClient(c) || 'Sans nom') + '</strong><small>' + esc([c.tel, c.email].filter(Boolean).join(' · ') || 'pas de coordonnées') + '</small></span>' +
-        '<span class="statut statut-' + st[0] + '">' + st[1] + '</span>' +
+        pastilles(c) +
         '<span class="cl-cmd">' + (c.nb ? pluriel(c.nb, 'commande') + '<small>dernière le ' + dateFr(c.der) + '</small>' : '<small>aucune commande</small>') + '</span></button>';
     }).join('') + '</div>';
   }
@@ -989,7 +1008,7 @@
     var z = document.getElementById('cl-liste'); if (!z) return;
     var q = sansAccent(clQ).trim(), qc = q.replace(/\D/g, '');
     z.innerHTML = clientsListe(CL.filter(function (c) {
-      if (clFiltre !== 'tout' && c.lettre.statut !== clFiltre) return false;
+      if (!filtreClient(c)) return false;
       return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
     }));
   }
@@ -997,18 +1016,27 @@
     var nouveau = !c; c = c || { id: '', prenom: '', nom: '', tel: '', email: '', note: '', lettre: { statut: '', historique: [] } };
     var d = document.createElement('div');
     d.className = 'modale-fond';
-    var hist = (c.lettre.historique || []).slice().reverse().map(function (h) {
-      return '<li>' + (h.statut === 'oui' ? 'Inscrit' : 'Désinscrit') + ' ' + quand(h.date) + ' · ' + esc(h.source === 'site' ? 'depuis le site' : h.source === 'désinscription' ? 'avec le lien de l’e-mail' : h.source.replace('back-office · ', 'dans le back-office par ')) + '</li>';
-    }).join('');
+    c.sms = c.sms || { statut: '', historique: [] };
+    function hist(a, oui, non) {
+      var h = (a.historique || []).slice().reverse().map(function (x) {
+        return '<li>' + (x.statut === 'oui' ? oui : non) + ' ' + quand(x.date) + ' · ' + esc(x.source === 'site' ? 'depuis le site' : x.source === 'désinscription' ? 'avec le lien de l’e-mail' : x.source.replace('back-office · ', 'dans le back-office par ')) + '</li>';
+      }).join('');
+      return h ? '<ul class="fc-hist">' + h + '</ul>' : '';
+    }
+    function accord(nom, a, titre, aide, oui, non) {
+      return '<div class="fc-accord"><div class="fc-accord-t">' + ico(nom === 'sms' ? 'tel' : 'mail') + '<span><b>' + titre + '</b><small>' + aide + '</small></span></div><div class="seg" role="radiogroup" aria-label="' + titre + '">' +
+        [['oui', 'Oui, il accepte'], ['non', 'Non']].concat(a.statut === '' ? [['', 'Pas demandé']] : []).map(function (x) {
+          return '<label><input type="radio" name="' + nom + '" value="' + x[0] + '"' + (a.statut === x[0] ? ' checked' : '') + '><span>' + x[1] + '</span></label>';
+        }).join('') + '</div>' + hist(a, oui, non) + '</div>';
+    }
     d.innerHTML = '<form class="modale modale-large" role="dialog" aria-modal="true" aria-labelledby="fc-t"><h2 id="fc-t">' + (nouveau ? 'Nouveau client' : esc(nomClient(c) || 'Client')) + '</h2>' +
       (nouveau ? '' : '<p>Client depuis le ' + dateFr(c.cree.slice(0, 10)) + ' ' + c.cree.slice(0, 4) + (c.nb ? ' · ' + pluriel(c.nb, 'commande') : '') + '</p>') +
       '<div class="grille-2"><label class="champ"><span>Prénom</span><input name="prenom" value="' + esc(c.prenom) + '"></label><label class="champ"><span>Nom</span><input name="nom" value="' + esc(c.nom) + '"></label></div>' +
       '<div class="grille-2"><label class="champ"><span>Téléphone</span><input name="tel" type="tel" value="' + esc(c.tel) + '"></label><label class="champ"><span>E-mail</span><input name="email" type="email" value="' + esc(c.email) + '"></label></div>' +
       '<label class="champ"><span>Note <em>facultatif</em></span><textarea name="note" rows="2" placeholder="ex. allergique aux fruits à coque, préfère être appelé le matin">' + esc(c.note) + '</textarea></label>' +
-      '<div class="champ"><span>Menu de la semaine par e-mail</span><div class="seg" role="radiogroup" aria-label="Menu par e-mail">' +
-        [['oui', 'Oui, il accepte'], ['non', 'Non, il refuse']].concat(c.lettre.statut === '' ? [['', 'Pas encore demandé']] : []).map(function (x) {
-          return '<label><input type="radio" name="lettre" value="' + x[0] + '"' + (c.lettre.statut === x[0] ? ' checked' : '') + '><span>' + x[1] + '</span></label>';
-        }).join('') + '</div>' + (hist ? '<ul class="fc-hist">' + hist + '</ul>' : '') + '</div>' +
+      '<div class="champ"><span>Ce qu’il accepte de recevoir</span>' +
+        accord('lettre', c.lettre, 'Le menu de la semaine par e-mail', 'chaque lundi, à son adresse e-mail', 'Inscrit', 'Désinscrit') +
+        accord('sms', c.sms, 'Des messages par SMS', 'sur son téléphone : menu, rappel de commande…', 'Accepte les SMS', 'Refuse les SMS') + '</div>' +
       (nouveau ? '' : '<div class="champ"><span>Commandes</span><div id="fc-cmd" class="fc-cmd"><p class="aide">Chargement…</p></div></div>') +
       '<p class="alerte" hidden></p><div class="modale-actions">' +
         (nouveau ? '' : '<button type="button" class="btn btn-discret fc-suppr" data-r="suppr">' + ico('suppr') + 'Supprimer</button><button type="button" class="btn btn-ligne" data-r="resa">' + ico('plus') + 'Réservation</button>') +
@@ -1038,8 +1066,8 @@
     f.addEventListener('submit', function (e) {
       e.preventDefault();
       if (VISITE) { fin(); return toast('Mode visite : rien n’est enregistré.'); }
-      var lt = f.querySelector('[name=lettre]:checked');
-      api('client', { id: c.id, prenom: f.prenom.value, nom: f.nom.value, tel: f.tel.value, email: f.email.value, note: f.note.value, lettre: lt ? lt.value : '' })
+      var lt = f.querySelector('[name=lettre]:checked'), sm = f.querySelector('[name=sms]:checked');
+      api('client', { id: c.id, prenom: f.prenom.value, nom: f.nom.value, tel: f.tel.value, email: f.email.value, note: f.note.value, lettre: lt ? lt.value : '', sms: sm ? sm.value : '' })
         .then(function (j) { CL = j.clients; LETTRE = j.lettre; fin(); majClients(); toast(nouveau ? 'Client ajouté.' : 'Fiche client enregistrée.'); })
         .catch(function (er) { al.textContent = er.message; al.hidden = false; });
     });
@@ -1066,7 +1094,7 @@
   var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
   function render(garderScroll) {
     var y = window.scrollY;
-    document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) {
+    document.querySelectorAll('.barre-haut [data-onglet]').forEach(function (b) {
       b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
       b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante')));
     });
@@ -1082,7 +1110,7 @@
     barTxt.textContent = VISITE ? 'Mode visite : ces essais ne seront pas enregistrés' : 'Modifications non enregistrées sur ' + NOMS[partActive()];
     document.getElementById('enregistrer').hidden = VISITE;
     document.getElementById('annuler').textContent = VISITE ? 'Revenir à l’original' : 'Annuler';
-    document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante'))); });
+    document.querySelectorAll('.barre-haut [data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante'))); });
     document.querySelectorAll('.choix-sem [data-s]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.s)); });
   }
   function apresSaisie() {
@@ -1219,7 +1247,7 @@
   });
 
   // =============== Événements ===============
-  document.querySelector('.onglets').addEventListener('click', function (e) {
+  document.querySelector('.barre-haut').addEventListener('click', function (e) {
     var b = e.target.closest('[data-onglet]'); if (!b) return;
     onglet = b.dataset.onglet; ecrire('onglet', onglet);
     if (onglet === 'resas') R.charge = '';   // on recharge : quelqu'un d'autre a pu prendre des réservations
@@ -1449,6 +1477,6 @@
     R.charge = ''; chargerResas();
   }, 60000);
 
-  if (!VUES[onglet]) onglet = 'stats';
+  if (!VUES[onglet]) onglet = 'resas';
   render();
 })();

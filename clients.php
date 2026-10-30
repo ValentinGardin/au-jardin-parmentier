@@ -26,7 +26,10 @@ function tel_fr($t) { $d = tel_chiffres($t); return strlen($d) === 10 ? trim(chu
 function email_ok($e) { $e = strtolower(trim((string)$e)); return filter_var($e, FILTER_VALIDATE_EMAIL) ? cut($e, 120) : ''; }
 
 // ---- Clients ----
-function clients_charger() { return array_values(array_filter(lire_json(CLIENTS), 'is_array')); }
+function clients_charger() {
+    $vide = ['statut' => '', 'date' => '', 'source' => '', 'historique' => []];
+    return array_map(function ($c) use ($vide) { return $c + ['lettre' => $vide, 'sms' => $vide, 'note' => '']; }, array_values(array_filter(lire_json(CLIENTS), 'is_array')));
+}
 function clients_enregistrer($l) { return json_save(CLIENTS, array_values($l)); }
 
 function client_clean($in, $ancien = null) {
@@ -39,21 +42,21 @@ function client_clean($in, $ancien = null) {
         'note' => txt($in['note'] ?? ($ancien['note'] ?? ''), 300),
         // Lettre : statut « oui » / « non » / '' (jamais demandé) ; l'historique garde la preuve du consentement
         'lettre' => $ancien['lettre'] ?? ['statut' => '', 'date' => '', 'source' => '', 'historique' => []],
+        // SMS : même principe, pour recevoir des messages sur son téléphone (menu, rappel de commande…)
+        'sms' => $ancien['sms'] ?? ['statut' => '', 'date' => '', 'source' => '', 'historique' => []],
         'jeton' => $ancien['jeton'] ?? bin2hex(random_bytes(12)),
         'cree' => $ancien['cree'] ?? date('Y-m-d H:i'),
     ];
 }
-// Change l'accord pour la lettre (et le note dans l'historique)
-function client_lettre(&$c, $oui, $source) {
+// Change un accord (« lettre » = e-mail, « sms » = téléphone) et le note dans l'historique (preuve du consentement)
+function client_accord(&$c, $quoi, $oui, $source) {
     $statut = $oui ? 'oui' : 'non';
-    if ($c['lettre']['statut'] === $statut) return;
-    $c['lettre']['statut'] = $statut;
-    $c['lettre']['date'] = date('Y-m-d H:i');
-    $c['lettre']['source'] = $source;
-    $h = $c['lettre']['historique'] ?? [];
-    $h[] = ['statut' => $statut, 'date' => $c['lettre']['date'], 'source' => $source];
-    $c['lettre']['historique'] = array_slice($h, -10);
+    $a = $c[$quoi] ?? ['statut' => '', 'historique' => []];
+    if ($a['statut'] === $statut) return;
+    $a = ['statut' => $statut, 'date' => date('Y-m-d H:i'), 'source' => $source, 'historique' => array_slice(array_merge($a['historique'] ?? [], [['statut' => $statut, 'date' => date('Y-m-d H:i'), 'source' => $source]]), -10)];
+    $c[$quoi] = $a;
 }
+function client_lettre(&$c, $oui, $source) { client_accord($c, 'lettre', $oui, $source); }
 function client_nom($c) { return trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')); }
 // Retrouve un client existant par son téléphone ou son e-mail
 function client_index($l, $tel, $email) {
