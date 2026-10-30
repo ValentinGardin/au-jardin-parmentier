@@ -67,6 +67,25 @@
   });
   tabs.forEach(function (t) { t.addEventListener('click', function () { suivre('carte', t.textContent.trim()); }); });
 
+  // Menu de la semaine : « Cette semaine » / « Semaine suivante » (quand le menu suivant est publié en avance)
+  var semTabs = Array.prototype.slice.call(document.querySelectorAll('.choix-semaine [role="tab"]'));
+  semTabs.forEach(function (t, i) {
+    t.addEventListener('click', function () {
+      semTabs.forEach(function (b) {
+        var on = b === t;
+        b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1;
+        var pnl = document.getElementById(b.getAttribute('aria-controls'));
+        pnl.hidden = !on;
+        if (on) pnl.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('vu'); });
+      });
+    });
+    t.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var n = semTabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + semTabs.length) % semTabs.length];
+      n.click(); n.focus();
+    });
+  });
+
   // Cookies : la carte Google Maps n'est chargée qu'avec l'accord du visiteur (choix gardé 6 mois)
   function lireChoix() {
     try { var v = JSON.parse(localStorage.getItem('jp-cookies') || 'null'); return v && Date.now() - v.t < 182 * 864e5 ? v.c : null; } catch (err) { return null; }

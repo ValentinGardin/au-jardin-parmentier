@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.10 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
+const VERSION = '1.11 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');
@@ -13,7 +13,16 @@ function site_load() {
     // site.json est créé par le back-office ; tant qu'il n'existe pas, le contenu de départ (site.exemple.json) est affiché
     $f = is_file(DATA . '/site.json') ? DATA . '/site.json' : DATA . '/site.exemple.json';
     $d = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
-    return site_clean(is_array($d) ? $d : []);
+    $d = site_clean(is_array($d) ? $d : []);
+    // Bascule automatique : le jour où la semaine suivante commence, elle devient le menu en cours
+    $n = $d['semaine_suivante'];
+    if ($n['du'] !== '' && $n['du'] <= date('Y-m-d') && semaine_remplie($n)) {
+        unset($n['publie']);
+        $d['semaine'] = $n;
+        $d['semaine_suivante'] = semaine_suivante_clean([]);
+        if (is_file(DATA . '/site.json')) json_save(DATA . '/site.json', $d);
+    }
+    return $d;
 }
 
 // ---- Nettoyage des données : utilisé au chargement et à l'enregistrement ----
@@ -63,6 +72,13 @@ function semaine_clean($s) {
     ];
 }
 // Jours à afficher : ceux qui ont un plat, ou qui sont marqués fermés
+// Semaine suivante : mêmes champs, plus « publie » (affichée en avance sur le site avec le bouton « Semaine suivante »)
+function semaine_suivante_clean($s) {
+    return semaine_clean($s) + ['publie' => !empty($s['publie'])];
+}
+function semaine_remplie($s) {
+    return $s['conges']['actif'] || (bool)jours_visibles($s['jours']);
+}
 function jours_visibles($jours) { return array_values(array_filter($jours, function ($j) { return $j['nom'] !== '' || $j['ferme']; })); }
 // Couleurs suggérées pour les événements (toute autre couleur peut être choisie dans le back-office)
 const THEMES = ['violet' => '#700954', 'vin' => '#5e1426', 'sapin' => '#1c4634', 'printemps' => '#4f7a2b', 'or' => '#2a2118'];
@@ -119,6 +135,7 @@ function site_clean($d) {
     return [
         'evenements' => array_map('evenement_clean', liste($d['evenements'] ?? [])),
         'semaine' => semaine_clean($d['semaine'] ?? []),
+        'semaine_suivante' => semaine_suivante_clean($d['semaine_suivante'] ?? []),
         'menus' => array_map('carte_clean', liste($d['menus'] ?? [])),
         'mots' => $mots ?: ['épicerie fine', 'traiteur', 'charcuterie', 'fromagerie', 'fruits et légumes'],
         'avis' => $avis,

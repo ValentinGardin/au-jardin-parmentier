@@ -413,3 +413,14 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .bandeau-visite{display:flex;align-items:center;gap:.7rem;margin:0 0 1.5rem;padding:.8rem 1rem;border-radius:12px;background:var(--bleu-pale);color:var(--bleu);font-size:.92rem}
 .bandeau-visite .ico{width:20px;height:20px}
 .enreg .btn[hidden]{display:none}
+
+/* Menu de la semaine : semaine en cours / suivante */
+.choix-sem{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;padding:.35rem;margin-bottom:1.25rem;border-radius:14px;background:#ebe5dd}
+.choix-sem button{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;border:0;background:transparent;border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:left;color:var(--gris);transition:background-color .15s,color .15s}
+.choix-sem button b{font:700 1.05rem var(--titre)}
+.choix-sem button small{font-size:.8rem}
+.choix-sem button:hover{color:var(--encre)}
+.choix-sem button[aria-selected="true"]{background:var(--blanc);color:var(--violet);box-shadow:0 1px 4px rgba(29,23,27,.12)}
+.choix-sem button.modifie::after{content:"";position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:#e8590c}
+.bloc-publication.actif{border-color:#a8d5b9;box-shadow:0 0 0 3px var(--vert-pale)}
+.bloc-publication .aide{margin-bottom:1rem}

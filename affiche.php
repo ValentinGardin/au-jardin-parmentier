@@ -2,7 +2,8 @@
 // Affiche A4 du menu de la semaine, à imprimer depuis le back-office (bouton « Imprimer l'affiche »)
 require __DIR__ . '/lib.php';
 header('X-Robots-Tag: noindex');
-$sem = site_load()['semaine'];
+$d = site_load();
+$sem = ($_GET['s'] ?? '') === 'suivante' ? $d['semaine_suivante'] : $d['semaine'];   // ?s=suivante : affiche de la semaine suivante
 $sem['jours'] = jours_visibles($sem['jours']);
 $conges = $sem['conges']['actif'];
 $sp = $sem['special'];

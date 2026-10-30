@@ -86,7 +86,7 @@ if ($api !== '') {
         api_garde();
         $in = entree();
         $part = $in['part'] ?? '';
-        if (!in_array($part, ['evenements', 'semaine', 'menus', 'mots', 'avis'], true)) repondre(400, ['erreur' => 'Données invalides.']);
+        if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis'], true)) repondre(400, ['erreur' => 'Données invalides.']);
         $d = site_load();
         $d[$part] = $in['data'] ?? null;
         $d = site_clean($d);
@@ -241,7 +241,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=11" rel="stylesheet">
+<link href="admin.css?v=12" rel="stylesheet">
 </head>
 <body>
 
@@ -303,7 +303,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=11"></script>
+<script src="admin.js?v=12"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

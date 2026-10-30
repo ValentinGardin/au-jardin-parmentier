@@ -9,13 +9,16 @@
   var saved = clone(site);
   var app = document.getElementById('app');
   var JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis' };
+  var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', semaine_suivante: 'le menu de la semaine suivante', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis' };
   var onglet = lire('onglet') || 'stats';
-  var PARTS = ['evenements', 'semaine', 'menus', 'mots', 'avis'];
+  var PARTS = ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis'];
+  var SEM = lire('sem') === 'semaine_suivante' ? 'semaine_suivante' : 'semaine';   // semaine affichée dans l'onglet Menu de la semaine
+  function partActive() { return onglet === 'semaine' ? SEM : onglet; }
+  function aSpecial(s) { return !!(s.special.nom || s.special.lignes.length || s.special.titre); }
   var VISITE = E.moi.role === 'visiteur';   // compte de démonstration : on peut tout essayer, rien n'est enregistré
   var carteOuverte = null;          // index de la carte en cours de modification
   var catsOuvertes = {};            // catégories dépliées : { "carte-cat": true }
-  var specialOuvert = !!(site.semaine.special.nom || site.semaine.special.lignes.length || site.semaine.special.titre);
+  var specialOuvert = aSpecial(site[SEM]);
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function lire(k) { try { return sessionStorage.getItem('jp-' + k); } catch (e) { return null; } }
@@ -48,6 +51,10 @@
   }
   function statutSemaine(s) {
     var t = E.aujourdhui;
+    if (s === site.semaine_suivante) {
+      if (!s.du) return ['gris', 'Dates à renseigner'];
+      return s.publie ? ['vert', 'Publiée : visible sur le site, en ligne le ' + dateFr(s.du)] : ['gris', 'Brouillon : remplacera le menu actuel le ' + dateFr(s.du)];
+    }
     if (s.conges && s.conges.actif) return ['orange', 'Fermeture affichée à la place du menu'];
     if (!s.du) return ['gris', 'Dates à renseigner'];
     if (s.du > t) return ['bleu', 'À venir : s’affichera le ' + dateFr(s.du)];
@@ -103,9 +110,9 @@
 
   // =============== Menu de la semaine ===============
   function vueSemaine() {
-    var s = site.semaine, st = statutSemaine(s), n = s.jours.length;
+    var s = site[SEM], st = statutSemaine(s), n = s.jours.length;
     var jours = s.jours.map(function (j, i) {
-      var p = 'semaine.jours.' + i;
+      var p = SEM + '.jours.' + i;
       return '<div class="jour-ligne' + (j.ferme ? ' est-ferme' : '') + '"><div class="jour-col">' +
         '<select data-p="' + p + '.jour" aria-label="Jour">' + JOURS.map(function (d) { return '<option' + (d === j.jour ? ' selected' : '') + '>' + d + '</option>'; }).join('') +
         (JOURS.indexOf(j.jour) < 0 ? '<option selected>' + esc(j.jour) + '</option>' : '') + '</select>' +
@@ -120,41 +127,57 @@
               '<input data-p="' + p + '.desc" value="' + esc(j.desc) + '" placeholder="Accompagnement, ex. légumes et riz pilaf" aria-label="Accompagnement">' +
             '</div>' +
             '<input class="prix" data-p="' + p + '.prix" data-prix value="' + esc(j.prix) + '" placeholder="9.50 €" inputmode="decimal" aria-label="Prix">') +
-        boutonsOrdre('semaine.jours', i, n) + '</div>';
+        boutonsOrdre(SEM + '.jours', i, n) + '</div>';
     }).join('');
     var sp = specialOuvert
-      ? '<div class="grille-2">' + champ('Quand', 'semaine.special.titre', { ph: 'ex. Vendredi et samedi' }) + champ('Prix', 'semaine.special.prix', { ph: '19.00 €', prix: true }) + '</div>' +
-        champ('Nom de l’offre', 'semaine.special.nom', { ph: 'ex. Plateau apéritif « Halloween »' }) +
-        champ('Contenu', 'semaine.special.lignes', { lignes: true, rows: 4, ph: 'Une ligne par élément\nex. Tapenade aux olives noires et ses gressins', aide: 'Une ligne par élément.' })
+      ? '<div class="grille-2">' + champ('Quand', SEM + '.special.titre', { ph: 'ex. Vendredi et samedi' }) + champ('Prix', SEM + '.special.prix', { ph: '19.00 €', prix: true }) + '</div>' +
+        champ('Nom de l’offre', SEM + '.special.nom', { ph: 'ex. Plateau apéritif « Halloween »' }) +
+        champ('Contenu', SEM + '.special.lignes', { lignes: true, rows: 4, ph: 'Une ligne par élément\nex. Tapenade aux olives noires et ses gressins', aide: 'Une ligne par élément.' })
       : '';
-    return tete('Menu de la semaine', 'Les plats du jour affichés en haut du site. Le plat du jour est mis en avant automatiquement.',
-        '<button type="button" class="btn btn-discret" data-act="semaine-suivante">' + ico('suivant') + 'Préparer la semaine suivante</button>' +
+    var cur = site.semaine, nx = site.semaine_suivante;
+    var choix = '<div class="choix-sem" role="tablist" aria-label="Semaine à modifier">' +
+      '<button type="button" role="tab" data-act="sem" data-s="semaine" aria-selected="' + (SEM === 'semaine') + '"><b>Semaine en cours</b><small>' + esc(cur.du ? periode(cur.du, cur.au) : 'dates à renseigner') + '</small></button>' +
+      '<button type="button" role="tab" data-act="sem" data-s="semaine_suivante" aria-selected="' + (SEM === 'semaine_suivante') + '"><b>Semaine suivante</b><small>' +
+        (nx.du ? esc(periode(nx.du, nx.au)) + ' · ' + (nx.publie ? 'publiée' : 'brouillon') : 'à préparer') + '</small></button></div>';
+    var publication = SEM === 'semaine_suivante'
+      ? '<section class="bloc bloc-publication' + (s.publie ? ' actif' : '') + '"><div class="bloc-tete"><h2>Publication</h2>' +
+          '<label class="interrupteur"><input type="checkbox" data-p="semaine_suivante.publie"' + (s.publie ? ' checked' : '') + '><span></span>' + (s.publie ? 'Publiée en avance' : 'Brouillon') + '</label></div>' +
+          '<p class="aide">' + (s.publie
+            ? 'Visible dès maintenant sur le site grâce au bouton « Semaine suivante », à côté des dates du menu actuel.'
+            : 'Préparez le menu tranquillement : il n’est pas visible sur le site. Activez « Publiée en avance » pour l’afficher avant le début de la semaine.') +
+          (s.du ? ' Dans tous les cas, il <b>remplacera automatiquement le menu actuel le ' + esc(dateFr(s.du)) + '</b>, sans rien faire.' : '') + '</p>' +
+          '<div class="g-actions"><button type="button" class="btn btn-ligne" data-act="copier-semaine">' + ico('copie') + 'Reprendre les plats de la semaine en cours</button>' +
+          '<button type="button" class="lien" data-act="vider-semaine">Tout effacer</button></div></section>'
+      : '';
+    return tete('Menu de la semaine', SEM === 'semaine' ? 'Les plats du jour affichés sur le site. Le plat du jour est mis en avant automatiquement.' : 'Préparez la semaine prochaine à l’avance : affiche, publications et vidéo sont disponibles comme pour la semaine en cours.',
+        (SEM === 'semaine' ? '<button type="button" class="btn btn-discret" data-act="sem" data-s="semaine_suivante">' + ico('suivant') + 'Préparer la semaine suivante</button>' : '') +
         '<button type="button" class="btn btn-ligne" data-act="aller" data-cible="visuels">' + ico('imprim') + 'Visuels et affiche</button>') +
-      '<div class="deux-cols"><div class="col-form">' +
+      choix +
+      '<div class="deux-cols"><div class="col-form">' + publication +
         '<section class="bloc"><div class="bloc-tete"><h2>1. La semaine</h2><span class="statut statut-' + st[0] + '" id="statut-sem">' + st[1] + '</span></div>' +
-          '<div class="grille-3">' + champ('Du', 'semaine.du', { type: 'date' }) + champ('Au', 'semaine.au', { type: 'date' }) + champ('Titre', 'semaine.titre', { ph: 'Inspirations de la semaine' }) + '</div></section>' +
+          '<div class="grille-3">' + champ('Du', SEM + '.du', { type: 'date' }) + champ('Au', SEM + '.au', { type: 'date' }) + champ('Titre', SEM + '.titre', { ph: 'Inspirations de la semaine' }) + '</div></section>' +
         '<section class="bloc bloc-conges' + (s.conges.actif ? ' actif' : '') + '"><div class="bloc-tete"><h2>Fermeture de la semaine <em>congés, travaux…</em></h2>' +
-          '<label class="interrupteur"><input type="checkbox" data-p="semaine.conges.actif"' + (s.conges.actif ? ' checked' : '') + '><span></span>' + (s.conges.actif ? 'Activée' : 'Désactivée') + '</label></div>' +
+          '<label class="interrupteur"><input type="checkbox" data-p="' + SEM + '.conges.actif"' + (s.conges.actif ? ' checked' : '') + '><span></span>' + (s.conges.actif ? 'Activée' : 'Désactivée') + '</label></div>' +
           (s.conges.actif
             ? '<p class="alerte-info">Le menu est remplacé sur le site par ce message. Les plats restent enregistrés pour plus tard.</p>' +
-              champ('Titre', 'semaine.conges.titre', { ph: 'Fermeture pour congés' }) +
-              champ('Message', 'semaine.conges.message', { zone: true, rows: 3, ph: 'ex. Nous sommes en congés du 24 décembre au 4 janvier. Réouverture le mardi 5 janvier, à très vite !' })
+              champ('Titre', SEM + '.conges.titre', { ph: 'Fermeture pour congés' }) +
+              champ('Message', SEM + '.conges.message', { zone: true, rows: 3, ph: 'ex. Nous sommes en congés du 24 décembre au 4 janvier. Réouverture le mardi 5 janvier, à très vite !' })
             : '<p class="aide">À activer si la boutique est fermée toute la semaine : un titre et un message remplacent le menu sur le site et sur les visuels. Pour un seul jour (férié…), utilisez plutôt le bouton « Fermé » du jour concerné.</p>') + '</section>' +
         '<div class="' + (s.conges.actif ? 'attenue' : '') + '">' +
         '<section class="bloc"><div class="bloc-tete"><h2>2. Les plats du jour</h2><span class="compte">' + pluriel(n, 'jour') + '</span></div>' +
           '<div class="jours-liste">' + (jours || '<p class="vide">Aucun jour. Ajoutez le premier plat.</p>') + '</div>' +
-          '<button type="button" class="btn-ajout" data-act="add" data-p="semaine.jours" data-tpl="jour">' + ico('plus') + 'Ajouter un jour</button></section>' +
+          '<button type="button" class="btn-ajout" data-act="add" data-p="' + SEM + '.jours" data-tpl="jour">' + ico('plus') + 'Ajouter un jour</button></section>' +
         '<section class="bloc"><div class="bloc-tete"><h2>3. Offre spéciale <em>facultatif</em></h2>' +
           '<label class="interrupteur"><input type="checkbox" data-act="special"' + (specialOuvert ? ' checked' : '') + '><span></span>' + (specialOuvert ? 'Affichée' : 'Masquée') + '</label></div>' +
           (specialOuvert ? sp : '<p class="aide">Un plateau ou une formule pour quelques jours (ex. plateau apéritif du week-end). Elle apparaît dans un encadré à côté des plats.</p>') + '</section>' +
-        '<section class="bloc">' + champ('Petite note sous le menu', 'semaine.note', { opt: true, ph: 'ex. Commandes la veille avant 18 h' }) + '</section>' +
+        '<section class="bloc">' + champ('Petite note sous le menu', SEM + '.note', { opt: true, ph: 'ex. Commandes la veille avant 18 h' }) + '</section>' +
         '</div>' +
         vueVisuels() +
       '</div><aside class="col-apercu"><p class="apercu-titre">Aperçu de l’affiche</p><div class="affiche-mini" id="apercu">' + apercu() + '</div></aside></div>';
   }
   // ---------- Visuels à télécharger (dessinés par visuels.js) ----------
   function donneesVisuels() {
-    var s = site.semaine;
+    var s = site[SEM];
     return { titre: s.titre, du: s.du, au: s.au, jours: s.jours, special: specialOuvert ? s.special : null, conges: s.conges.actif ? s.conges : null };
   }
   function vueVisuels() {
@@ -180,7 +203,7 @@
     app.querySelectorAll('canvas.v-apercu').forEach(function (cv) { Visuels.apercu(cv, cv.dataset.format, donneesVisuels()); });
   }
   function apercu() {
-    var s = site.semaine, sp = s.special;
+    var s = site[SEM], sp = s.special;
     var tete_ = '<div class="af-tete"><b>' + esc(s.titre || 'Inspirations de la semaine') + '</b><small>' + esc(periode(s.du, s.au) ? 'semaine ' + periode(s.du, s.au) : '') + '</small></div>';
     if (s.conges.actif) return tete_ + '<div class="af-conges"><strong>' + esc(s.conges.titre || 'Fermeture pour congés') + '</strong><span>' + esc(s.conges.message) + '</span></div>';
     return tete_ +
@@ -595,7 +618,7 @@
     var y = window.scrollY;
     document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) {
       b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
-      b.classList.toggle('modifie', sale(b.dataset.onglet));
+      b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante')));
     });
     app.innerHTML = (VISITE ? '<p class="bandeau-visite">' + ico('oeil') + '<span><b>Mode visite</b> : explorez librement, essayez les champs et les aperçus. Rien n’est enregistré sur le site.</span></p>' : '') +
       '<div class="panneau" data-panneau="' + onglet + '">' + VUES[onglet]() + '</div>';
@@ -605,11 +628,12 @@
   }
   var bar = document.getElementById('enreg'), barTxt = document.getElementById('enreg-txt');
   function barre() {
-    bar.hidden = !sale(onglet);
-    barTxt.textContent = VISITE ? 'Mode visite : ces essais ne seront pas enregistrés' : 'Modifications non enregistrées sur ' + NOMS[onglet];
+    bar.hidden = !sale(partActive());
+    barTxt.textContent = VISITE ? 'Mode visite : ces essais ne seront pas enregistrés' : 'Modifications non enregistrées sur ' + NOMS[partActive()];
     document.getElementById('enregistrer').hidden = VISITE;
     document.getElementById('annuler').textContent = VISITE ? 'Revenir à l’original' : 'Annuler';
-    document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet)); });
+    document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante'))); });
+    document.querySelectorAll('.choix-sem [data-s]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.s)); });
   }
   function apresSaisie() {
     barre();
@@ -715,7 +739,7 @@
     }).then(function (j) {
       if (!j.ok) throw new Error(j.erreur || 'Erreur inconnue.');
       site[part] = j.data; saved[part] = clone(j.data);
-      if (part === 'semaine') specialOuvert = !!(j.data.special.nom || j.data.special.lignes.length || j.data.special.titre);
+      if (part === SEM) specialOuvert = aSpecial(j.data);
       render(true);
       toast('Enregistré : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont' : 'est') + ' à jour sur le site.');
       return true;
@@ -724,19 +748,20 @@
       return false;
     }).then(function (r) { enCours = false; btn.disabled = false; btn.textContent = 'Enregistrer'; return r; });
   }
-  document.getElementById('enregistrer').addEventListener('click', function () { enregistrer(onglet); });
+  document.getElementById('enregistrer').addEventListener('click', function () { enregistrer(partActive()); });
   document.getElementById('annuler').addEventListener('click', function () {
-    demander('Annuler les modifications ?', 'Vous revenez à la dernière version enregistrée de ' + NOMS[onglet] + '.', [
+    var part = partActive();
+    demander('Annuler les modifications ?', 'Vous revenez à la dernière version enregistrée de ' + NOMS[part] + '.', [
       { txt: 'Garder mes modifications', val: false }, { txt: 'Annuler les modifications', val: true, cls: 'btn-danger' }
     ]).then(function (r) {
       if (!r) return;
-      site[onglet] = clone(saved[onglet]);
-      if (onglet === 'semaine') specialOuvert = !!(site.semaine.special.nom || site.semaine.special.lignes.length || site.semaine.special.titre);
+      site[part] = clone(saved[part]);
+      if (onglet === 'semaine') specialOuvert = aSpecial(site[SEM]);
       render(true);
     });
   });
   document.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (sale(onglet)) enregistrer(onglet); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (sale(partActive())) enregistrer(partActive()); }
   });
   window.addEventListener('beforeunload', function (e) {
     if (VISITE) return;
@@ -758,9 +783,9 @@
     if ('lignes' in t.dataset) v = v.split('\n');
     else if ('nombre' in t.dataset) v = +v;
     set(p, v);
-    if (p === 'semaine.du' && v) {
-      var au = site.semaine.au;
-      if (!au || au < v) { site.semaine.au = plus(v, 4); var f = app.querySelector('[data-p="semaine.au"]'); if (f) f.value = site.semaine.au; }
+    if (/^semaine(_suivante)?\.du$/.test(p) && v) {
+      var sw = site[p.split('.')[0]];
+      if (!sw.au || sw.au < v) { sw.au = plus(v, 4); var f = app.querySelector('[data-p="' + p.split('.')[0] + '.au"]'); if (f) f.value = sw.au; }
     }
     if (/\.titre$/.test(p) && onglet === 'menus') {
       var r = t.closest('details'); if (r) r.querySelector('.cat-resume strong').textContent = v || 'Catégorie sans nom';
@@ -780,8 +805,8 @@
     }
     if (t.type === 'file' && t.dataset.envoi) { envoyerPhoto(t); return; }
     if ('prix' in t.dataset && t.dataset.p) { var f = formatPrix(t.value); if (f !== t.value) { t.value = f; set(t.dataset.p, f); apresSaisie(); } }
-    if (t.dataset.p && /^semaine\.(du|au)$/.test(t.dataset.p)) {
-      var st = statutSemaine(site.semaine), el = document.getElementById('statut-sem');
+    if (t.dataset.p && /^semaine(_suivante)?\.(du|au)$/.test(t.dataset.p)) {
+      var st = statutSemaine(site[SEM]), el = document.getElementById('statut-sem');
       if (el) { el.className = 'statut statut-' + st[0]; el.textContent = st[1]; }
     }
     if (t.matches('select[data-p$=".jour"]')) apresSaisie();
@@ -851,7 +876,7 @@
       coller(p);
     } else if (a === 'special') {
       specialOuvert = b.checked;
-      if (!specialOuvert) site.semaine.special = { titre: '', nom: '', prix: '', lignes: [] };
+      if (!specialOuvert) site[SEM].special = { titre: '', nom: '', prix: '', lignes: [] };
       render(true);
     } else if (a.indexOf('g-') === 0) {
       actionGoogle(a, b);
@@ -891,10 +916,16 @@
     } else if (a === 'dup-evt') {
       var ce = clone(site.evenements[i]); ce.titre += ' (copie)'; ce.actif = false;
       site.evenements.splice(i + 1, 0, ce); render(true);
-    } else if (a === 'semaine-suivante') {
-      semaineSuivante();
+    } else if (a === 'sem') {
+      SEM = b.dataset.s; ecrire('sem', SEM);
+      if (SEM === 'semaine_suivante' && !site.semaine_suivante.du && !semaineRemplie(site.semaine_suivante)) preparerSuivante(false);
+      specialOuvert = aSpecial(site[SEM]); render(true);
+    } else if (a === 'copier-semaine' || a === 'vider-semaine') {
+      var copier = a === 'copier-semaine';
+      (semaineRemplie(site.semaine_suivante) ? demander(copier ? 'Reprendre les plats de la semaine en cours ?' : 'Tout effacer ?', copier ? 'Les plats déjà saisis pour la semaine suivante seront remplacés.' : 'Les plats de la semaine suivante seront effacés (les dates sont conservées).', [{ txt: 'Annuler', val: false }, { txt: copier ? 'Reprendre' : 'Effacer', val: true, cls: copier ? 'btn-violet' : 'btn-danger' }]) : Promise.resolve(true))
+        .then(function (r) { if (r) { preparerSuivante(copier); specialOuvert = aSpecial(site.semaine_suivante); render(true); } });
     } else if (a === 'imprimer') {
-      ouvrirApres('semaine', 'affiche');
+      ouvrirApres(SEM, SEM === 'semaine_suivante' ? 'affiche?s=suivante' : 'affiche');
     } else if (a === 'imprimer-carte') {
       ouvrirApres('menus', 'carte-traiteur?c=' + b.dataset.i);
     } else if (a === 'aller') {
@@ -912,25 +943,19 @@
       if (ok) w.location.href = url; else w.close();
     });
   }
-  function semaineSuivante() {
-    var s = site.semaine;
-    var du = s.du ? plus(s.du, 7) : '', au = s.au ? plus(s.au, 7) : (du ? plus(du, 4) : '');
-    demander('Préparer la semaine suivante ?', 'Les dates passent ' + (du ? periode(du, au) : 'à la semaine suivante') + '. Les jours sont conservés ; que faire des plats ?', [
-      { txt: 'Annuler', val: null },
-      { txt: 'Garder les plats', val: 'garder', cls: 'btn-ligne' },
-      { txt: 'Vider les plats', val: 'vider', cls: 'btn-violet' }
-    ]).then(function (r) {
-      if (!r) return;
-      s.du = du; s.au = au;
-      if (r === 'vider') {
-        s.jours.forEach(function (j) { j.nom = ''; j.desc = ''; j.prix = ''; j.ferme = false; j.motif = ''; j.message = ''; });
-        s.special = { titre: '', nom: '', prix: '', lignes: [] }; specialOuvert = false;
-      }
-      render(true);
-      var f = app.querySelector('[data-p="semaine.jours.0.nom"]'); if (f && r === 'vider') f.focus();
-      toast('Semaine suivante prête : saisissez les plats puis enregistrez.');
-    });
+  function semaineRemplie(s) { return s.conges.actif || s.jours.some(function (j) { return j.nom || j.ferme; }); }
+  // Semaine suivante : dates de la semaine en cours + 7 jours, mêmes jours ; plats repris (copier) ou vides
+  function preparerSuivante(copier) {
+    var s = site.semaine, n = site.semaine_suivante, du = n.du || (s.du ? plus(s.du, 7) : ''), au = n.au || (s.au ? plus(s.au, 7) : (du ? plus(du, 4) : ''));
+    site.semaine_suivante = {
+      titre: s.titre || 'Inspirations de la semaine', du: du, au: au, publie: n.publie || false, note: copier ? s.note : '',
+      jours: s.jours.map(function (j) { return copier ? clone(j) : { jour: j.jour, nom: '', desc: '', prix: '', ferme: false, motif: '', message: '' }; }),
+      special: copier ? clone(s.special) : { titre: '', nom: '', prix: '', lignes: [] },
+      conges: { actif: false, titre: '', message: '' }
+    };
+    if (!site.semaine_suivante.jours.length) site.semaine_suivante.jours = ['Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(function (d) { return { jour: d, nom: '', desc: '', prix: '', ferme: false, motif: '', message: '' }; });
   }
+
 
   if (!VUES[onglet]) onglet = 'stats';
   render();

@@ -7,7 +7,11 @@ $sem = $s['semaine'];
 // Seuls les jours avec un plat sont affichés ; sans aucun plat, la section est masquée
 $sem['jours'] = jours_visibles($sem['jours']);
 $conges = $sem['conges']['actif'];
-$aSemaine = $conges || (bool)$sem['jours'];
+// Semaine suivante publiée en avance (bouton « Semaine suivante » à côté des dates)
+$suiv = $s['semaine_suivante'];
+$suiv['jours'] = jours_visibles($suiv['jours']);
+$avecSuiv = $suiv['publie'] && semaine_remplie($suiv) && $suiv['du'] > date('Y-m-d');
+$aSemaine = $conges || (bool)$sem['jours'] || $avecSuiv;
 $enCours = semaine_en_cours($sem);
 $auj = jour_actuel();
 $platDuJour = null;
@@ -41,7 +45,7 @@ $galerie = photos_galerie();
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=9" rel="stylesheet">
+<link href="style.css?v=10" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -160,25 +164,39 @@ $galerie = photos_galerie();
 <!-- ============ Menu de la semaine (géré dans le back-office) ============ -->
 <section id="semaine" class="section semaine">
   <div class="wrap">
+<?php
+  // Semaines affichées : la semaine en cours, et la suivante si elle est publiée en avance
+  $semaines = [];
+  if ($conges || $sem['jours']) $semaines[] = ['s' => $sem, 'conges' => $conges, 'courante' => true];
+  if ($avecSuiv) $semaines[] = ['s' => $suiv, 'conges' => $suiv['conges']['actif'], 'courante' => false];
+?>
     <div class="tete reveal">
       <div>
         <p class="eyebrow">Plats du jour</p>
-        <h2><?= h($sem['titre']) ?></h2>
+        <h2><?= h($semaines[0]['s']['titre']) ?></h2>
       </div>
-<?php if ($sem['du']): ?>      <p class="periode">Semaine <?= h(periode_fr($sem['du'], $sem['au'])) ?></p>
+<?php if (count($semaines) > 1): ?>
+      <div class="choix-semaine" role="tablist" aria-label="Choisir la semaine">
+<?php foreach ($semaines as $k => $w): ?>
+        <button type="button" role="tab" id="tab-sem-<?= $k ?>" aria-controls="sem-<?= $k ?>" aria-selected="<?= $k ? 'false' : 'true' ?>"<?= $k ? ' tabindex="-1"' : '' ?>><?= $w['courante'] ? 'Cette semaine' : 'Semaine suivante <span aria-hidden="true">→</span>' ?><small><?= h(periode_fr($w['s']['du'], $w['s']['au'])) ?></small></button>
+<?php endforeach; ?>
+      </div>
+<?php elseif ($semaines[0]['s']['du']): ?>      <p class="periode">Semaine <?= h(periode_fr($semaines[0]['s']['du'], $semaines[0]['s']['au'])) ?></p>
 <?php endif; ?>
     </div>
-<?php if ($conges): ?>
+<?php foreach ($semaines as $k => $w): $semW = $w['s']; $congesW = $w['conges']; $enCoursW = $enCours && $w['courante']; ?>
+    <div class="sem-panneau" id="sem-<?= $k ?>"<?= count($semaines) > 1 ? ' role="tabpanel" aria-labelledby="tab-sem-' . $k . '"' : '' ?><?= $k ? ' hidden' : '' ?>>
+<?php if ($congesW): ?>
     <div class="conges reveal">
       <img class="conges-sym" src="img/logo/symbole-violet.svg" alt="" width="164" height="244">
-      <h3><?= h($sem['conges']['titre'] ?: 'Fermeture pour congés') ?></h3>
-<?php if ($sem['conges']['message'] !== ''): ?>      <p><?= nl2br(h($sem['conges']['message'])) ?></p>
+      <h3><?= h($semW['conges']['titre'] ?: 'Fermeture pour congés') ?></h3>
+<?php if ($semW['conges']['message'] !== ''): ?>      <p><?= nl2br(h($semW['conges']['message'])) ?></p>
 <?php endif; ?>
     </div>
 <?php else: ?>
-    <div class="semaine-in<?= $sem['special']['nom'] !== '' || $sem['special']['lignes'] ? ' avec-special' : '' ?>">
+    <div class="semaine-in<?= $semW['special']['nom'] !== '' || $semW['special']['lignes'] ? ' avec-special' : '' ?>">
       <ol class="jours">
-<?php foreach ($sem['jours'] as $i => $j): $estAuj = $enCours && norm($j['jour']) === norm($auj); ?>
+<?php foreach ($semW['jours'] as $i => $j): $estAuj = $enCoursW && norm($j['jour']) === norm($auj); ?>
         <li class="jour reveal<?= $estAuj ? ' auj' : '' ?><?= $j['ferme'] ? ' ferme' : '' ?>" style="--d:<?= $i ?>">
           <span class="jour-nom"><?= h($j['jour']) ?><?php if ($estAuj): ?> <em>Aujourd’hui</em><?php endif; ?></span>
 <?php if ($j['ferme']): ?>
@@ -191,7 +209,7 @@ $galerie = photos_galerie();
         </li>
 <?php endforeach; ?>
       </ol>
-<?php $sp = $sem['special']; if ($sp['nom'] !== '' || $sp['lignes']): ?>
+<?php $sp = $semW['special']; if ($sp['nom'] !== '' || $sp['lignes']): ?>
       <aside class="special reveal" style="--d:2">
         <img class="special-sym" src="img/logo/symbole-blanc.svg" alt="" width="164" height="244">
 <?php if ($sp['titre'] !== ''): ?>        <p class="special-quand"><?= h($sp['titre']) ?></p>
@@ -203,10 +221,12 @@ $galerie = photos_galerie();
 <?php endif; ?>
     </div>
 <?php endif; ?>
-<?php if ($sem['note'] !== ''): ?>    <p class="semaine-note reveal"><?= h($sem['note']) ?></p>
+<?php if ($semW['note'] !== ''): ?>    <p class="semaine-note reveal"><?= h($semW['note']) ?></p>
 <?php endif; ?>
-<?php if (!$conges): ?>    <p class="semaine-note reveal">À emporter, à réserver de préférence par téléphone au <a href="<?= $telHref ?>"><?= $tel ?></a>.</p>
+<?php if (!$congesW): ?>    <p class="semaine-note reveal">À emporter, à réserver de préférence par téléphone au <a href="<?= $telHref ?>"><?= $tel ?></a>.</p>
 <?php endif; ?>
+    </div>
+<?php endforeach; ?>
   </div>
 </section>
 <?php endif; ?>
@@ -461,6 +481,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=7" defer></script>
+<script src="main.js?v=8" defer></script>
 </body>
 </html>

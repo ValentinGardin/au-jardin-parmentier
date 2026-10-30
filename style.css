@@ -417,3 +417,14 @@ body.pop-ouvert{overflow:hidden}
 .avis-carte figcaption small{display:block;font-weight:400;font-size:.82rem;color:var(--gris-clair,#9c949a);margin-top:.15rem}
 .avis-carte figcaption a{color:var(--encre);text-decoration:none}
 .avis-source{margin:1rem 0 0;font-size:.85rem;color:var(--gris)}
+
+/* Menu de la semaine : choix « Cette semaine » / « Semaine suivante » */
+.choix-semaine{display:flex;gap:.3rem;padding:.3rem;border-radius:16px;background:var(--sable)}
+.choix-semaine button{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;border:0;background:transparent;border-radius:12px;padding:.6rem 1rem;font:600 .95rem var(--texte);color:var(--gris);cursor:pointer;text-align:left;transition:background-color .2s,color .2s,box-shadow .2s}
+.choix-semaine button small{font-weight:500;font-size:.78rem;color:var(--gris)}
+.choix-semaine button:hover{color:var(--encre)}
+.choix-semaine button[aria-selected="true"]{background:var(--blanc);color:var(--violet);box-shadow:0 2px 8px rgba(29,23,27,.1)}
+.choix-semaine button:not([aria-selected="true"]):last-child{color:var(--violet)}
+.sem-panneau[hidden]{display:none}
+.sem-panneau:not([hidden]){animation:entree .45s var(--ease)}
+@media (max-width:620px){.choix-semaine{width:100%}.choix-semaine button{flex:1}}
