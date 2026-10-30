@@ -2,8 +2,9 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.23 · 30 octobre 2026';
-const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »   // affichée en bas de la page de connexion du back-office
+const VERSION = '1.24 · 31 octobre 2026';
+const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
+const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');
@@ -67,7 +68,7 @@ function semaine_clean($s) {
     return [
         'titre' => txt($s['titre'] ?? '', 60) ?: 'Inspirations de la semaine',
         'du' => date_ok($s['du'] ?? ''), 'au' => date_ok($s['au'] ?? ''), 'jours' => $jours,
-        'special' => ['titre' => txt($sp['titre'] ?? '', 60), 'nom' => txt($sp['nom'] ?? '', 100), 'prix' => txt($sp['prix'] ?? '', 20), 'lignes' => liste_txt($sp['lignes'] ?? [], 160)],
+        'special' => ['titre' => txt($sp['titre'] ?? '', 60), 'nom' => txt($sp['nom'] ?? '', 100), 'prix' => txt($sp['prix'] ?? '', 20), 'lignes' => liste_txt($sp['lignes'] ?? [], 160), 'epuise' => !empty($sp['epuise'])],
         'note' => txt($s['note'] ?? '', 200),
         // Fermeture de toute la semaine (congés) : un titre et un message remplacent le menu
         'conges' => ['actif' => !empty($s['conges']['actif']), 'titre' => txt($s['conges']['titre'] ?? '', 80), 'message' => txt($s['conges']['message'] ?? '', 400)],
@@ -97,7 +98,7 @@ function couleurs_evt($hex) {
 function evenement_clean($e) {
     $items = [];
     foreach (liste($e['items'] ?? []) as $p) {
-        $p = ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30)];
+        $p = ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise'])];
         if ($p['nom'] !== '') $items[] = $p;
     }
     $r = is_array($e['reservation'] ?? null) ? $e['reservation'] : [];

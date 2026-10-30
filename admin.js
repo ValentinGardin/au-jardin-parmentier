@@ -72,7 +72,7 @@
     cat: function () { return { titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }; },
     carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
-    item: function () { return { nom: '', prix: '' }; },
+    item: function () { return { nom: '', prix: '', epuise: false }; },
     evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
   };
 
@@ -169,7 +169,8 @@
           '<div class="jours-liste">' + (jours || '<p class="vide">Aucun jour. Ajoutez le premier plat.</p>') + '</div>' +
           '<button type="button" class="btn-ajout" data-act="add" data-p="' + SEM + '.jours" data-tpl="jour">' + ico('plus') + 'Ajouter un jour</button></section>' +
         '<section class="bloc"><div class="bloc-tete"><h2>3. Offre spéciale <em>facultatif</em></h2>' +
-          '<label class="interrupteur"><input type="checkbox" data-act="special"' + (specialOuvert ? ' checked' : '') + '><span></span>' + (specialOuvert ? 'Affichée' : 'Masquée') + '</label></div>' +
+          '<div class="tete-actions">' + (specialOuvert ? '<label class="interrupteur epuise" title="Tout est parti : l’offre reste affichée mais ne peut plus être réservée"><input type="checkbox" data-p="' + SEM + '.special.epuise"' + (site[SEM].special.epuise ? ' checked' : '') + '><span></span>Épuisée</label>' : '') +
+          '<label class="interrupteur"><input type="checkbox" data-act="special"' + (specialOuvert ? ' checked' : '') + '><span></span>' + (specialOuvert ? 'Affichée' : 'Masquée') + '</label></div></div>' +
           (specialOuvert ? sp : '<p class="aide">Un plateau ou une formule pour quelques jours (ex. plateau apéritif du week-end). Elle apparaît dans un encadré à côté des plats.</p>') + '</section>' +
         '<section class="bloc">' + champ('Petite note sous le menu', SEM + '.note', { opt: true, ph: 'ex. Commandes la veille avant 18 h' }) + '</section>' +
         '</div>' +
@@ -393,6 +394,7 @@
       var items = e.items.map(function (it, j) {
         return '<div class="item-ligne"><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Plateau de charcuterie et fromage pour deux" aria-label="Produit">' +
           '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="17.00 €" inputmode="decimal" aria-label="Prix">' +
+          '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + p + '.items.' + j + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
           boutonsOrdre(p + '.items', j, ni) + '</div>';
       }).join('');
       var themes = THEMES.map(function (t) {
@@ -469,7 +471,7 @@
     var max = V.plats.length ? V.plats[0].parts : 1;
     var palmares = '<div class="bloc stats-large"><div class="bloc-tete"><h2>Vos plats stars</h2><span class="compte">classés par parts vendues</span></div>' +
       (V.plats.length ? '<table class="palmares"><thead><tr><th>#</th><th>Plat</th><th class="n">Parts</th><th class="n">Chiffre d’affaires</th><th class="n">Servi</th><th></th></tr></thead><tbody>' + V.plats.map(function (p, i) {
-        return '<tr><td class="rang' + (i < 3 ? ' podium' : '') + '">' + (i + 1) + '</td><td><b>' + esc(p.nom) + '</b>' + (p.epuise ? ' <span class="r-badge-epuise">épuisé ' + (p.epuise > 1 ? p.epuise + ' fois' : '1 fois') + '</span>' : '') + (p.type === 'special' ? ' <span class="r-orig">offre</span>' : '') +
+        return '<tr><td class="rang' + (i < 3 ? ' podium' : '') + '">' + (i + 1) + '</td><td><b>' + esc(p.nom) + '</b>' + (p.epuise ? ' <span class="r-badge-epuise">épuisé ' + (p.epuise > 1 ? p.epuise + ' fois' : '1 fois') + '</span>' : '') + (p.type === 'special' ? ' <span class="r-orig">offre</span>' : p.type === 'evenement' ? ' <span class="r-orig">événement</span>' : '') +
           '<span class="pal-piste"><span style="width:' + (p.parts / max * 100) + '%"></span></span></td><td class="n"><b>' + p.parts + '</b></td><td class="n">' + euro(p.ca) + '</td><td class="n">' + (p.type === 'autre' ? '–' : pluriel(p.jours, 'jour')) + '</td><td class="n petit">' + (p.type !== 'autre' && p.jours ? (Math.round(p.parts / p.jours * 10) / 10).toString().replace('.', ',') + ' / jour' : '') + '</td></tr>';
       }).join('') + '</tbody></table>' : '<p class="aide petit">Pas de réservation sur cette période.</p>') + '</div>';
     var C = V.clients, L = V.lettre;
@@ -756,6 +758,15 @@
     });
     return out;
   }
+  function evtsDu(date) {
+    return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) { return x.e.actif && x.e.date === date && x.e.items.length; });
+  }
+  // Parts réservées d'une offre (offre spéciale ou produit d'événement) à une date
+  function offreParts(type, nom, date) {
+    return (R.data ? R.data.resas : []).reduce(function (t, r) {
+      return r.date !== date ? t : t + r.lignes.reduce(function (u, l) { return u + (l.type === type && l.nom === nom ? l.qte : 0); }, 0);
+    }, 0);
+  }
   function getJSON(q) {
     return fetch(E.api + '?api=' + q, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
       .then(function (j) { if (!j.ok) throw new Error(j.erreur || 'Erreur.'); return j; });
@@ -823,6 +834,7 @@
         (m.plat.epuise ? ' <span class="r-badge-epuise">Épuisé</span>' : partsDu(R.date) >= E.forte ? ' <span class="r-forte">Forte demande · ' + partsDu(R.date) + ' parts</span>' : '') +
         (VISITE ? '' : ' <button type="button" class="r-epuise-btn" data-act="r-epuise">' + (m.plat.epuise ? 'Remettre en vente' : 'Marquer comme épuisé') + '</button>')
         : 'Pas de plat du jour prévu dans le menu de la semaine.') + '</p>' +
+      offresDuJour() +
       (R.data && R.data.sms && R.data.sms.auto && R.date === E.aujourdhui ? '<p class="r-sms-info">' + ico('note') + 'Rappel SMS automatique à ' + R.data.sms.heure.replace(':', 'h') + ' pour les commandes pas encore récupérées.</p>' : '') + '</div>';
     var jour = resasDuJour();
     if (!jour) return semaine + titre + '<p class="chargement">Chargement…</p>';
@@ -843,6 +855,18 @@
       return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
     }).join('') + '</div>' : '') + '<input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone, un n° de commande…" aria-label="Rechercher"></div>';
     return semaine + titre + resume + deCote() + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
+  }
+  function offresDuJour() {
+    var m = menuDu(R.date), h = '';
+    function etat(epuise, n, seuil) { return epuise ? ' <span class="r-badge-epuise">Épuisé</span>' : n >= seuil ? ' <span class="r-forte">Forte demande · ' + n + '</span>' : n ? ' <span class="r-offre-n">' + n + ' réservé' + (n > 1 ? 's' : '') + '</span>' : ''; }
+    function bouton(attrs, epuise) { return VISITE ? '' : ' <button type="button" class="r-epuise-btn" data-act="r-epuise" ' + attrs + '>' + (epuise ? 'Remettre en vente' : 'Épuisé') + '</button>'; }
+    if (m.special) h += '<p class="r-offre">Offre spéciale : <b' + (m.special.epuise ? ' class="raye"' : '') + '>' + esc(m.special.nom) + '</b>' + etat(m.special.epuise, offreParts('special', m.special.nom, R.date), E.forteOffre) + bouton('data-quoi="special"', m.special.epuise) + '</p>';
+    evtsDu(R.date).forEach(function (x) {
+      h += '<div class="r-offre r-evt" style="--c:' + esc(x.e.couleur) + '"><b>' + esc(x.e.titre) + '</b><ul>' + x.e.items.map(function (it, k) {
+        return '<li><span' + (it.epuise ? ' class="raye"' : '') + '>' + esc(it.nom) + '</span>' + etat(it.epuise, offreParts('evenement', it.nom, R.date), E.forteOffre) + bouton('data-quoi="evenement" data-e="' + x.i + '" data-k="' + k + '"', it.epuise) + '</li>';
+      }).join('') + '</ul></div>';
+    });
+    return h;
   }
   // Plats de ce jour réservés pour un jour suivant : à mettre de côté aujourd'hui
   function lignesDeCote() {
@@ -955,7 +979,8 @@
     if (String(type).indexOf('jour:') === 0) { var j = type.slice(5), pj = menuDu(j).plat; if (pj && !pj.epuise) return { type: 'plat', nom: pj.nom, prix: pj.prix, qte: 1, jour: j }; }
     var m = menuDu(date);
     if (type !== 'autre' && type !== 'special' && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
-    if (type === 'special' && m.special) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
+    if (type === 'special' && m.special && !m.special.epuise) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
+    if (String(type).indexOf('evt:') === 0) { var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]]; if (it) return { type: 'evenement', nom: it.nom, prix: it.prix, qte: 1 }; }
     return { type: 'autre', nom: '', prix: '', qte: 1 };
   }
   function formResa(r, clientInit) {
@@ -1003,9 +1028,14 @@
       var m = menuDu(f.date), o = [];
       var dj0 = l.type === 'plat' && !l.jour;
       if (m.plat || dj0) o.push(['plat', 'Plat du jour · ' + (dj0 ? l.nom : m.plat.nom) + ((dj0 ? l.prix : m.plat.prix) ? ' · ' + (dj0 ? l.prix : m.plat.prix) : '') + (m.plat && m.plat.epuise ? ' · ÉPUISÉ' : ''), m.plat && m.plat.epuise && !dj0]);
-      if (m.special || l.type === 'special') o.push(['special', 'Offre spéciale · ' + (l.type === 'special' ? l.nom : m.special.nom)]);
+      if (m.special || l.type === 'special') o.push(['special', 'Offre spéciale · ' + (l.type === 'special' ? l.nom : m.special.nom) + (m.special && m.special.epuise ? ' · ÉPUISÉE' : ''), m.special && m.special.epuise && l.type !== 'special']);
+      evtsDu(f.date).forEach(function (x) {
+        x.e.items.forEach(function (it, k) { o.push(['evt:' + x.i + ':' + k, x.e.titre + ' · ' + it.nom + (it.prix ? ' · ' + it.prix : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)]); });
+      });
+      if (l.type === 'evenement' && !o.some(function (x) { return x[0].indexOf('evt:') === 0 && x[1].indexOf(l.nom) >= 0; })) o.push(['evt:-', 'Événement · ' + l.nom]);
       // plats des 6 jours précédents (pour un client qui veut le plat de mercredi le vendredi)
       var avant = [], v = l.jour ? 'jour:' + l.jour : l.type;
+      if (l.type === 'evenement') { v = 'evt:-'; evtsDu(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { if (it.nom === l.nom) v = 'evt:' + x.i + ':' + k; }); }); }
       for (var k = 6; k >= 1; k--) {
         var dj = plus(f.date, -k), pj = menuDu(dj).plat;
         if (pj || dj === l.jour) avant.push(['jour:' + dj, jourNom(dj) + ' ' + dateFr(dj) + ' · ' + (dj === l.jour ? l.nom : pj.nom) + ((dj === l.jour ? l.prix : pj.prix) ? ' · ' + (dj === l.jour ? l.prix : pj.prix) : '') + (pj && pj.epuise ? ' · ÉPUISÉ' : ''), pj && pj.epuise && dj !== l.jour]);
@@ -1099,7 +1129,7 @@
       else if (a === 'date') {
         f.date = b.dataset.d;
         // le plat du jour suit le jour choisi
-        f.lignes = f.lignes.map(function (l) { if (l.type === 'autre' || l.jour) return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
+        f.lignes = f.lignes.map(function (l) { if (l.type === 'autre' || l.type === 'evenement' || l.jour) return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
         part('fr-dates', htmlDates()); part('fr-lignes', htmlLignes());
       } else if (a === 'plus' || a === 'moins') { f.lignes[i].qte = Math.max(1, Math.min(99, f.lignes[i].qte + (a === 'plus' ? 1 : -1))); part('fr-lignes', htmlLignes()); }
       else if (a === 'retirer') { f.lignes.splice(i, 1); part('fr-lignes', htmlLignes()); }
@@ -1709,7 +1739,7 @@
       coller(p);
     } else if (a === 'special') {
       specialOuvert = b.checked;
-      if (!specialOuvert) site[SEM].special = { titre: '', nom: '', prix: '', lignes: [] };
+      if (!specialOuvert) site[SEM].special = { titre: '', nom: '', prix: '', lignes: [], epuise: false };
       render(true);
     } else if (a.indexOf('g-') === 0) {
       actionGoogle(a, b);
@@ -1764,12 +1794,19 @@
     } else if (a === 'r-date') {
       R.date = b.dataset.d; render(true);
     } else if (a === 'r-epuise') {
-      var mp = menuDu(R.date).plat, v = !mp.epuise;
-      api('epuise', { date: R.date, valeur: v }).then(function (j) {
+      var quoi = b.dataset.quoi || 'plat', mm = menuDu(R.date), cible, v;
+      if (quoi === 'special') cible = mm.special;
+      else if (quoi === 'evenement') cible = saved.evenements[+b.dataset.e].items[+b.dataset.k];
+      else cible = mm.plat;
+      v = !cible.epuise;
+      api('epuise', { date: R.date, quoi: quoi, e: b.dataset.e, k: b.dataset.k, valeur: v }).then(function (j) {
         saved[j.part] = clone(j.data);
-        site[j.part].jours.forEach(function (x) { if (x.jour === jourNom(R.date)) x.epuise = v; });
+        // on reporte le changement sans perdre une modification en cours dans un autre onglet
+        if (quoi === 'evenement') site.evenements[+b.dataset.e].items[+b.dataset.k].epuise = v;
+        else if (quoi === 'special') site[j.part].special.epuise = v;
+        else site[j.part].jours.forEach(function (x) { if (x.jour === jourNom(R.date)) x.epuise = v; });
         render(true);
-        toast(v ? mp.nom + ' : marqué épuisé, il ne peut plus être réservé.' : mp.nom + ' : de nouveau disponible.');
+        toast(v ? cible.nom + ' : épuisé, ne peut plus être réservé.' : cible.nom + ' : de nouveau disponible.');
       }).catch(function (er) { toast(er.message, true); });
     } else if (a === 'r-num') {
       allerNum(+b.dataset.n);
@@ -1826,7 +1863,7 @@
     site.semaine_suivante = {
       titre: s.titre || 'Inspirations de la semaine', du: du, au: au, publie: n.publie || false, note: copier ? s.note : '',
       jours: s.jours.map(function (j) { if (copier) { var cj = clone(j); cj.epuise = false; return cj; } return copier ? clone(j) : { jour: j.jour, nom: '', desc: '', prix: '', ferme: false, motif: '', message: '' }; }),
-      special: copier ? clone(s.special) : { titre: '', nom: '', prix: '', lignes: [] },
+      special: copier ? Object.assign(clone(s.special), { epuise: false }) : { titre: '', nom: '', prix: '', lignes: [], epuise: false },
       conges: { actif: false, titre: '', message: '' }
     };
     if (!site.semaine_suivante.jours.length) site.semaine_suivante.jours = ['Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(function (d) { return { jour: d, nom: '', desc: '', prix: '', ferme: false, motif: '', message: '' }; });

@@ -29,7 +29,9 @@ $rayons = [
 $galerie = photos_galerie();
 // Réservation en ligne (interrupteur dans le back-office) : jours réservables à partir du lendemain
 $cmdJours = commande_config()['actif'] ? commande_jours($s) : [];
-$cmd = (bool)$cmdJours;
+$cmdEvts = commande_config()['actif'] ? commande_evts($s) : [];   // événements réservables en ligne
+$cmd = $cmdJours || $cmdEvts;
+$evtEnLigne = array_column($cmdEvts, null, 'i');
 $cmdDates = array_column($cmdJours, 'date');
 $parts = parts_reservees();   // parts réservées par jour (signal « forte demande »)
 // Date d'un jour du menu (« Mardi » de la semaine du 27 au 31 octobre → 2026-10-27)
@@ -58,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=14" rel="stylesheet">
+<link href="style.css?v=15" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -78,7 +80,7 @@ $dateDuJour = function ($sw, $nom) {
       <a href="#maison">Qui sommes-nous</a>
       <a href="#contact">Contact</a>
     </nav>
-<?php if ($cmd): ?>    <button type="button" class="btn btn-ligne btn-sm nav-resa" data-reserver>Réserver</button>
+<?php if ($cmdJours): ?>    <button type="button" class="btn btn-ligne btn-sm nav-resa" data-reserver>Réserver</button>
 <?php endif; ?>    <a class="btn btn-violet btn-sm nav-tel" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg><span><?= $tel ?></span></a>
     <button class="burger" type="button" aria-controls="menu" aria-expanded="false" aria-label="Ouvrir le menu"><span></span><span></span></button>
   </div>
@@ -98,7 +100,7 @@ $dateDuJour = function ($sw, $nom) {
       <h1 class="anim" style="--d:1">Bienvenue dans notre <span class="accent">atelier gourmand.</span></h1>
       <p class="lead anim" style="--d:2">De bons produits, et des repas préparés selon vos envies, par Angel &amp; Fab, au cœur de Montdidier.</p>
       <div class="ctas anim" style="--d:3">
-<?php if ($cmd): ?>        <button type="button" class="btn btn-violet btn-lg" data-reserver>Réserver mon plat du jour</button>
+<?php if ($cmdJours): ?>        <button type="button" class="btn btn-violet btn-lg" data-reserver>Réserver mon plat du jour</button>
         <a class="btn btn-ligne btn-lg" href="#semaine">Le menu de la semaine</a>
 <?php else: if ($aSemaine): ?>        <a class="btn btn-violet btn-lg" href="#semaine">Le menu de la semaine</a>
 <?php endif; ?>        <a class="btn btn-ligne btn-lg" href="#traiteur">Nos cartes traiteur</a>
@@ -142,6 +144,7 @@ $dateDuJour = function ($sw, $nom) {
   <div class="wrap evts-in">
 <?php foreach ($evts as $e):
     $ouvert = reservation_ouverte($e);
+    $iEvt = array_search($e, $s['evenements'], true); $enLigne = $evtEnLigne[$iEvt] ?? null;
     $dans = $e['date'] ? (int)round((strtotime($e['date']) - strtotime(date('Y-m-d'))) / 86400) : null;
     $quand = $dans === null ? '' : ($dans < 0 ? '' : ($dans === 0 ? 'C’est aujourd’hui !' : ($dans === 1 ? 'C’est demain !' : 'Dans ' . $dans . ' jours')));
     $ph = photo($e['photo']); ?>
@@ -158,14 +161,17 @@ $dateDuJour = function ($sw, $nom) {
       </div>
       <div class="evt-corps">
 <?php if ($e['items']): ?>        <ul class="evt-items">
-<?php foreach ($e['items'] as $it): ?>          <li><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+<?php foreach ($e['items'] as $k => $it): $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], $e['date']) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
 <?php endforeach; ?>        </ul>
 <?php endif; foreach ($e['lignes'] as $l): ?>        <p class="evt-ligne"><?= h($l) ?></p>
 <?php endforeach; ?>
         <div class="evt-resa">
 <?php if ($ouvert): ?>
 <?php if ($e['cta'] !== ''): ?>          <p class="evt-cta"><?= h($e['cta']) ?></p>
-<?php endif; ?>          <a class="btn btn-blanc btn-lg" href="<?= $telHref ?>" data-evt="<?= h($e['titre']) ?>">Réserver au <?= $tel ?></a>
+<?php endif; if ($enLigne): ?>          <div class="evt-boutons"><button type="button" class="btn btn-blanc btn-lg" data-reserver-evt="<?= $iEvt ?>" data-evt="<?= h($e['titre']) ?>">Réserver en ligne</button>
+          <a class="evt-tel" href="<?= $telHref ?>" data-evt="<?= h($e['titre']) ?>">ou au <?= $tel ?></a></div>
+<?php else: ?>          <a class="btn btn-blanc btn-lg" href="<?= $telHref ?>" data-evt="<?= h($e['titre']) ?>">Réserver au <?= $tel ?></a>
+<?php endif; ?>
 <?php if ($e['reservation']['active'] && $e['reservation']['date']): ?>          <p class="evt-limite">Réservation jusqu’au <?= h(date_fr($e['reservation']['date'], true)) ?> inclus</p>
 <?php endif; else: ?>          <p class="evt-clos">Les réservations sont closes. Merci à tous !</p>
 <?php endif; ?>
@@ -201,7 +207,7 @@ $dateDuJour = function ($sw, $nom) {
 <?php elseif ($semaines[0]['s']['du']): ?>      <p class="periode">Semaine <?= h(periode_fr($semaines[0]['s']['du'], $semaines[0]['s']['au'])) ?></p>
 <?php endif; ?>
     </div>
-<?php if ($cmd): ?>
+<?php if ($cmdJours): ?>
     <div class="resa-bandeau reveal">
       <span class="resa-bandeau-ico" aria-hidden="true"><svg><use href="#i-sac"/></svg></span>
       <p><strong>Réservez en ligne, on vous le met de côté.</strong><span>En 1 minute, jusqu’à la veille <?= h(str_replace(':', 'h', commande_config()['limite'])) ?>. Vous payez sur place, au retrait.</span></p>
@@ -240,11 +246,12 @@ $dateDuJour = function ($sw, $nom) {
       <aside class="special reveal" style="--d:2">
         <img class="special-sym" src="img/logo/symbole-blanc.svg" alt="" width="164" height="244">
 <?php if ($sp['titre'] !== ''): ?>        <p class="special-quand"><?= h($sp['titre']) ?></p>
-<?php endif; ?>        <h3><?= h($sp['nom']) ?></h3>
+<?php endif; ?>        <h3><?= h($sp['nom']) ?><?php if ($sp['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($semW['du'] && offre_parts('special', $sp['nom'], $semW['du'], $semW['au'] ?: $semW['du']) >= FORTE_OFFRE): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></h3>
 <?php if ($sp['prix'] !== ''): ?>        <p class="special-px"><?= h($sp['prix']) ?></p>
 <?php endif; if ($sp['lignes']): ?>        <ul><?php foreach ($sp['lignes'] as $l): ?><li><?= h($l) ?></li><?php endforeach; ?></ul>
 <?php endif; ?><?php $jOffre = null; foreach ($cmdJours as $cj) if ($cj['special'] && $cj['special']['nom'] === $sp['nom']) { $jOffre = $cj; break; }
-      if ($jOffre): ?>        <button type="button" class="btn btn-blanc" data-reserver="<?= $jOffre['date'] ?>" data-offre>Réserver en ligne</button>
+      if ($sp['epuise']): ?>        <p class="special-epuise">Victime de son succès : il n’y en a plus cette semaine !</p>
+<?php elseif ($jOffre): ?>        <button type="button" class="btn btn-blanc" data-reserver="<?= $jOffre['date'] ?>" data-offre>Réserver en ligne</button>
 <?php else: ?>        <a class="btn btn-blanc" href="<?= $telHref ?>">Réserver au <?= $tel ?></a>
 <?php endif; ?>
       </aside>
@@ -492,7 +499,7 @@ $dateDuJour = function ($sw, $nom) {
 </footer>
 
 <div class="barre" aria-label="Actions rapides">
-<?php if ($cmd): ?>  <button type="button" class="btn btn-violet" data-reserver><svg class="ico" aria-hidden="true"><use href="#i-sac"/></svg>Réserver</button>
+<?php if ($cmdJours): ?>  <button type="button" class="btn btn-violet" data-reserver><svg class="ico" aria-hidden="true"><use href="#i-sac"/></svg>Réserver</button>
   <a class="btn btn-ligne" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Appeler</a>
 <?php else: ?>  <a class="btn btn-violet" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Appeler</a>
   <a class="btn btn-ligne" href="<?= h($maps) ?>" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Itinéraire</a>
@@ -511,7 +518,7 @@ $dateDuJour = function ($sw, $nom) {
     <div class="rs-pied" id="rs-pied"></div>
   </div>
 </div>
-<script type="application/json" id="rs-donnees"><?= json_encode(['jours' => $cmdJours, 'tel' => $tel, 'telHref' => $telHref, 'limite' => str_replace(':', 'h', commande_config()['limite'])], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<script type="application/json" id="rs-donnees"><?= json_encode(['jours' => $cmdJours, 'evts' => $cmdEvts, 'tel' => $tel, 'telHref' => $telHref, 'limite' => str_replace(':', 'h', commande_config()['limite'])], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <?php endif; ?>
 
 
@@ -558,6 +565,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=13" defer></script>
+<script src="main.js?v=14" defer></script>
 </body>
 </html>

@@ -17,24 +17,39 @@ if (!is_array($in)) fin(400, ['erreur' => 'Demande invalide.']);
 // Pièges à robots : champ invisible rempli, ou formulaire envoyé en moins de 3 secondes
 if (($in['site_web'] ?? '') !== '' || time() - (int)($in['t'] ?? 0) < 3) fin(400, ['erreur' => 'La réservation n’a pas pu être enregistrée. Réessayez, ou appelez-nous au ' . TEL_BOUTIQUE . '.']);
 
-// Le jour choisi doit encore être réservable
-$jour = null;
-foreach (commande_jours(site_load()) as $j) if ($j['date'] === ($in['date'] ?? '')) $jour = $j;
-if (!$jour) fin(400, ['erreur' => 'Ce jour n’est plus réservable en ligne (les réservations se font au plus tard la veille). Appelez-nous au ' . TEL_BOUTIQUE . ', nous ferons notre possible !', 'jours' => commande_jours(site_load())]);
+if (isset($in['evt'])) {
+    // Réservation pour un événement (Beaujolais nouveau, Noël…) : à récupérer le jour de l'événement
+    $evt = null;
+    foreach (commande_evts(site_load()) as $e) if ($e['i'] === (int)$in['evt']) $evt = $e;
+    if (!$evt) fin(400, ['erreur' => 'Les réservations en ligne pour cet événement sont closes. Appelez-nous au ' . TEL_BOUTIQUE . '.']);
+    $jour = ['date' => $evt['date']];
+    $lignes = [];
+    foreach ($evt['items'] as $it) {
+        $q = max(0, min(20, (int)($in['items'][$it['k']] ?? 0)));
+        if (!$q) continue;
+        if ($it['epuise']) fin(400, ['erreur' => '« ' . $it['nom'] . ' » vient d’être épuisé, désolé ! Retirez-le de votre commande.']);
+        $lignes[] = ['type' => 'evenement', 'nom' => $it['nom'], 'prix' => $it['prix'], 'qte' => $q];
+    }
+} else {
+    // Le jour choisi doit encore être réservable
+    $jour = null;
+    foreach (commande_jours(site_load()) as $j) if ($j['date'] === ($in['date'] ?? '')) $jour = $j;
+    if (!$jour) fin(400, ['erreur' => 'Ce jour n’est plus réservable en ligne (les réservations se font au plus tard la veille). Appelez-nous au ' . TEL_BOUTIQUE . ', nous ferons notre possible !', 'jours' => commande_jours(site_load())]);
 
-$lignes = [];
-$q = max(0, min(20, (int)($in['plat'] ?? 0)));
-if ($q) $lignes[] = ['type' => 'plat', 'nom' => $jour['plat']['nom'], 'prix' => $jour['plat']['prix'], 'qte' => $q];
-$q = max(0, min(20, (int)($in['special'] ?? 0)));
-if ($q && $jour['special']) $lignes[] = ['type' => 'special', 'nom' => $jour['special']['nom'], 'prix' => $jour['special']['prix'], 'qte' => $q];
-// Plats d'autres jours (avant le jour de retrait, eux aussi réservables en ligne) : mis de côté ce jour-là
-$dispo = [];
-foreach (commande_jours(site_load()) as $j) $dispo[$j['date']] = $j;
-foreach ((is_array($in['autres'] ?? null) ? $in['autres'] : []) as $dj => $q) {
-    $q = max(0, min(20, (int)$q));
-    if (!$q) continue;
-    if (!isset($dispo[$dj]) || $dj >= $jour['date'] || $dj < date('Y-m-d', strtotime('monday this week', strtotime($jour['date'])))) fin(400, ['erreur' => 'Un des plats d’un autre jour n’est plus réservable. Retirez-le, ou appelez-nous au ' . TEL_BOUTIQUE . '.']);
-    $lignes[] = ['type' => 'plat', 'nom' => $dispo[$dj]['plat']['nom'], 'prix' => $dispo[$dj]['plat']['prix'], 'qte' => $q, 'jour' => $dj];
+    $lignes = [];
+    $q = max(0, min(20, (int)($in['plat'] ?? 0)));
+    if ($q) $lignes[] = ['type' => 'plat', 'nom' => $jour['plat']['nom'], 'prix' => $jour['plat']['prix'], 'qte' => $q];
+    $q = max(0, min(20, (int)($in['special'] ?? 0)));
+    if ($q && $jour['special']) $lignes[] = ['type' => 'special', 'nom' => $jour['special']['nom'], 'prix' => $jour['special']['prix'], 'qte' => $q];
+    // Plats d'autres jours (avant le jour de retrait, eux aussi réservables en ligne) : mis de côté ce jour-là
+    $dispo = [];
+    foreach (commande_jours(site_load()) as $j) $dispo[$j['date']] = $j;
+    foreach ((is_array($in['autres'] ?? null) ? $in['autres'] : []) as $dj => $q) {
+        $q = max(0, min(20, (int)$q));
+        if (!$q) continue;
+        if (!isset($dispo[$dj]) || $dj >= $jour['date'] || $dj < date('Y-m-d', strtotime('monday this week', strtotime($jour['date'])))) fin(400, ['erreur' => 'Un des plats d’un autre jour n’est plus réservable. Retirez-le, ou appelez-nous au ' . TEL_BOUTIQUE . '.']);
+        $lignes[] = ['type' => 'plat', 'nom' => $dispo[$dj]['plat']['nom'], 'prix' => $dispo[$dj]['plat']['prix'], 'qte' => $q, 'jour' => $dj];
+    }
 }
 if (!$lignes) fin(400, ['erreur' => 'Choisissez au moins un plat.']);
 

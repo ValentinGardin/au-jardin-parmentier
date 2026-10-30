@@ -104,8 +104,13 @@ if ($api !== '') {
         sauvegarder();
         if (!json_save(DATA . '/site.json', $d)) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable. Donnez-lui les droits d’écriture (755 ou 775) chez votre hébergeur.']);
         // plats passés « épuisés » : gardés en mémoire pour les statistiques
-        if (in_array($part, ['semaine', 'semaine_suivante'], true)) foreach ($d[$part]['jours'] as $i => $j)
-            if ($j['epuise'] && empty($ancien['jours'][$i]['epuise'])) epuise_noter(date_du_jour($d[$part], $j['jour']), $j['nom']);
+        if (in_array($part, ['semaine', 'semaine_suivante'], true)) {
+            foreach ($d[$part]['jours'] as $i => $j)
+                if ($j['epuise'] && empty($ancien['jours'][$i]['epuise'])) epuise_noter(date_du_jour($d[$part], $j['jour']), $j['nom']);
+            if ($d[$part]['special']['epuise'] && empty($ancien['special']['epuise'])) epuise_noter(date('Y-m-d'), $d[$part]['special']['nom']);
+        }
+        if ($part === 'evenements') foreach ($d['evenements'] as $i => $e) foreach ($e['items'] as $k => $it)
+            if ($it['epuise'] && empty($ancien[$i]['items'][$k]['epuise'])) epuise_noter($e['date'] ?: date('Y-m-d'), $it['nom']);
         repondre(200, ['ok' => true, 'data' => $d[$part]]);
     }
     if ($api === 'stats') {
@@ -397,10 +402,26 @@ if ($api !== '') {
         api_garde();
         $in = entree(); $date = date_ok($in['date'] ?? '');
         $res = verrou(function () use ($date, $in) {
-            $d = site_load(); $nom = JOURS[(int)date('N', strtotime($date)) - 1];
+            $d = site_load(); $nom = JOURS[(int)date('N', strtotime($date)) - 1]; $v = !empty($in['valeur']);
+            // produit d'un événement
+            if (($in['quoi'] ?? '') === 'evenement') {
+                $e = (int)($in['e'] ?? -1); $k = (int)($in['k'] ?? -1);
+                if (!isset($d['evenements'][$e]['items'][$k])) return null;
+                $d['evenements'][$e]['items'][$k]['epuise'] = $v;
+                if ($v) epuise_noter($date, $d['evenements'][$e]['items'][$k]['nom']);
+                sauvegarder(); json_save(DATA . '/site.json', site_clean($d));
+                return ['evenements', site_load()['evenements']];
+            }
             foreach (['semaine', 'semaine_suivante'] as $k) {
                 $s = $d[$k];
                 if ($s['du'] === '' || $date < $s['du'] || ($s['au'] !== '' && $date > $s['au'])) continue;
+                if (($in['quoi'] ?? '') === 'special') {   // offre spéciale de la semaine
+                    if ($s['special']['nom'] === '') continue;
+                    $d[$k]['special']['epuise'] = $v;
+                    if ($v) epuise_noter($date, $s['special']['nom']);
+                    sauvegarder(); json_save(DATA . '/site.json', site_clean($d));
+                    return [$k, site_load()[$k]];
+                }
                 foreach ($d[$k]['jours'] as $i => $j) if (norm($j['jour']) === norm($nom) && $j['nom'] !== '') {
                     $d[$k]['jours'][$i]['epuise'] = !empty($in['valeur']);
                     if (!empty($in['valeur'])) epuise_noter($date, $j['nom']);
@@ -411,7 +432,7 @@ if ($api !== '') {
             }
             return null;
         });
-        if (!$res) repondre(400, ['erreur' => 'Pas de plat du jour prévu ce jour-là dans le menu de la semaine.']);
+        if (!$res) repondre(400, ['erreur' => 'Rien de prévu ce jour-là dans le menu de la semaine ou les événements.']);
         repondre(200, ['ok' => true, 'part' => $res[0], 'data' => $res[1]]);
     }
     // ---- Notifications récentes (cloche en haut du back-office) ----
@@ -593,7 +614,7 @@ if ($logged) {
     $photos = [];
     foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
-             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant'], 'forte' => FORTE_DEMANDE,
+             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant'], 'forte' => FORTE_DEMANDE, 'forteOffre' => FORTE_OFFRE,
              'commande' => commande_config() + ['jours' => count(commande_jours(site_load()))]];
 }
 ?>
@@ -609,7 +630,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=21" rel="stylesheet">
+<link href="admin.css?v=22" rel="stylesheet">
 </head>
 <body>
 
@@ -697,7 +718,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=21"></script>
+<script src="admin.js?v=22"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

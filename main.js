@@ -113,7 +113,7 @@
   if (rs) (function () {
     var D = JSON.parse(document.getElementById('rs-donnees').textContent);
     var corps = document.getElementById('rs-corps'), pied = document.getElementById('rs-pied');
-    var etat = { etape: 1, date: '', plat: 1, special: 0, autres: {}, t: 0 }, client = { prenom: '', nom: '', tel: '', email: '', note: '', lettre: false, memo: true }, avant = null;
+    var etat = { etape: 1, date: '', plat: 1, special: 0, autres: {}, evt: null, items: {}, t: 0 }, client = { prenom: '', nom: '', tel: '', email: '', note: '', lettre: false, memo: true }, avant = null;
     try { var m = JSON.parse(localStorage.getItem('jp-client') || 'null'); if (m) { client.prenom = m.prenom || ''; client.nom = m.nom || ''; client.tel = m.tel || ''; client.email = m.email || ''; } } catch (e) {}
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function num(p) { var x = String(p || '').replace(',', '.').match(/\d+(\.\d+)?/); return x ? +x[0] : 0; }
@@ -124,10 +124,13 @@
     function lundi(d) { var x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x.toISOString().slice(0, 10); }
     function avant_() { var l = lundi(jour().date); return D.jours.filter(function (j) { return j.date < jour().date && j.date >= l; }); }
     function autres() { return avant_().filter(function (j) { return etat.autres[j.date]; }); }
-    function total() { var j = jour(); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
-    function nb() { return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
-    function getQ(k) { return k.indexOf('a:') === 0 ? (etat.autres[k.slice(2)] || 0) : etat[k]; }
-    function setQ(k, v) { if (k.indexOf('a:') === 0) etat.autres[k.slice(2)] = v; else etat[k] = v; }
+    // Mode « événement » : les produits de l'événement, à récupérer le jour de l'événement
+    function evt() { return etat.evt === null ? null : (D.evts || []).filter(function (e) { return e.i === etat.evt; })[0]; }
+    function total() { var j = jour(), e = evt();
+      if (e) return e.items.reduce(function (t, it) { return t + num(it.prix) * (etat.items[it.k] || 0); }, 0); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
+    function nb() { if (evt()) return Object.keys(etat.items).reduce(function (t, k) { return t + etat.items[k]; }, 0); return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
+    function getQ(k) { return k.indexOf('e:') === 0 ? (etat.items[k.slice(2)] || 0) : k.indexOf('a:') === 0 ? (etat.autres[k.slice(2)] || 0) : etat[k]; }
+    function setQ(k, v) { if (k.indexOf('e:') === 0) etat.items[k.slice(2)] = v; else if (k.indexOf('a:') === 0) etat.autres[k.slice(2)] = v; else etat[k] = v; }
     function court(d) { var x = new Date(d + 'T12:00:00'); return { j: x.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''), n: x.getDate(), m: x.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') }; }
     function qte(nom, v, min) {
       return '<div class="rs-qte" role="group" aria-label="Quantité"><button type="button" data-rs="moins" data-q="' + nom + '" aria-label="Un de moins"' + (v <= min ? ' disabled' : '') + '>−</button><output aria-live="polite">' + v + '</output><button type="button" data-rs="plus" data-q="' + nom + '" aria-label="Un de plus"' + (v >= 20 ? ' disabled' : '') + '>+</button></div>';
@@ -138,7 +141,22 @@
       document.getElementById('rs-barre').style.width = (n === 1 ? 50 : 100) + '%';
       rs.dataset.etape = n;
     }
+    function etape1Evt(e) {
+      entete(1, e.titre);
+      corps.innerHTML = '<p class="rs-evt-quand" style="--c:' + esc(e.couleur) + '">' + '<b>À récupérer ' + esc(e.libelle) + '</b><span>à la boutique, 9 place Parmentier</span></p>' +
+        '<p class="rs-q">Votre commande</p>' + e.items.map(function (it) {
+          var q = etat.items[it.k] || 0;
+          return '<div class="rs-plat' + (q ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-plat-txt">' +
+            (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +
+            '<strong>' + esc(it.nom) + '</strong></div><div class="rs-plat-fin">' + (it.prix ? '<span class="rs-px">' + esc(it.prix) + '</span>' : '') +
+            (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : qte('e:' + it.k, q, 0)) + '</div></div>';
+        }).join('') +
+        '<p class="rs-info">Une question ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p>';
+      pied.innerHTML = '<div class="rs-total"><span>Total</span><b>' + (total() ? euros(total()) : '–') + '</b><small>à régler sur place</small></div>' +
+        '<button type="button" class="btn btn-violet btn-lg" data-rs="suite"' + (nb() ? '' : ' disabled') + '>Continuer</button>';
+    }
     function etape1() {
+      if (evt()) return etape1Evt(evt());
       var j = jour();
       entete(1, 'Réserver mon plat');
       corps.innerHTML = '<p class="rs-q">Pour quel jour ?</p><div class="rs-jours" role="radiogroup" aria-label="Jour de retrait">' + D.jours.map(function (x) {
@@ -166,14 +184,15 @@
       }).join('');
     }
     function recap() {
-      var j = jour(), l = [];
+      var j = jour(), l = [], e = evt();
+      if (e) return e.items.filter(function (it) { return etat.items[it.k]; }).map(function (it) { return etat.items[it.k] + ' × ' + it.nom; });
       if (etat.plat) l.push(etat.plat + ' × ' + j.plat.nom);
       if (j.special && etat.special) l.push(etat.special + ' × ' + j.special.nom);
       autres().forEach(function (a) { l.push(etat.autres[a.date] + ' × ' + a.plat.nom + ' (plat du ' + a.jour.toLowerCase() + ')'); });
       return l;
     }
     function etape2() {
-      var j = jour();
+      var j = evt() ? { libelle: evt().libelle } : jour();
       entete(2, 'Vos coordonnées');
       corps.innerHTML = '<button type="button" class="rs-recap" data-rs="retour"><span><b>' + esc(recap().join(', ')) + '</b><small>' + esc(j.libelle) + (total() ? ' · ' + euros(total()) : '') + '</small></span><em>Modifier</em></button>' +
         '<form class="rs-form" id="rs-form" novalidate>' +
@@ -217,7 +236,7 @@
       if (client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
       var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';
       fetch('commander', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
+        body: JSON.stringify(evt() ? { evt: etat.evt, items: etat.items, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t } : { date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j.ok) { if (j.jours) { D.jours = j.jours; } throw j; }
@@ -238,10 +257,16 @@
       pied.querySelector('button').focus();
       etat.fini = true;
     }
-    function ouvrir(date, offre) {
-      if (etat.fini) { etat = { etape: 1, date: '', plat: 1, special: 0, autres: {}, t: 0 }; client.note = ''; }
+    function ouvrir(date, offre, iEvt) {
+      if (etat.fini) { etat = { etape: 1, date: '', plat: 1, special: 0, autres: {}, evt: null, items: {}, t: 0 }; client.note = ''; }
+      etat.evt = iEvt === undefined ? null : iEvt;
+      if (etat.evt !== null) {
+        etat.items = {};
+        var e = evt(), dispo = e ? e.items.filter(function (it) { return !it.epuise; }) : [];
+        if (dispo.length === 1) etat.items[dispo[0].k] = 1;   // un seul produit : déjà dans la commande
+      }
       if (offre) { etat.plat = 0; etat.special = 1; }
-      etat.date = date && D.jours.some(function (j) { return j.date === date; }) ? date : (etat.date || D.jours[0].date);
+      etat.date = date && D.jours.some(function (j) { return j.date === date; }) ? date : (etat.date || (D.jours[0] ? D.jours[0].date : ''));
       etat.t = Math.floor(Date.now() / 1000);
       avant = document.activeElement;
       rs.hidden = false; document.body.classList.add('rs-ouvert');
@@ -249,6 +274,7 @@
       setTimeout(function () { var c = corps.querySelector('[aria-checked="true"]'); if (c) c.focus(); }, 60);
       suivre('resa');
     }
+    function ouvrirEvt(i) { ouvrir(null, false, i); }
     function fermer() {
       rs.hidden = true; document.body.classList.remove('rs-ouvert');
       if (avant && avant.focus) avant.focus();
@@ -256,6 +282,8 @@
     document.addEventListener('click', function (e) {
       var o = e.target.closest('[data-reserver]');
       if (o) { e.preventDefault(); ouvrir(o.dataset.reserver, 'offre' in o.dataset); return; }
+      var oe = e.target.closest('[data-reserver-evt]');
+      if (oe) { e.preventDefault(); ouvrirEvt(+oe.dataset.reserverEvt); return; }
       var b = e.target.closest('[data-rs]'); if (!b || !rs.contains(b)) return;
       var a = b.dataset.rs;
       if (a === 'fermer') fermer();
@@ -289,7 +317,7 @@
       }
     });
     // Lien direct : https://…/#reserver ouvre la réservation (pratique sur les réseaux sociaux)
-    if (location.hash === '#reserver') ouvrir();
+    if (location.hash === '#reserver') { if (D.jours.length) ouvrir(); else if (D.evts.length) ouvrirEvt(D.evts[0].i); }
   })();
 
   // Cookies : la carte Google Maps n'est chargée qu'avec l'accord du visiteur (choix gardé 6 mois)

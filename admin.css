@@ -768,3 +768,12 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .jg-aide{grid-column:1/-1;color:var(--gris);font-size:.78rem}
 .a-venir{display:flex;gap:.5rem;align-items:center;margin:1rem 0 0;padding:.65rem .8rem;border-radius:12px;background:var(--violet-pale);color:var(--violet);font-size:.9rem}
 @media (max-width:700px){.palmares th:nth-child(5),.palmares td:nth-child(5),.palmares th:nth-child(6),.palmares td:nth-child(6){display:none}}
+/* Offre spéciale et événements dans la journée */
+.r-offre{margin:.35rem 0 0!important;font-size:.92rem}
+.r-offre b{color:var(--encre)}
+.r-offre .raye{text-decoration:line-through;color:var(--gris)}
+.r-offre-n{display:inline-block;margin-left:.3rem;padding:.1rem .5rem;border-radius:999px;background:var(--fond);color:var(--gris);font-size:.76rem;font-weight:600}
+.r-evt{margin-top:.6rem!important;padding:.6rem .8rem;border-radius:12px;background:var(--blanc);border:1px solid var(--trait);border-left:4px solid var(--c,var(--violet))}
+.r-evt ul{list-style:none;margin:.35rem 0 0;padding:0;display:grid;gap:.3rem}
+.r-evt li{font-size:.9rem}
+.bloc-tete .tete-actions{align-items:center;gap:.8rem}

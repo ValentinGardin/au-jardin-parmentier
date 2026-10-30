@@ -573,3 +573,14 @@ body.rs-ouvert{overflow:hidden}
 .rs-jours button.forte::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ea580c}
 .rs-forte{font-style:normal;margin-left:.3rem;padding:.08rem .45rem;border-radius:999px;background:#ffedd5;color:#c2410c;letter-spacing:0;text-transform:none;font-weight:700}
 @media (prefers-reduced-motion:reduce){.etiq-forte{animation:none}}
+/* Réservation des événements, offres épuisées */
+.evt-boutons{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.evt-tel{color:var(--texte-evt);font-weight:600;opacity:.85}
+.evt-items li.epuise span,.evt-items li.epuise b{opacity:.55}
+.evt-items li.epuise b{text-decoration:line-through}
+.special-epuise{margin:.8rem 0 0;padding:.8rem 1rem;border-radius:14px;background:rgba(255,255,255,.14);font-weight:600}
+.rs-evt-quand{display:grid;gap:.1rem;margin:0 0 1rem;padding:.85rem 1rem;border-radius:14px;background:var(--violet-pale);border-left:4px solid var(--c,var(--violet))}
+.rs-evt-quand span{color:var(--gris);font-size:.9rem}
+.rs-plat.rs-epuise{opacity:.6;background:var(--fond)}
+.rs-tag-epuise{color:#b42318}
+.rs-plus-dispo{font-size:.82rem;font-weight:600;color:#b42318}

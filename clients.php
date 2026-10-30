@@ -113,7 +113,7 @@ function resas_numeroter() {
 function resa_clean($in, $ancien, $qui) {
     $lignes = [];
     foreach (liste($in['lignes'] ?? []) as $l) {
-        $l = ['type' => in_array($l['type'] ?? '', ['plat', 'special', 'autre'], true) ? $l['type'] : 'autre',
+        $l = ['type' => in_array($l['type'] ?? '', ['plat', 'special', 'evenement', 'autre'], true) ? $l['type'] : 'autre',
               'nom' => txt($l['nom'] ?? '', 120), 'prix' => txt($l['prix'] ?? '', 20), 'qte' => max(1, min(99, (int)($l['qte'] ?? 1))),
               // plat d'un autre jour (ex. le plat de mercredi réservé pour vendredi) : à mettre de côté ce jour-là
               'jour' => date_ok($l['jour'] ?? '')];
@@ -359,8 +359,10 @@ function commande_jours($d) {
             foreach ($s['jours'] as $j) {
                 if (norm($j['jour']) !== norm($nomJour) || $j['nom'] === '' || $j['ferme']) continue;
                 if ($j['epuise']) break;   // épuisé : plus réservable
+                $spDispo = special_le_jour($s['special'], $nomJour) && !$s['special']['epuise'];
                 $out[$date] = ['date' => $date, 'jour' => $nomJour, 'forte' => ($parts[$date] ?? 0) >= FORTE_DEMANDE, 'libelle' => date_fr($date, true), 'plat' => ['nom' => $j['nom'], 'desc' => $j['desc'], 'prix' => $j['prix']],
-                               'special' => special_le_jour($s['special'], $nomJour) ? ['nom' => $s['special']['nom'], 'prix' => $s['special']['prix'], 'titre' => $s['special']['titre'], 'lignes' => $s['special']['lignes']] : null];
+                               'special' => $spDispo ? ['nom' => $s['special']['nom'], 'prix' => $s['special']['prix'], 'titre' => $s['special']['titre'], 'lignes' => $s['special']['lignes'],
+                                   'forte' => offre_parts('special', $s['special']['nom'], $s['du'], $fin) >= FORTE_OFFRE] : null];
                 break;
             }
         }
@@ -462,4 +464,27 @@ function ventes_synthese($n) {
             'clients' => ['uniques' => count($parClient), 'nouveaux' => $nouveaux, 'fideles' => $fideles, 'top' => array_slice($top, 0, 5)],
             'toujours' => array_slice(array_map(function ($k, $v) { return ['nom' => $k, 'parts' => $v]; }, array_keys($toujours), $toujours), 0, 5),
             'avenir' => ['commandes' => $avenir['commandes'], 'ca' => round($avenir['ca'], 2)], 'lettre' => $lettre, 'premiere' => $resas ? min(array_column($resas, 'date')) : null];
+}
+
+// Parts réservées d'une offre (offre spéciale ou produit d'événement) entre deux dates
+function offre_parts($type, $nom, $du, $au) {
+    static $resas = null; $resas = $resas ?? resas_charger();
+    $n = 0;
+    foreach ($resas as $r) if ($r['date'] >= $du && $r['date'] <= $au) foreach ($r['lignes'] as $l) if ($l['type'] === $type && $l['nom'] === $nom) $n += (int)$l['qte'];
+    return $n;
+}
+// Événements réservables en ligne : activés, avec une date à partir de demain (la veille jusqu'à l'heure limite),
+// et avant la date limite de réservation s'il y en a une
+function commande_evts($d) {
+    $c = commande_config(); $out = [];
+    $demain = date('Y-m-d', strtotime('tomorrow'));
+    foreach ($d['evenements'] as $i => $e) {
+        if (!$e['actif'] || $e['date'] === '' || $e['date'] < $demain || !reservation_ouverte($e) || !$e['items']) continue;
+        if ($e['date'] === $demain && date('H:i') >= $c['limite']) continue;
+        $items = [];
+        foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => $it['prix'], 'epuise' => $it['epuise'],
+            'forte' => !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], $e['date']) >= FORTE_OFFRE];
+        $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $e['date'], 'libelle' => date_fr($e['date'], true), 'couleur' => $e['couleur'], 'items' => $items];
+    }
+    return $out;
 }
