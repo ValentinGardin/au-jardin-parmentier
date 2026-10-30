@@ -670,3 +670,18 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .r-recap-pied b{color:var(--encre);margin-left:.25rem}
 @media (max-width:640px){.r-recap th:nth-child(3),.r-recap td:nth-child(3),.r-recap th:nth-child(4),.r-recap td:nth-child(4){display:none}.r-recap td,.r-recap th{padding:.55rem .4rem}}
 @media print{.r-recap{break-inside:avoid;border:0;padding:0}}
+
+/* Numéro de commande, plats d'un autre jour */
+.r-num{display:inline-block;margin-left:.3rem;padding:.05rem .45rem;border-radius:6px;background:var(--fond);color:var(--gris);font:600 .75rem var(--texte);vertical-align:middle;font-variant-numeric:tabular-nums}
+.modale h2 .r-num{font-size:.85rem}
+.r-orig{display:inline-block;margin-left:.2rem;padding:.05rem .4rem;border-radius:6px;background:var(--bleu-pale);color:var(--bleu);font-size:.74rem;font-weight:600}
+.r-cote{margin:0 0 1rem;padding:.8rem 1rem;border-radius:14px;background:#fff8e1;border:1px solid #f3e1a6;color:#6b4e00}
+.r-cote p{display:flex;align-items:center;gap:.4rem;margin:0 0 .35rem;font-size:.92rem}
+.r-cote p .ico{width:16px;height:16px}
+.r-cote ul{margin:0;padding-left:1.4rem;font-size:.9rem}
+.r-cote li span{color:#8a6d1a}
+.r-cote .lien{padding:0;font-size:.85rem;color:#6b4e00;text-decoration:underline}
+.fr-cote{display:flex;align-items:center;gap:.35rem;margin:-.15rem 0 .55rem!important;font-size:.8rem;color:var(--bleu)!important}
+.fr-cote .ico{width:13px;height:13px}
+.r-recap-cote td{background:#fffbea}
+.r-recap-cote small{display:block;color:#8a6d1a;font-size:.76rem}

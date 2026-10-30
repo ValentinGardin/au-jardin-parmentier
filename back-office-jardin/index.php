@@ -222,8 +222,19 @@ if ($api !== '') {
         if ($api === 'resas') {
             $du = date_ok($_GET['du'] ?? '') ?: date('Y-m-d'); $au = date_ok($_GET['au'] ?? '') ?: $du;
             $cl = (string)($_GET['client'] ?? '');   // toutes les commandes d'un client (fiche client)
+            $num = (int)($_GET['num'] ?? 0);         // recherche par numéro de commande
+            resas_numeroter();
             $clients = clients_charger(); $out = [];
-            foreach (resas_charger() as $r) if ($cl !== '' ? $r['client'] === $cl : $r['date'] >= $du && $r['date'] <= $au) $out[] = $resaPublique($r, $clients);
+            foreach (resas_charger() as $r) {
+                if ($num) $garder = (int)$r['num'] === $num;
+                elseif ($cl !== '') $garder = $r['client'] === $cl;
+                else {
+                    // les réservations de la semaine, et celles d'autres jours qui contiennent un plat de cette semaine (à mettre de côté)
+                    $garder = $r['date'] >= $du && $r['date'] <= $au;
+                    foreach ($r['lignes'] as $li) if (($li['jour'] ?? '') !== '' && $li['jour'] >= $du && $li['jour'] <= $au) $garder = true;
+                }
+                if ($garder) $out[] = $resaPublique($r, $clients);
+            }
             usort($out, function ($a, $b) { return strcmp($a['date'] . $a['cree'], $b['date'] . $b['cree']); });
             $sc = sms_config();
             if ($cl === '') sms_auto();   // l'onglet Réservations se met à jour chaque minute : l'envoi de 17 h 30 part à l'heure
@@ -268,6 +279,7 @@ if ($api !== '') {
                 foreach ($l as $j => $r) if ($r['id'] === ($in['id'] ?? '')) $k = $j;
                 $r = resa_clean(['client' => $clients[$i]['id']] + $in, $k === null ? null : $l[$k], $qui);
                 if (!$r['lignes']) return [null, 'Ajoutez au moins un plat à la commande.'];
+                if (!$r['num']) $r['num'] = resa_num_suivant($l);
                 if ($k === null) $l[] = $r; else $l[$k] = $r;
                 if (!clients_enregistrer($clients) || !resas_enregistrer($l)) return [null, 'Enregistrement impossible : le dossier data/ n’est pas modifiable.'];
                 return [[$r, $clients], null];
@@ -474,7 +486,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=17" rel="stylesheet">
+<link href="admin.css?v=18" rel="stylesheet">
 </head>
 <body>
 
@@ -543,7 +555,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=17"></script>
+<script src="admin.js?v=18"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

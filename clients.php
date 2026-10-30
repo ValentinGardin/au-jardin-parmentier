@@ -86,16 +86,32 @@ function client_public($c, $masquer) {
 // ---- Réservations ----
 function resas_charger() { return array_values(array_filter(lire_json(RESAS), 'is_array')); }
 function resas_enregistrer($l) { return json_save(RESAS, array_values($l)); }
+function resa_num_suivant($l) { return 1 + array_reduce($l, function ($m, $r) { return max($m, (int)($r['num'] ?? 0)); }, 0); }
+// Les réservations créées avant les numéros en reçoivent un (dans l'ordre de création)
+function resas_numeroter() {
+    verrou(function () {
+        $l = resas_charger();
+        if (!array_filter($l, function ($r) { return empty($r['num']); })) return;
+        $ordre = array_keys($l);
+        usort($ordre, function ($a, $b) use ($l) { return strcmp($l[$a]['cree'], $l[$b]['cree']); });
+        $n = resa_num_suivant($l);
+        foreach ($ordre as $k) if (empty($l[$k]['num'])) $l[$k]['num'] = $n++;
+        resas_enregistrer($l);
+    });
+}
 
 function resa_clean($in, $ancien, $qui) {
     $lignes = [];
     foreach (liste($in['lignes'] ?? []) as $l) {
         $l = ['type' => in_array($l['type'] ?? '', ['plat', 'special', 'autre'], true) ? $l['type'] : 'autre',
-              'nom' => txt($l['nom'] ?? '', 120), 'prix' => txt($l['prix'] ?? '', 20), 'qte' => max(1, min(99, (int)($l['qte'] ?? 1)))];
+              'nom' => txt($l['nom'] ?? '', 120), 'prix' => txt($l['prix'] ?? '', 20), 'qte' => max(1, min(99, (int)($l['qte'] ?? 1))),
+              // plat d'un autre jour (ex. le plat de mercredi réservé pour vendredi) : à mettre de côté ce jour-là
+              'jour' => date_ok($l['jour'] ?? '')];
         if ($l['nom'] !== '') $lignes[] = $l;
     }
     $r = [
         'id' => $ancien['id'] ?? bin2hex(random_bytes(6)),
+        'num' => (int)($ancien['num'] ?? 0),   // numéro de commande, attribué à la création
         'date' => date_ok($in['date'] ?? '') ?: date('Y-m-d'),
         'client' => (string)($in['client'] ?? ''),
         'lignes' => $lignes,

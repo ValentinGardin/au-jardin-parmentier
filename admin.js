@@ -704,55 +704,76 @@
       '<div class="tuile"><p>Payées</p><strong>' + nbP + '<em>/' + n + '</em></strong><small>' + (total ? euros(encaisse) + ' encaissés sur ' + euros(total) : (n - nbP ? (n - nbP) + ' à encaisser' : 'tout est réglé')) + '</small></div>' +
       '<div class="tuile"><p>Récupérées</p><strong>' + nbR + '<em>/' + n + '</em></strong><small>' + (n - nbR ? (n - nbR) + ' encore à venir' : 'tout le monde est passé') + '</small></div></div>' : '';
     var f = [['tout', 'Toutes', n], ['attente', 'À récupérer', n - nbR], ['impaye', 'Non payées', n - nbP], ['fait', 'Récupérées', nbR]];
-    var outils = n ? '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
+    var outils = '<div class="r-outils">' + (n ? '<div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
       return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
-    }).join('') + '</div><input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone…" aria-label="Rechercher"></div>' : '';
-    return semaine + titre + resume + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
+    }).join('') + '</div>' : '') + '<input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone, un n° de commande…" aria-label="Rechercher"></div>';
+    return semaine + titre + resume + deCote() + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
+  }
+  // Plats de ce jour réservés pour un jour suivant : à mettre de côté aujourd'hui
+  function lignesDeCote() {
+    var out = [];
+    (R.data ? R.data.resas : []).forEach(function (r) {
+      if (r.date === R.date) return;
+      r.lignes.forEach(function (l) { if (l.jour === R.date) out.push({ r: r, l: l }); });
+    });
+    return out.sort(function (a, b) { return a.r.date < b.r.date ? -1 : 1; });
+  }
+  function deCote() {
+    var l = lignesDeCote();
+    if (!l.length) return '';
+    return '<div class="r-cote"><p>' + ico('note') + '<b>À mettre de côté aujourd’hui</b> pour un autre jour</p><ul>' + l.map(function (x) {
+      return '<li><b>' + x.l.qte + ' ×</b> ' + esc(x.l.nom) + ' <span>· ' + esc(nomClient(x.r.c) || 'client') + ', à récupérer ' + esc(dateLongue(x.r.date).toLowerCase()) + ' · <button type="button" class="lien" data-act="r-num" data-n="' + x.r.num + '">n° ' + x.r.num + '</button></span></li>';
+    }).join('') + '</ul></div>';
   }
   // Récapitulatif du jour : un plat par ligne, quantité totale, prix, montant, puis le total de la journée
   function recapJour(jour) {
-    if (!jour.length) return '';
+    if (!jour.length && !lignesDeCote().length) return '';
     var lignes = {}, ordre = [], qte = 0, total = 0, encaisse = 0;
     jour.forEach(function (r) {
       r.lignes.forEach(function (l) {
-        var nom = l.nom.trim() || 'Autre', k = nom + '|' + l.prix;
+        var nom = (l.nom.trim() || 'Autre') + (l.jour && l.jour !== r.date ? ' (plat du ' + jourNom(l.jour).toLowerCase() + ')' : ''), k = nom + '|' + l.prix;
         if (!lignes[k]) { lignes[k] = { nom: nom, prix: prixNum(l.prix), qte: 0, recup: 0 }; ordre.push(k); }
         lignes[k].qte += l.qte; if (r.recupere) lignes[k].recup += l.qte;
         qte += l.qte; total += prixNum(l.prix) * l.qte; if (r.paye) encaisse += prixNum(l.prix) * l.qte;
       });
     });
     ordre.sort(function (a, b) { return lignes[b].qte - lignes[a].qte; });
+    var cote = {};
+    lignesDeCote().forEach(function (x) { cote[x.l.nom] = (cote[x.l.nom] || 0) + x.l.qte; });
     return '<section class="bloc r-recap"><h2>Récapitulatif du jour</h2><div class="r-recap-tab"><table><thead><tr><th>Plat</th><th class="n">Quantité</th><th class="n">Déjà récupérés</th><th class="n">Prix</th><th class="n">Montant</th></tr></thead><tbody>' +
       ordre.map(function (k) { var x = lignes[k];
         return '<tr><td>' + esc(x.nom) + '</td><td class="n"><b>' + x.qte + '</b></td><td class="n">' + x.recup + ' / ' + x.qte + '</td><td class="n">' + (x.prix ? euros(x.prix) : '–') + '</td><td class="n">' + (x.prix ? euros(x.prix * x.qte) : '–') + '</td></tr>';
       }).join('') +
-      '</tbody><tfoot><tr><td>Total</td><td class="n">' + qte + '</td><td></td><td></td><td class="n">' + euros(total) + '</td></tr></tfoot></table></div>' +
-      '<p class="r-recap-pied"><span>Encaissé <b>' + euros(encaisse) + '</b></span><span>Reste à encaisser <b>' + euros(total - encaisse) + '</b></span></p></section>';
+      Object.keys(cote).map(function (k) { return '<tr class="r-recap-cote"><td>' + esc(k) + ' <small>à mettre de côté pour un autre jour</small></td><td class="n"><b>' + cote[k] + '</b></td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>'; }).join('') +
+      '</tbody>' + (jour.length ? '<tfoot><tr><td>Total</td><td class="n">' + qte + '</td><td></td><td></td><td class="n">' + euros(total) + '</td></tr></tfoot>' : '') + '</table></div>' +
+      (jour.length ? '<p class="r-recap-pied"><span>Encaissé <b>' + euros(encaisse) + '</b></span><span>Reste à encaisser <b>' + euros(total - encaisse) + '</b></span></p>' : '') + '</section>';
   }
   function resasListe() {
     var jour = resasDuJour() || [];
+    if (!jour.length && numCherche(R.q)) return '<p class="vide">Aucune réservation ce jour-là.<br><button type="button" class="btn btn-violet" data-act="r-num" data-n="' + numCherche(R.q) + '">Chercher la commande n° ' + numCherche(R.q) + ' sur tous les jours</button></p>';
     if (!jour.length) return '<div class="vide grand">Aucune réservation pour ce jour.<br><button type="button" class="btn btn-violet" data-act="resa-nouvelle">' + ico('plus') + 'Nouvelle réservation</button></div>';
-    var q = sansAccent(R.q).trim(), qc = q.replace(/\D/g, '');
+    var q = sansAccent(R.q).trim(), qc = q.replace(/\D/g, ''), qn = numCherche(R.q);
     var l = jour.filter(function (r) {
       if (R.filtre === 'attente' && r.recupere) return false;
       if (R.filtre === 'impaye' && r.paye) return false;
       if (R.filtre === 'fait' && !r.recupere) return false;
       if (!q) return true;
+      if (qn && r.num === qn) return true;
       return sansAccent(nomClient(r.c) + ' ' + r.c.email + ' ' + r.note + ' ' + r.lignes.map(function (x) { return x.nom; }).join(' ')).indexOf(q) >= 0 || (qc.length > 2 && r.c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
     });
     // Les commandes déjà récupérées passent en bas de la liste
     l.sort(function (a, b) { return (a.recupere - b.recupere) || (a.cree < b.cree ? -1 : 1); });
-    if (!l.length) return '<p class="vide">Aucune réservation ne correspond.</p>';
+    if (!l.length) return '<p class="vide">Aucune réservation ne correspond ce jour-là.' + (qn ? '<br><button type="button" class="btn btn-violet" data-act="r-num" data-n="' + qn + '">Chercher la commande n° ' + qn + ' sur tous les jours</button>' : '') + '</p>';
     return '<div class="r-liste">' + l.map(ligneResa).join('') + '</div>';
   }
   function ligneResa(r) {
     var c = r.c, t = totalResa(r);
     return '<article class="r-ligne' + (r.recupere ? ' fait' : '') + '">' +
-      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + '</strong>' +
+      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + ' <span class="r-num">n° ' + r.num + '</span></strong>' +
         (c.tel ? '<a href="tel:' + esc(c.tel.replace(/[^\d+]/g, '')) + '">' + ico('tel') + esc(c.tel) + '</a>' : '') +
         '<small>Prise par ' + esc(r.par) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small>' +
         (r.rappel ? '<small class="r-sms-ok" title="SMS de rappel envoyé ' + esc(quand(r.rappel)) + '">' + ico('ok') + 'SMS envoyé à ' + heure(r.rappel) + '</small>' : '') + '</div>' +
-      '<div class="r-cmd"><ul>' + r.lignes.map(function (x) { return '<li><b>' + x.qte + ' ×</b> ' + esc(x.nom) + '</li>'; }).join('') + '</ul>' +
+      '<div class="r-cmd"><ul>' + r.lignes.map(function (x) { return '<li><b>' + x.qte + ' ×</b> ' + esc(x.nom) + (x.jour && x.jour !== r.date ? ' <small class="r-orig">plat du ' + jourNom(x.jour).toLowerCase() + ' ' + dateFr(x.jour) + '</small>' : '') + '</li>'; }).join('') + '</ul>' +
         (r.note ? '<p class="r-note">' + ico('note') + esc(r.note) + '</p>' : '') + '</div>' +
       '<div class="r-total">' + (t ? euros(t) : '') + '</div>' +
       '<div class="r-etats">' +
@@ -763,6 +784,15 @@
         '<button type="button" class="ib" data-act="resa-modif" data-id="' + r.id + '" title="Modifier" aria-label="Modifier">' + ico('crayon') + '</button>' +
         '<button type="button" class="ib ib-suppr" data-act="resa-suppr" data-id="' + r.id + '" title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div>' +
       '</article>';
+  }
+  // « 12 », « #12 », « n° 12 » → 12 (numéro de commande)
+  function numCherche(q) { var m = String(q || '').trim().match(/^(?:#|n°|no|n)?\s*(\d{1,5})$/i); return m ? +m[1] : 0; }
+  function allerNum(n) {
+    getJSON('resas&num=' + n).then(function (j) {
+      if (!j.resas.length) return toast('Aucune commande n° ' + n + '.', true);
+      var r = j.resas[0]; R.date = r.date; R.q = String(n); R.filtre = 'tout'; R.data = null; R.charge = ''; render(true);
+      toast('Commande n° ' + n + ' : ' + (nomClient(r.c) || 'client') + ', ' + dateLongue(r.date).toLowerCase() + '.');
+    }).catch(function (e) { toast(e.message, true); });
   }
   function resaParId(id) { return R.data ? R.data.resas.filter(function (r) { return r.id === id; })[0] : null; }
   function changerEtat(b) {
@@ -786,6 +816,8 @@
   // Pensée pour aller vite au téléphone : on tape le nom (les clients connus sont proposés), le jour est déjà choisi,
   // le plat du jour est déjà dans la commande ; il reste la quantité, puis Entrée.
   function ligneVide(date, type) {
+    // « jour:2026-10-28 » : le plat d'un jour précédent, à mettre de côté ce jour-là
+    if (String(type).indexOf('jour:') === 0) { var j = type.slice(5), pj = menuDu(j).plat; if (pj) return { type: 'plat', nom: pj.nom, prix: pj.prix, qte: 1, jour: j }; }
     var m = menuDu(date);
     if (type !== 'autre' && type !== 'special' && m.plat) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
     if (type === 'special' && m.special) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
@@ -834,10 +866,18 @@
     }
     function optionsLigne(l) {
       var m = menuDu(f.date), o = [];
-      if (m.plat || l.type === 'plat') o.push(['plat', 'Plat du jour · ' + (l.type === 'plat' ? l.nom : m.plat.nom) + ((l.type === 'plat' ? l.prix : m.plat.prix) ? ' · ' + (l.type === 'plat' ? l.prix : m.plat.prix) : '')]);
+      var dj0 = l.type === 'plat' && !l.jour;
+      if (m.plat || dj0) o.push(['plat', 'Plat du jour · ' + (dj0 ? l.nom : m.plat.nom) + ((dj0 ? l.prix : m.plat.prix) ? ' · ' + (dj0 ? l.prix : m.plat.prix) : '')]);
       if (m.special || l.type === 'special') o.push(['special', 'Offre spéciale · ' + (l.type === 'special' ? l.nom : m.special.nom)]);
+      // plats des 6 jours précédents (pour un client qui veut le plat de mercredi le vendredi)
+      var avant = [], v = l.jour ? 'jour:' + l.jour : l.type;
+      for (var k = 6; k >= 1; k--) {
+        var dj = plus(f.date, -k), pj = menuDu(dj).plat;
+        if (pj || dj === l.jour) avant.push(['jour:' + dj, jourNom(dj) + ' ' + dateFr(dj) + ' · ' + (dj === l.jour ? l.nom : pj.nom) + ((dj === l.jour ? l.prix : pj.prix) ? ' · ' + (dj === l.jour ? l.prix : pj.prix) : '')]);
+      }
       o.push(['autre', 'Autre chose…']);
-      return o.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === l.type ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('');
+      function opt(x) { return '<option value="' + x[0] + '"' + (x[0] === v ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }
+      return o.slice(0, -1).map(opt).join('') + (avant.length ? '<optgroup label="Plats des jours précédents (à mettre de côté)">' + avant.map(opt).join('') + '</optgroup>' : '') + opt(o[o.length - 1]);
     }
     function htmlLignes() {
       var tot = 0;
@@ -847,7 +887,8 @@
           '<select data-l="' + i + '" data-k="type" aria-label="Plat">' + optionsLigne(l) + '</select>' +
           (l.type === 'autre' ? '<input data-l="' + i + '" data-k="nom" value="' + esc(l.nom) + '" placeholder="Quoi ? ex. Quiche lorraine" aria-label="Quoi ?"><input class="prix" data-l="' + i + '" data-k="prix" value="' + esc(l.prix) + '" placeholder="Prix" inputmode="decimal" aria-label="Prix à l’unité">' : '') +
           '<div class="qte"><button type="button" data-f="moins" data-i="' + i + '" aria-label="Un de moins">−</button><input type="number" min="1" max="99" data-l="' + i + '" data-k="qte" value="' + l.qte + '" aria-label="Quantité"><button type="button" data-f="plus" data-i="' + i + '" aria-label="Un de plus">+</button></div>' +
-          (f.lignes.length > 1 ? '<button type="button" class="ib ib-suppr" data-f="retirer" data-i="' + i + '" title="Retirer" aria-label="Retirer">' + ico('suppr') + '</button>' : '') + '</div>';
+          (f.lignes.length > 1 ? '<button type="button" class="ib ib-suppr" data-f="retirer" data-i="' + i + '" title="Retirer" aria-label="Retirer">' + ico('suppr') + '</button>' : '') + '</div>' +
+          (l.jour ? '<p class="fr-cote">' + ico('note') + 'Plat du ' + jourNom(l.jour).toLowerCase() + ' ' + dateFr(l.jour) + ' : il sera noté « à mettre de côté » ce jour-là.</p>' : '');
       }).join('');
       return h + '<div class="fr-pied-cmd"><button type="button" class="btn btn-discret" data-f="ajouter">' + ico('plus') + 'Ajouter un plat</button>' + (tot ? '<span class="fr-total">Total <b>' + euros(tot) + '</b></span>' : '') + '</div>';
     }
@@ -863,7 +904,7 @@
     function dessiner() {
       var k = connu();
       d.innerHTML = '<form class="modale modale-resa" role="dialog" aria-modal="true" aria-labelledby="fr-t" novalidate>' +
-        '<h2 id="fr-t">' + (nouveau ? 'Nouvelle réservation' : 'Modifier la réservation') + '</h2>' +
+        '<h2 id="fr-t">' + (nouveau ? 'Nouvelle réservation' : 'Modifier la réservation <span class="r-num">n° ' + r.num + '</span>') + '</h2>' +
         '<fieldset class="fr-bloc"><legend>Client' + (k ? ' <span class="statut statut-violet">' + ico('ok') + 'Client connu' + (k.nb ? ' · ' + pluriel(k.nb, 'commande') : '') + '</span> <button type="button" class="lien" data-f="oublier">Autre client</button>' : '') + '</legend>' +
           '<div class="grille-2"><label class="champ"><span>Prénom</span><input data-c="prenom" value="' + esc(f.c.prenom) + '" autocomplete="off" placeholder="ex. Marie"></label>' +
           '<label class="champ"><span>Nom</span><input data-c="nom" value="' + esc(f.c.nom) + '" autocomplete="off" placeholder="ex. Dupont"></label></div>' +
@@ -923,7 +964,7 @@
       else if (a === 'date') {
         f.date = b.dataset.d;
         // le plat du jour suit le jour choisi
-        f.lignes = f.lignes.map(function (l) { if (l.type === 'autre') return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
+        f.lignes = f.lignes.map(function (l) { if (l.type === 'autre' || l.jour) return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
         part('fr-dates', htmlDates()); part('fr-lignes', htmlLignes());
       } else if (a === 'plus' || a === 'moins') { f.lignes[i].qte = Math.max(1, Math.min(99, f.lignes[i].qte + (a === 'plus' ? 1 : -1))); part('fr-lignes', htmlLignes()); }
       else if (a === 'retirer') { f.lignes.splice(i, 1); part('fr-lignes', htmlLignes()); }
@@ -949,7 +990,7 @@
           if (lundi(j.resa.date) !== lundi(R.date)) { R.date = j.resa.date; R.data = null; R.charge = ''; }
           else { R.date = j.resa.date; remplacerResa(j.resa); }
           if (onglet === 'resas') render(true); else if (onglet === 'clients') chargerClients();
-          toast((nouveau ? 'Réservation enregistrée' : 'Réservation modifiée') + ' pour ' + dateLongue(j.resa.date).toLowerCase() + '.');
+          toast((nouveau ? 'Réservation n° ' + j.resa.num + ' enregistrée' : 'Réservation n° ' + j.resa.num + ' modifiée') + ' pour ' + dateLongue(j.resa.date).toLowerCase() + '.');
         })
         .catch(function (er) { btn.disabled = false; erreur(er.message); });
     });
@@ -1457,6 +1498,13 @@
   app.addEventListener('keydown', function (e) {
     var t = e.target;
     if (e.key !== 'Enter' || t.tagName !== 'INPUT') return;
+    if (t.id === 'r-q') {
+      // Entrée sur un numéro de commande absent de ce jour : on va le chercher sur tous les jours
+      var n = numCherche(t.value), jr = resasDuJour() || [];
+      if (n && !jr.some(function (r) { return r.num === n; })) allerNum(n);
+      e.preventDefault(); return;
+    }
+    if (t.id === 'cl-q') { e.preventDefault(); return; }
     e.preventDefault();
     if (t.dataset.dernier) {
       t.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1572,6 +1620,8 @@
       ouvrirApres('menus', 'carte-traiteur?c=' + b.dataset.i);
     } else if (a === 'r-date') {
       R.date = b.dataset.d; render(true);
+    } else if (a === 'r-num') {
+      allerNum(+b.dataset.n);
     } else if (a === 'r-filtre') {
       R.filtre = b.dataset.f; majResas();
     } else if (a === 'r-etat') {
