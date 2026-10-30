@@ -355,3 +355,18 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .mon-mdp .grille-3 .champ{margin-bottom:.5rem}
 .version{margin:1rem 0 0;font-size:.75rem;color:var(--gris-clair)}
 .piege{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* Visuels à télécharger */
+.visuels-grille{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
+@media (max-width:1100px){.visuels-grille{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.visuels-grille{grid-template-columns:1fr}}
+.visuel{display:flex;flex-direction:column;gap:.25rem;padding:.8rem;border:1px solid var(--trait);border-radius:14px;background:var(--fond)}
+.visuel-cadre{display:grid;place-items:center;height:250px;margin-bottom:.5rem;border-radius:10px;background:#ebe5dd;overflow:hidden}
+.visuel-cadre canvas{max-width:92%;max-height:232px;width:auto;height:auto;border-radius:4px;box-shadow:0 8px 20px -8px rgba(29,23,27,.35);background:#fff}
+.visuel strong{font:700 1.05rem var(--titre)}
+.visuel small{color:var(--gris);font-size:.8rem}
+.visuel-actions{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.6rem}
+.visuel-actions .btn{padding:.55rem .8rem;font-size:.85rem}
+.visuel-actions .btn-violet{flex:1}
+.visuel.en-cours .visuel-cadre{outline:3px solid var(--violet);outline-offset:-3px}
+#visuels .aide.petit{margin:1rem 0 0}

@@ -121,7 +121,7 @@
       : '';
     return tete('Menu de la semaine', 'Les plats du jour affichés en haut du site. Le plat du jour est mis en avant automatiquement.',
         '<button type="button" class="btn btn-discret" data-act="semaine-suivante">' + ico('suivant') + 'Préparer la semaine suivante</button>' +
-        '<button type="button" class="btn btn-ligne" data-act="imprimer">' + ico('imprim') + 'Imprimer l’affiche</button>') +
+        '<a class="btn btn-ligne" href="#visuels">' + ico('imprim') + 'Visuels et affiche</a>') +
       '<div class="deux-cols"><div class="col-form">' +
         '<section class="bloc"><div class="bloc-tete"><h2>1. La semaine</h2><span class="statut statut-' + st[0] + '" id="statut-sem">' + st[1] + '</span></div>' +
           '<div class="grille-3">' + champ('Du', 'semaine.du', { type: 'date' }) + champ('Au', 'semaine.au', { type: 'date' }) + champ('Titre', 'semaine.titre', { ph: 'Inspirations de la semaine' }) + '</div></section>' +
@@ -132,7 +132,35 @@
           '<label class="interrupteur"><input type="checkbox" data-act="special"' + (specialOuvert ? ' checked' : '') + '><span></span>' + (specialOuvert ? 'Affichée' : 'Masquée') + '</label></div>' +
           (specialOuvert ? sp : '<p class="aide">Un plateau ou une formule pour quelques jours (ex. plateau apéritif du week-end). Elle apparaît dans un encadré à côté des plats.</p>') + '</section>' +
         '<section class="bloc">' + champ('Petite note sous le menu', 'semaine.note', { opt: true, ph: 'ex. Fermé le mercredi 11 novembre' }) + '</section>' +
+        vueVisuels() +
       '</div><aside class="col-apercu"><p class="apercu-titre">Aperçu de l’affiche</p><div class="affiche-mini" id="apercu">' + apercu() + '</div></aside></div>';
+  }
+  // ---------- Visuels à télécharger (dessinés par visuels.js) ----------
+  function donneesVisuels() {
+    var s = site.semaine;
+    return { titre: s.titre, du: s.du, au: s.au, jours: s.jours, special: specialOuvert ? s.special : null };
+  }
+  function vueVisuels() {
+    var fv = window.Visuels && Visuels.formatVideo(), mp4 = fv && fv.indexOf('mp4') >= 0;
+    function carte(fmt, titre, sous, boutons) {
+      return '<div class="visuel"><div class="visuel-cadre"><canvas class="v-apercu" data-format="' + fmt + '" width="270" height="340" aria-hidden="true"></canvas></div>' +
+        '<strong>' + titre + '</strong><small>' + sous + '</small><div class="visuel-actions">' + boutons + '</div></div>';
+    }
+    return '<section class="bloc" id="visuels"><div class="bloc-tete"><h2>4. Visuels à télécharger</h2><span class="compte">Créés automatiquement à partir du menu ci-dessus</span></div>' +
+      '<div class="visuels-grille">' +
+        carte('a4', 'Affiche A4', 'Pour la vitrine et le comptoir', '<button type="button" class="btn btn-violet" data-act="visuel" data-format="a4">Télécharger (PNG)</button><button type="button" class="btn btn-discret" data-act="imprimer">' + ico('imprim') + 'Imprimer / PDF</button>') +
+        carte('post', 'Publication', '1080 × 1350 · Instagram, Facebook', '<button type="button" class="btn btn-violet" data-act="visuel" data-format="post">Télécharger (PNG)</button>') +
+        carte('story', 'Story', '1080 × 1920 · Instagram, Facebook, WhatsApp', '<button type="button" class="btn btn-violet" data-act="visuel" data-format="story">Télécharger (PNG)</button>') +
+        carte('story', 'Story vidéo 15 s', '1080 × 1920 · ' + (fv ? (mp4 ? 'vidéo MP4' : 'vidéo WebM') : 'non disponible sur ce navigateur'),
+          '<button type="button" class="btn btn-violet" data-act="video"' + (fv ? '' : ' disabled') + '>Créer la vidéo</button><button type="button" class="btn btn-discret" data-act="video-apercu">▶ Aperçu</button>').replace('class="visuel"', 'class="visuel visuel-video"') +
+      '</div>' +
+      (fv && !mp4 ? '<p class="aide petit">Ce navigateur crée la vidéo au format WebM, qu’Instagram n’accepte pas toujours. Pour un MP4, utilisez Chrome ou Edge à jour, ou Safari.</p>' : '') +
+      '<p class="aide petit">Les visuels reprennent ce qui est affiché à l’écran, même avant d’enregistrer. Pendant la création de la vidéo (15 secondes), gardez cette page ouverte.</p></section>';
+  }
+  var apercusT;
+  function dessinerApercus() {
+    if (!window.Visuels) return;
+    app.querySelectorAll('canvas.v-apercu').forEach(function (cv) { Visuels.apercu(cv, cv.dataset.format, donneesVisuels()); });
   }
   function apercu() {
     var s = site.semaine, sp = s.special;
@@ -473,6 +501,7 @@
     app.innerHTML = '<div class="panneau" data-panneau="' + onglet + '">' + VUES[onglet]() + '</div>';
     if (garderScroll) window.scrollTo(0, y); else window.scrollTo(0, 0);
     barre();
+    if (onglet === 'semaine') dessinerApercus();
   }
   var bar = document.getElementById('enreg'), barTxt = document.getElementById('enreg-txt');
   function barre() {
@@ -482,7 +511,7 @@
   }
   function apresSaisie() {
     barre();
-    if (onglet === 'semaine') { var a = document.getElementById('apercu'); if (a) a.innerHTML = apercu(); }
+    if (onglet === 'semaine') { var a = document.getElementById('apercu'); if (a) a.innerHTML = apercu(); clearTimeout(apercusT); apercusT = setTimeout(dessinerApercus, 450); }
     if (onglet === 'mots') { var m = document.getElementById('mots-apercu'); if (m) m.innerHTML = motsApercu(); }
   }
   var toastT;
@@ -727,6 +756,24 @@
         .then(function () { render(true); toast('Mot de passe changé.'); }).catch(function (er) { toast(er.message, true); });
     } else if (a === 'couleur') {
       set(p, b.dataset.c); render(true);
+    } else if (a === 'visuel') {
+      b.disabled = true;
+      Visuels.image(b.dataset.format, donneesVisuels())
+        .then(function () { toast('Image téléchargée : retrouvez-la dans vos Téléchargements.'); })
+        .catch(function (e) { toast(e.message || 'Impossible de créer l’image.', true); })
+        .then(function () { b.disabled = false; });
+    } else if (a === 'video-apercu') {
+      var cv = b.closest('.visuel').querySelector('canvas');
+      b.disabled = true;
+      Visuels.jouer(cv, donneesVisuels()).then(function () { b.disabled = false; });
+    } else if (a === 'video') {
+      var carteV = b.closest('.visuel'), txt = b.textContent;
+      carteV.classList.add('en-cours');
+      app.querySelectorAll('[data-act=video],[data-act=video-apercu]').forEach(function (x) { x.disabled = true; });
+      Visuels.video(donneesVisuels(), function (p) { b.textContent = 'Création… ' + Math.round(p * Visuels.DUREE) + ' s / ' + Visuels.DUREE; })
+        .then(function (ext) { toast('Vidéo ' + ext.toUpperCase() + ' téléchargée : retrouvez-la dans vos Téléchargements.'); })
+        .catch(function (e) { toast(e.message || 'Impossible de créer la vidéo.', true); })
+        .then(function () { b.textContent = txt; carteV.classList.remove('en-cours'); app.querySelectorAll('[data-act=video],[data-act=video-apercu]').forEach(function (x) { x.disabled = false; }); });
     } else if (a === 'periodeStats') {
       periodeStats = i; ecrire('periodeStats', String(i)); render(true);
     } else if (a === 'dup-evt') {
