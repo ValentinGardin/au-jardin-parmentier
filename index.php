@@ -39,10 +39,9 @@ $galerie = photos_galerie();
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="style.css?v=7" rel="stylesheet">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link href="style.css?v=8" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -93,11 +92,11 @@ $galerie = photos_galerie();
 <?php endif; ?>
     </div>
     <div class="hero-visuel anim" style="--d:2">
-      <figure class="hv hv-1"><img src="<?= h(photo('hero') ?? 'img/logo/logo-violet.svg') ?>" alt="Verrines et bouchées préparées par l’atelier" width="1100" height="1375" fetchpriority="high"></figure>
-<?php if ($p = photo('legumes')): ?>      <figure class="hv hv-2"><img src="<?= h($p) ?>" alt="" width="500" height="375"></figure>
-<?php endif; if ($p = photo('charcuterie')): ?>      <figure class="hv hv-3"><img src="<?= h($p) ?>" alt="" width="500" height="375"></figure>
+      <figure class="hv hv-1"><img <?= ($f = photo_fichier('hero')) ? img_attrs($f, '(max-width: 900px) 72vw, 400px') : 'src="img/logo/logo-violet.svg"' ?> alt="Verrines et bouchées préparées par l’atelier" width="1100" height="1375" fetchpriority="high"></figure>
+<?php if ($f = photo_fichier('legumes')): ?>      <figure class="hv hv-2"><img <?= img_attrs($f, '(max-width: 900px) 30vw, 230px') ?> alt="" width="500" height="375"></figure>
+<?php endif; if ($f = photo_fichier('charcuterie')): ?>      <figure class="hv hv-3"><img <?= img_attrs($f, '(max-width: 900px) 28vw, 210px') ?> alt="" width="500" height="375"></figure>
 <?php endif; ?>
-      <div class="hv-badge" aria-hidden="true"><img src="img/logo/symbole-blanc.svg" alt=""></div>
+      <div class="hv-badge" aria-hidden="true"><img src="img/logo/symbole-blanc.svg" alt="" width="164" height="244"></div>
     </div>
   </div>
 </section>
@@ -109,7 +108,7 @@ $galerie = photos_galerie();
 <?php for ($r = 0; $r < 2; $r++): ?>
     <div class="defile-groupe">
 <?php for ($k = 0; $k < 2; $k++): foreach ($s['mots'] as $w): ?>
-      <span class="mot"><?= h($w) ?></span><img class="sep" src="img/logo/symbole-blanc.svg" alt="">
+      <span class="mot"><?= h($w) ?></span><img class="sep" src="img/logo/symbole-blanc.svg" alt="" width="164" height="244">
 <?php endforeach; endfor; ?>
     </div>
 <?php endfor; ?>
@@ -127,8 +126,8 @@ $galerie = photos_galerie();
     $ph = photo($e['photo']); ?>
     <?php $cl = couleurs_evt($e['couleur']); ?>
     <article class="evt<?= $cl['clair'] ? ' evt-clair' : '' ?><?= $ph ? ' avec-photo' : '' ?> reveal" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
-      <img class="evt-sym" src="img/logo/symbole-<?= $cl['clair'] ? 'violet' : 'blanc' ?>.svg" alt="">
-<?php if ($ph): ?>      <img class="evt-photo" src="<?= h($ph) ?>" alt="" loading="lazy" width="1000" height="750">
+      <img class="evt-sym" src="img/logo/symbole-<?= $cl['clair'] ? 'violet' : 'blanc' ?>.svg" alt="" width="164" height="244">
+<?php if ($ph): ?>      <img class="evt-photo" <?= img_attrs(photo_fichier($e['photo']), '(max-width: 900px) 90vw, 320px') ?> alt="" loading="lazy" width="1000" height="750">
 <?php endif; ?>
       <div class="evt-tete">
 <?php if ($e['date']): ?>        <p class="evt-date"><span><?= h(ucfirst(date_fr($e['date'], true))) ?></span><?php if ($quand): ?><em><?= h($quand) ?></em><?php endif; ?></p>
@@ -171,7 +170,7 @@ $galerie = photos_galerie();
     </div>
 <?php if ($conges): ?>
     <div class="conges reveal">
-      <img class="conges-sym" src="img/logo/symbole-violet.svg" alt="">
+      <img class="conges-sym" src="img/logo/symbole-violet.svg" alt="" width="164" height="244">
       <h3><?= h($sem['conges']['titre'] ?: 'Fermeture pour congés') ?></h3>
 <?php if ($sem['conges']['message'] !== ''): ?>      <p><?= nl2br(h($sem['conges']['message'])) ?></p>
 <?php endif; ?>
@@ -194,7 +193,7 @@ $galerie = photos_galerie();
       </ol>
 <?php $sp = $sem['special']; if ($sp['nom'] !== '' || $sp['lignes']): ?>
       <aside class="special reveal" style="--d:2">
-        <img class="special-sym" src="img/logo/symbole-blanc.svg" alt="">
+        <img class="special-sym" src="img/logo/symbole-blanc.svg" alt="" width="164" height="244">
 <?php if ($sp['titre'] !== ''): ?>        <p class="special-quand"><?= h($sp['titre']) ?></p>
 <?php endif; ?>        <h3><?= h($sp['nom']) ?></h3>
 <?php if ($sp['prix'] !== ''): ?>        <p class="special-px"><?= h($sp['prix']) ?></p>
@@ -233,7 +232,7 @@ $galerie = photos_galerie();
 <?php foreach ($s['menus'] as $i => $c): $ph = photo($c['photo']); ?>
     <article class="carte" role="tabpanel" id="carte-<?= $i ?>" aria-labelledby="tab-<?= $i ?>"<?= $i ? ' hidden' : '' ?>>
       <header class="carte-tete<?= $ph ? '' : ' sans-photo' ?>">
-<?php if ($ph): ?>        <img src="<?= h($ph) ?>" alt="" loading="lazy" width="1000" height="750">
+<?php if ($ph): ?>        <img <?= img_attrs(photo_fichier($c['photo']), '(max-width: 760px) 92vw, 480px') ?> alt="" loading="lazy" width="1000" height="750">
 <?php endif; ?>        <div class="carte-info">
           <h3><?= h($c['titre']) ?></h3>
 <?php if ($c['intro'] !== ''): ?>          <p><?= h($c['intro']) ?></p>
@@ -284,8 +283,8 @@ $galerie = photos_galerie();
     <div class="rayons">
 <?php foreach ($rayons as $i => [$slug, $nom, $txt]): $p = photo($slug); ?>
       <article class="rayon reveal<?= $p ? '' : ' sans-photo' ?>" style="--d:<?= $i % 3 ?>">
-<?php if ($p): ?>        <img src="<?= h($p) ?>" alt="" loading="lazy" width="1000" height="750">
-<?php else: ?>        <img class="rayon-sym" src="img/logo/symbole-violet.svg" alt="">
+<?php if ($p): ?>        <img <?= img_attrs(photo_fichier($slug), '(max-width: 540px) 92vw, (max-width: 900px) 46vw, 380px') ?> alt="" loading="lazy" width="1000" height="750">
+<?php else: ?>        <img class="rayon-sym" src="img/logo/symbole-violet.svg" alt="" width="164" height="244">
 <?php endif; ?>        <div class="rayon-txt">
           <h3><?= h($nom) ?></h3>
           <p><?= h($txt) ?></p>
@@ -300,7 +299,7 @@ $galerie = photos_galerie();
 <section id="maison" class="section maison">
   <div class="wrap maison-in">
     <figure class="maison-img reveal">
-<?php if ($p = photo('equipe')): ?>      <img src="<?= h($p) ?>" alt="Angel et Fab dans leur boutique, devant la cave à vins" loading="lazy" width="900" height="1125">
+<?php if ($f = photo_fichier('equipe')): ?>      <img <?= img_attrs($f, '(max-width: 900px) 92vw, 470px') ?> alt="Angel et Fab dans leur boutique, devant la cave à vins" loading="lazy" width="900" height="1125">
 <?php endif; ?>      <figcaption>Angel &amp; Fab</figcaption>
     </figure>
     <div class="maison-txt">
@@ -321,7 +320,7 @@ $galerie = photos_galerie();
 <section class="galerie" aria-label="Nos réalisations en images">
   <div class="galerie-piste">
 <?php foreach (array_merge($galerie, $galerie) as $i => $g): ?>
-    <img src="<?= h($g) ?>" alt="" loading="lazy" width="640" height="800"<?= $i >= count($galerie) ? ' aria-hidden="true"' : '' ?>>
+    <img <?= img_attrs($g, '280px') ?> alt="" loading="lazy" width="640" height="800"<?= $i >= count($galerie) ? ' aria-hidden="true"' : '' ?>>
 <?php endforeach; ?>
   </div>
 </section>
@@ -410,7 +409,7 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
 <div class="pop" id="pop" hidden data-cle="<?= h(substr(md5($pop['titre'] . $pop['date']), 0, 10)) ?>">
   <div class="pop-carte<?= $cl['clair'] ? ' evt-clair' : '' ?>" role="dialog" aria-modal="true" aria-labelledby="pop-titre" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
     <button type="button" class="pop-fermer" data-pop-fermer aria-label="Fermer">×</button>
-<?php if ($ph): ?>    <img class="pop-img" src="<?= h($ph) ?>" alt="" width="1000" height="750">
+<?php if ($ph): ?>    <img class="pop-img" <?= img_attrs(photo_fichier($pop['photo']), '(max-width: 500px) 92vw, 460px') ?> alt="" width="1000" height="750">
 <?php endif; ?>
     <div class="pop-corps">
 <?php if ($pop['date']): ?>      <p class="evt-date"><span><?= h(ucfirst(date_fr($pop['date'], true))) ?></span></p>
@@ -446,6 +445,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=6" defer></script>
+<script src="main.js?v=7" defer></script>
 </body>
 </html>

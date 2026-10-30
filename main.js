@@ -75,7 +75,15 @@
   function appliquer(c) {
     document.querySelectorAll('iframe[data-src]').forEach(function (f) {
       var attente = f.parentNode.querySelector('.plan-attente');
-      if (c === 'oui') { if (!f.src) f.src = f.dataset.src; f.hidden = false; if (attente) attente.hidden = true; }
+      if (c === 'oui') {
+        f.hidden = false; if (attente) attente.hidden = true;
+        // la carte (lourde) ne se charge qu'à l'approche de la section Contact
+        if (!f.src) {
+          if (!('IntersectionObserver' in window)) { f.src = f.dataset.src; return; }
+          var o = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { f.src = f.dataset.src; o.disconnect(); } }, { rootMargin: '400px 0px' });
+          o.observe(f);
+        }
+      }
       else { f.removeAttribute('src'); f.hidden = true; if (attente) attente.hidden = false; }
     });
   }
@@ -120,7 +128,18 @@
         else if (!e.shiftKey && document.activeElement === d) { e.preventDefault(); p.focus(); }
       }
     });
-    if (Date.now() - vu > 3 * 864e5 && location.hash === '') setTimeout(ouvrirPop, 1400);
+    // Ouverture au premier défilement (ou après 6 s sans action) : la page s'affiche d'abord entièrement
+    if (Date.now() - vu > 3 * 864e5 && location.hash === '') {
+      var minuterie, ouvert = false;
+      var declencher = function () {
+        if (ouvert) return; ouvert = true;
+        clearTimeout(minuterie); window.removeEventListener('scroll', auDefilement);
+        setTimeout(ouvrirPop, 400);
+      };
+      var auDefilement = function () { if (window.scrollY > 150) declencher(); };
+      window.addEventListener('scroll', auDefilement, { passive: true });
+      minuterie = setTimeout(declencher, 6000);
+    }
   }
 
   if (!('IntersectionObserver' in window)) {

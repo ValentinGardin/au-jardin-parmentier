@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.7 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
+const VERSION = '1.8 · performance (test)';   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');
@@ -151,23 +151,72 @@ function norm($s) { return strtolower(strtr(trim((string)$s), ['é' => 'e', 'É'
 // ---- Photos ----
 // Déposez img/photos/<nom>.webp (ou .jpg / .png). Sans photo, le site affiche un visuel de remplacement.
 function photo($nom) {
+    $f = photo_fichier($nom);
+    return $f ? $f . '?v=' . filemtime(__DIR__ . '/' . $f) : null;
+}
+// Chemin du fichier d'une photo (sans ?v=), ou null
+function photo_fichier($nom) {
     if ($nom === '' || $nom === null) return null;
     foreach (['webp', 'jpg', 'jpeg', 'png'] as $ext) {
         $f = 'img/photos/' . $nom . '.' . $ext;
-        if (is_file(__DIR__ . '/' . $f)) return $f . '?v=' . filemtime(__DIR__ . '/' . $f);
+        if (is_file(__DIR__ . '/' . $f)) return $f;
     }
     return null;
 }
+// Les versions réduites (photo-400.webp, photo-800.webp) ne sont pas proposées dans le back-office
 function photos_dispo() {
     $l = [];
-    foreach (glob(__DIR__ . '/img/photos/*.{webp,jpg,jpeg,png}', GLOB_BRACE) ?: [] as $f) $l[] = pathinfo($f, PATHINFO_FILENAME);
+    foreach (glob(__DIR__ . '/img/photos/*.{webp,jpg,jpeg,png}', GLOB_BRACE) ?: [] as $f) {
+        $n = pathinfo($f, PATHINFO_FILENAME);
+        if (!preg_match('/-(400|600|800)$/', $n)) $l[] = $n;
+    }
     return array_values(array_unique($l));
 }
 // Bandeau photo défilant : toutes les images du dossier img/galerie/ (ordre alphabétique)
 function photos_galerie() {
-    $l = glob(__DIR__ . '/img/galerie/*.{webp,jpg,jpeg,png}', GLOB_BRACE) ?: [];
+    $l = array_filter(glob(__DIR__ . '/img/galerie/*.{webp,jpg,jpeg,png}', GLOB_BRACE) ?: [], function ($f) { return !preg_match('/-(400|600|800)\.\w+$/', $f); });
     sort($l);
     return array_map(function ($f) { return 'img/galerie/' . basename($f); }, $l);
+}
+
+// ---- Images à la bonne taille (performance) ----
+// Pour chaque photo, des versions de 400 et 800 px de large sont créées une seule fois (à côté de l'original),
+// et le navigateur choisit la plus adaptée à l'écran grâce à srcset. Sans GD, seule la photo d'origine est utilisée.
+const LARGEURS = [400, 600, 800];
+function variantes($rel) {
+    $rel = preg_replace('/\?.*$/', '', (string)$rel);
+    $abs = __DIR__ . '/' . $rel;
+    if (!is_file($abs)) return [];
+    $info = @getimagesize($abs);
+    $w0 = $info ? $info[0] : 0;
+    $v = '?v=' . filemtime($abs);
+    $base = preg_replace('/\.\w+$/', '', $rel);
+    $out = [];
+    foreach (LARGEURS as $w) {
+        if ($w0 && $w >= $w0) continue;
+        $f = $base . '-' . $w . '.webp';
+        if (!is_file(__DIR__ . '/' . $f) || filemtime(__DIR__ . '/' . $f) < filemtime($abs)) reduire($abs, __DIR__ . '/' . $f, $w);
+        if (is_file(__DIR__ . '/' . $f)) $out[] = [$f . $v, $w];
+    }
+    $out[] = [$rel . $v, $w0 ?: 1600];
+    return $out;
+}
+function reduire($src, $dst, $largeur) {
+    if (!function_exists('imagecreatefromstring') || !function_exists('imagewebp')) return false;
+    $im = @imagecreatefromstring((string)file_get_contents($src));
+    if (!$im) return false;
+    $w = imagesx($im); $h = imagesy($im);
+    $r = imagecreatetruecolor($largeur, (int)round($h * $largeur / $w));
+    imagecopyresampled($r, $im, 0, 0, 0, 0, imagesx($r), imagesy($r), $w, $h);
+    return @imagewebp($r, $dst, 76);
+}
+// Attributs src + srcset + sizes pour une balise <img>
+function img_attrs($rel, $sizes) {
+    $v = variantes($rel);
+    if (!$v) return 'src="' . h($rel) . '"';
+    $src = $v[min(1, count($v) - 1)][0];   // repli : la version moyenne
+    $set = implode(', ', array_map(function ($x) { return h($x[0]) . ' ' . $x[1] . 'w'; }, $v));
+    return 'src="' . h($src) . '" srcset="' . $set . '" sizes="' . h($sizes) . '"';
 }
 
 // Écriture atomique : fichier temporaire puis renommage

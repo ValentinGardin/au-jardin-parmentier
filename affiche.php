@@ -16,9 +16,9 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
 <meta name="robots" content="noindex">
 <title>Affiche · <?= h($sem['titre']) ?></title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link href="fonts/fonts.css" rel="stylesheet">
 <style>
   @page{size:A4;margin:0}
   :root{--violet:#700954;--orange:#d9641e;--encre:#1d171b;--gris:#5f575d}
