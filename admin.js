@@ -654,6 +654,12 @@
     R.charge = du;
     getJSON('resas&du=' + du + '&au=' + plus(du, 6)).then(function (j) {
       if (lundi(R.date) !== du) return;
+      if (R.data && R.data.du === du) {
+        var connues = R.data.resas.map(function (r) { return r.id; });
+        j.resas.filter(function (r) { return r.source === 'site' && connues.indexOf(r.id) < 0; }).forEach(function (r) {
+          toast('Nouvelle réservation en ligne : n° ' + r.num + ', ' + (nomClient(r.c) || 'client') + ' pour ' + dateLongue(r.date).toLowerCase() + '.');
+        });
+      }
       R.data = j; if (onglet === 'resas') majResas();
     }).catch(function (e) { R.charge = ''; toast(e.message, true); });
   }
@@ -669,7 +675,15 @@
     return tete('Réservations', 'Les plats réservés, jour par jour. Un clic pour noter qu’une commande est payée, puis récupérée.',
       '<button type="button" class="btn btn-ligne" data-act="r-imprimer">' + ico('imprim') + 'Imprimer la liste</button>' +
       '<button type="button" class="btn btn-violet" data-act="resa-nouvelle">' + ico('plus') + 'Nouvelle réservation</button>') +
-      '<div id="resas">' + resasContenu() + '</div>';
+      blocCommande() + '<div id="resas">' + resasContenu() + '</div>';
+  }
+  // Interrupteur « réservation en ligne » (page d'accueil du site)
+  function blocCommande() {
+    var c = E.commande, lect = VISITE ? ' disabled' : '';
+    return '<div class="cmd-bloc' + (c.actif ? ' actif' : '') + '"><label class="interrupteur grand"><input type="checkbox" data-cmd="actif"' + (c.actif ? ' checked' : '') + lect + '><span></span>Réservation en ligne sur le site</label>' +
+      '<span class="statut statut-' + (c.actif ? (c.jours ? 'vert">Ouverte · ' + pluriel(c.jours, 'jour') + ' réservable' + (c.jours > 1 ? 's' : '') : 'orange">Ouverte, mais aucun jour réservable (menu à remplir ?)') : 'gris">Fermée : les clients appellent') + '</span>' +
+      '<label class="cmd-limite">Jusqu’à la veille à <input type="time" data-cmd="limite" value="' + esc(c.limite) + '"' + lect + '></label>' +
+      '<a class="lien" href="./#reserver" target="_blank" rel="noopener">Voir sur le site ↗</a></div>';
   }
   function resasDuJour() { return R.data && R.data.du === lundi(R.date) ? R.data.resas.filter(function (r) { return r.date === R.date; }) : null; }
   function resasContenu() {
@@ -769,9 +783,9 @@
   function ligneResa(r) {
     var c = r.c, t = totalResa(r);
     return '<article class="r-ligne' + (r.recupere ? ' fait' : '') + '">' +
-      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + ' <span class="r-num">n° ' + r.num + '</span></strong>' +
+      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + ' <span class="r-num">n° ' + r.num + '</span>' + (r.source === 'site' ? ' <span class="r-web">En ligne</span>' : '') + '</strong>' +
         (c.tel ? '<a href="tel:' + esc(c.tel.replace(/[^\d+]/g, '')) + '">' + ico('tel') + esc(c.tel) + '</a>' : '') +
-        '<small>Prise par ' + esc(r.par) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small>' +
+        '<small>' + (r.source === 'site' ? 'Réservée sur le site' : 'Prise par ' + esc(r.par)) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small>' +
         (r.rappel ? '<small class="r-sms-ok" title="SMS de rappel envoyé ' + esc(quand(r.rappel)) + '">' + ico('ok') + 'SMS envoyé à ' + heure(r.rappel) + '</small>' : '') + '</div>' +
       '<div class="r-cmd"><ul>' + r.lignes.map(function (x) { return '<li><b>' + x.qte + ' ×</b> ' + esc(x.nom) + (x.jour && x.jour !== r.date ? ' <small class="r-orig">plat du ' + jourNom(x.jour).toLowerCase() + ' ' + dateFr(x.jour) + '</small>' : '') + '</li>'; }).join('') + '</ul>' +
         (r.note ? '<p class="r-note">' + ico('note') + esc(r.note) + '</p>' : '') + '</div>' +
@@ -1470,6 +1484,14 @@
       var o = {}; o[t.dataset.sms] = t.type === 'checkbox' ? t.checked : t.value;
       api('sms-options', o).then(function (j) { SMS = j; majSms(); R.charge = ''; toast(t.dataset.sms === 'auto' ? (t.checked ? 'Rappel automatique activé : chaque jour à ' + j.heure.replace(':', 'h') + '.' : 'Rappel automatique désactivé.') : 'Réglage enregistré.'); })
         .catch(function (er) { toast(er.message, true); });
+      return;
+    }
+    if (t.dataset.cmd) {
+      var oc = {}; oc[t.dataset.cmd] = t.type === 'checkbox' ? t.checked : t.value;
+      api('commande-options', oc).then(function (j) {
+        E.commande = j.commande; E.commande.jours = j.jours; render(true);
+        toast(t.dataset.cmd === 'actif' ? (t.checked ? 'Réservation en ligne ouverte : le bouton « Réserver » est sur le site.' : 'Réservation en ligne fermée.') : 'Heure limite enregistrée.');
+      }).catch(function (er) { toast(er.message, true); render(true); });
       return;
     }
     if ('lettreAuto' in t.dataset) {

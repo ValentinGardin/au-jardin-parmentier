@@ -108,6 +108,160 @@
       .catch(function (er) { lettre.classList.remove('envoi'); erreur(er.message || 'L’inscription n’a pas fonctionné, réessayez.'); });
   });
 
+  // Réservation en ligne : 1. le plat (jour + quantités)  2. les coordonnées  3. confirmation
+  var rs = document.getElementById('rs');
+  if (rs) (function () {
+    var D = JSON.parse(document.getElementById('rs-donnees').textContent);
+    var corps = document.getElementById('rs-corps'), pied = document.getElementById('rs-pied');
+    var etat = { etape: 1, date: '', plat: 1, special: 0, t: 0 }, client = { prenom: '', nom: '', tel: '', email: '', note: '', lettre: false, memo: true }, avant = null;
+    try { var m = JSON.parse(localStorage.getItem('jp-client') || 'null'); if (m) { client.prenom = m.prenom || ''; client.nom = m.nom || ''; client.tel = m.tel || ''; client.email = m.email || ''; } } catch (e) {}
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function num(p) { var x = String(p || '').replace(',', '.').match(/\d+(\.\d+)?/); return x ? +x[0] : 0; }
+    function euros(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
+    function jour() { return D.jours.filter(function (j) { return j.date === etat.date; })[0] || D.jours[0]; }
+    function total() { var j = jour(); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0); }
+    function nb() { return etat.plat + (jour().special ? etat.special : 0); }
+    function court(d) { var x = new Date(d + 'T12:00:00'); return { j: x.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''), n: x.getDate(), m: x.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') }; }
+    function qte(nom, v, min) {
+      return '<div class="rs-qte" role="group" aria-label="Quantité"><button type="button" data-rs="moins" data-q="' + nom + '" aria-label="Un de moins"' + (v <= min ? ' disabled' : '') + '>−</button><output aria-live="polite">' + v + '</output><button type="button" data-rs="plus" data-q="' + nom + '" aria-label="Un de plus"' + (v >= 20 ? ' disabled' : '') + '>+</button></div>';
+    }
+    function entete(n, titre) {
+      document.getElementById('rs-etape').textContent = n <= 2 ? 'Étape ' + n + ' sur 2' : 'C’est réservé';
+      document.getElementById('rs-titre').textContent = titre;
+      document.getElementById('rs-barre').style.width = (n === 1 ? 50 : 100) + '%';
+      rs.dataset.etape = n;
+    }
+    function etape1() {
+      var j = jour();
+      entete(1, 'Réserver mon plat');
+      corps.innerHTML = '<p class="rs-q">Pour quel jour ?</p><div class="rs-jours" role="radiogroup" aria-label="Jour de retrait">' + D.jours.map(function (x) {
+          var c = court(x.date);
+          return '<button type="button" role="radio" aria-checked="' + (x.date === j.date) + '" data-rs="jour" data-d="' + x.date + '"><span>' + c.j + '</span><b>' + c.n + '</b><small>' + c.m + '</small></button>';
+        }).join('') + '</div>' +
+        '<p class="rs-q">Votre commande <span>pour ' + esc(j.libelle) + '</span></p>' +
+        '<div class="rs-plat' + (etat.plat ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">Plat du jour</span><strong>' + esc(j.plat.nom) + '</strong>' + (j.plat.desc ? '<small>' + esc(j.plat.desc) + '</small>' : '') + '</div>' +
+          '<div class="rs-plat-fin">' + (j.plat.prix ? '<span class="rs-px">' + esc(j.plat.prix) + '</span>' : '') + qte('plat', etat.plat, 0) + '</div></div>' +
+        (j.special ? '<div class="rs-plat rs-offre' + (etat.special ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">' + esc(j.special.titre || 'Offre spéciale') + '</span><strong>' + esc(j.special.nom) + '</strong>' + (j.special.lignes.length ? '<small>' + esc(j.special.lignes.join(' · ')) + '</small>' : '') + '</div>' +
+          '<div class="rs-plat-fin">' + (j.special.prix ? '<span class="rs-px">' + esc(j.special.prix) + '</span>' : '') + qte('special', etat.special, 0) + '</div></div>' : '') +
+        '<p class="rs-info">Pour aujourd’hui, appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a> : on fait notre possible.</p>';
+      pied.innerHTML = '<div class="rs-total"><span>Total</span><b>' + (total() ? euros(total()) : '–') + '</b><small>à régler sur place</small></div>' +
+        '<button type="button" class="btn btn-violet btn-lg" data-rs="suite"' + (nb() ? '' : ' disabled') + '>Continuer</button>';
+    }
+    function recap() {
+      var j = jour(), l = [];
+      if (etat.plat) l.push(etat.plat + ' × ' + j.plat.nom);
+      if (j.special && etat.special) l.push(etat.special + ' × ' + j.special.nom);
+      return l;
+    }
+    function etape2() {
+      var j = jour();
+      entete(2, 'Vos coordonnées');
+      corps.innerHTML = '<button type="button" class="rs-recap" data-rs="retour"><span><b>' + esc(recap().join(', ')) + '</b><small>' + esc(j.libelle) + (total() ? ' · ' + euros(total()) : '') + '</small></span><em>Modifier</em></button>' +
+        '<form class="rs-form" id="rs-form" novalidate>' +
+        '<div class="rs-2"><label class="rs-champ"><span>Prénom</span><input name="prenom" autocomplete="given-name" required value="' + esc(client.prenom) + '"></label>' +
+        '<label class="rs-champ"><span>Nom</span><input name="nom" autocomplete="family-name" required value="' + esc(client.nom) + '"></label></div>' +
+        '<label class="rs-champ"><span>Téléphone <em>pour vous joindre si besoin</em></span><input name="tel" type="tel" inputmode="tel" autocomplete="tel" required value="' + esc(client.tel) + '" placeholder="06 12 34 56 78"></label>' +
+        '<label class="rs-champ"><span>E-mail <em>facultatif, pour recevoir la confirmation</em></span><input name="email" type="email" autocomplete="email" value="' + esc(client.email) + '"></label>' +
+        (client.note ? '' : '<button type="button" class="rs-lien" data-rs="note">+ Ajouter une précision (allergie, heure de passage…)</button>') +
+        '<label class="rs-champ rs-note"' + (client.note ? '' : ' hidden') + '><span>Précision <em>facultatif</em></span><textarea name="note" rows="2" maxlength="500">' + esc(client.note) + '</textarea></label>' +
+        '<label class="rs-case rs-case-lettre"' + (client.email ? '' : ' hidden') + '><input type="checkbox" name="lettre"' + (client.lettre ? ' checked' : '') + '><span>Recevoir aussi le menu de la semaine chaque lundi par e-mail</span></label>' +
+        '<label class="rs-case"><input type="checkbox" name="memo"' + (client.memo ? ' checked' : '') + '><span>Me reconnaître la prochaine fois sur cet appareil</span></label>' +
+        '<div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><input name="site_web" tabindex="-1" autocomplete="off"></div>' +
+        '<p class="rs-erreur" role="alert" hidden></p></form>';
+      pied.innerHTML = '<button type="button" class="btn btn-ligne rs-retour" data-rs="retour" aria-label="Retour">←</button>' +
+        '<button type="submit" form="rs-form" class="btn btn-violet btn-lg">Confirmer ma réservation</button><p class="rs-paiement">Paiement sur place, au retrait. Aucun paiement en ligne.</p>';
+      var f = document.getElementById('rs-form');
+      var vide = ['prenom', 'nom', 'tel'].filter(function (k) { return !f[k].value; })[0];
+      setTimeout(function () { (vide ? f[vide] : pied.querySelector('.btn-violet')).focus(); }, 60);
+      f.addEventListener('input', function (e) {
+        if (e.target.name === 'email') f.querySelector('.rs-case-lettre').hidden = !e.target.value.trim();
+        e.target.removeAttribute('aria-invalid');
+        f.querySelector('.rs-erreur').hidden = true;
+      });
+      f.addEventListener('submit', envoyer);
+    }
+    function erreur(t, champ) {
+      var f = document.getElementById('rs-form'), p = f.querySelector('.rs-erreur');
+      p.textContent = t; p.hidden = false;
+      if (champ && f[champ]) { f[champ].setAttribute('aria-invalid', 'true'); f[champ].focus(); }
+    }
+    function envoyer(e) {
+      e.preventDefault();
+      var f = document.getElementById('rs-form');
+      ['prenom', 'nom', 'tel', 'email', 'note'].forEach(function (k) { client[k] = f[k].value.trim(); });
+      client.lettre = f.lettre.checked; client.memo = f.memo.checked;
+      if (!client.prenom) return erreur('Indiquez votre prénom.', 'prenom');
+      if (!client.nom) return erreur('Indiquez votre nom.', 'nom');
+      if (client.tel.replace(/\D/g, '').replace(/^33/, '0').length !== 10) return erreur('Indiquez un numéro de téléphone à 10 chiffres.', 'tel');
+      if (client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
+      var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';
+      fetch('commander', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) { if (j.jours) { D.jours = j.jours; } throw j; }
+          try { if (client.memo) localStorage.setItem('jp-client', JSON.stringify({ prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email })); else localStorage.removeItem('jp-client'); } catch (er) {}
+          suivre('resa-ok');
+          etape3(j);
+        })
+        .catch(function (er) { b.disabled = false; b.textContent = 'Confirmer ma réservation'; erreur(er.erreur || 'Pas de connexion internet ? Réessayez, ou appelez-nous au ' + D.tel + '.', er.champ); });
+    }
+    function etape3(j) {
+      entete(3, 'Merci ' + client.prenom + ' !');
+      corps.innerHTML = '<div class="rs-ok"><div class="rs-coche" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-15"/></svg></div>' +
+        '<p class="rs-ok-titre">C’est réservé !</p><p class="rs-num">Commande n° <b>' + j.num + '</b></p>' +
+        '<p>' + esc(recap().join(', ')) + '<br>à récupérer <b>' + esc(j.quand) + '</b> à la boutique,<br>9, place Parmentier à Montdidier.</p>' +
+        (j.total ? '<p class="rs-ok-px">' + euros(j.total) + ' à régler sur place</p>' : '') +
+        '<p class="rs-info">' + (j.email ? 'Un e-mail de confirmation vient de vous être envoyé. ' : '') + 'Un changement ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p></div>';
+      pied.innerHTML = '<button type="button" class="btn btn-violet btn-lg" data-rs="fermer">Parfait, à bientôt !</button>';
+      pied.querySelector('button').focus();
+      etat.fini = true;
+    }
+    function ouvrir(date, offre) {
+      if (etat.fini) { etat = { etape: 1, date: '', plat: 1, special: 0, t: 0 }; client.note = ''; }
+      if (offre) { etat.plat = 0; etat.special = 1; }
+      etat.date = date && D.jours.some(function (j) { return j.date === date; }) ? date : (etat.date || D.jours[0].date);
+      etat.t = Math.floor(Date.now() / 1000);
+      avant = document.activeElement;
+      rs.hidden = false; document.body.classList.add('rs-ouvert');
+      etape1();
+      setTimeout(function () { var c = corps.querySelector('[aria-checked="true"]'); if (c) c.focus(); }, 60);
+      suivre('resa');
+    }
+    function fermer() {
+      rs.hidden = true; document.body.classList.remove('rs-ouvert');
+      if (avant && avant.focus) avant.focus();
+    }
+    document.addEventListener('click', function (e) {
+      var o = e.target.closest('[data-reserver]');
+      if (o) { e.preventDefault(); ouvrir(o.dataset.reserver, 'offre' in o.dataset); return; }
+      var b = e.target.closest('[data-rs]'); if (!b || !rs.contains(b)) return;
+      var a = b.dataset.rs;
+      if (a === 'fermer') fermer();
+      else if (a === 'jour') { etat.date = b.dataset.d; if (!jour().special) etat.special = 0; if (!nb()) etat.plat = 1; etape1(); corps.querySelector('[data-d="' + etat.date + '"]').focus(); }
+      else if (a === 'plus' || a === 'moins') {
+        etat[b.dataset.q] = Math.max(0, Math.min(20, etat[b.dataset.q] + (a === 'plus' ? 1 : -1)));
+        etape1(); var n = corps.querySelector('[data-rs="' + a + '"][data-q="' + b.dataset.q + '"]'); if (n && !n.disabled) n.focus();
+      }
+      else if (a === 'suite') etape2();
+      else if (a === 'retour') { var f = document.getElementById('rs-form'); if (f) ['prenom', 'nom', 'tel', 'email', 'note'].forEach(function (k) { client[k] = f[k].value; }); etape1(); }
+      else if (a === 'note') { b.remove(); var n2 = corps.querySelector('.rs-note'); n2.hidden = false; n2.querySelector('textarea').focus(); }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (rs.hidden) return;
+      if (e.key === 'Escape') fermer();
+      if (e.key === 'Tab') {   // le clavier reste dans la fenêtre
+        var l = rs.querySelectorAll('button:not([disabled]), input:not([type=hidden]):not([tabindex="-1"]), textarea, a[href]');
+        l = Array.prototype.filter.call(l, function (x) { return x.offsetParent !== null; });
+        if (!l.length) return;
+        if (e.shiftKey && document.activeElement === l[0]) { e.preventDefault(); l[l.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === l[l.length - 1]) { e.preventDefault(); l[0].focus(); }
+      }
+    });
+    // Lien direct : https://…/#reserver ouvre la réservation (pratique sur les réseaux sociaux)
+    if (location.hash === '#reserver') ouvrir();
+  })();
+
   // Cookies : la carte Google Maps n'est chargée qu'avec l'accord du visiteur (choix gardé 6 mois)
   function lireChoix() {
     try { var v = JSON.parse(localStorage.getItem('jp-cookies') || 'null'); return v && Date.now() - v.t < 182 * 864e5 ? v.c : null; } catch (err) { return null; }

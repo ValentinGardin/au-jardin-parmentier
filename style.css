@@ -454,3 +454,102 @@ body.pop-ouvert{overflow:hidden}
   .lettre-champs label:first-child input{border-right:0;border-bottom:1px solid var(--trait)}
   .lettre-champs .btn{margin-top:.35rem}
 }
+
+/* Réservation en ligne */
+.resa-bandeau{display:flex;align-items:center;gap:1rem 1.2rem;margin:0 0 1.6rem;padding:1rem 1rem 1rem 1.1rem;border-radius:var(--r);background:var(--violet-pale);border:1px solid #ead3e2}
+.resa-bandeau-ico{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--violet);color:#fff}
+.resa-bandeau-ico svg{width:22px;height:22px}
+.resa-bandeau p{flex:1;margin:0;display:grid;gap:.1rem}
+.resa-bandeau p span{color:var(--gris);font-size:.93rem}
+@media (max-width:620px){.resa-bandeau{flex-wrap:wrap}.resa-bandeau .btn{width:100%}}
+.jour-px{display:flex;align-items:center;justify-content:flex-end;gap:.8rem}
+.jour-resa{border:1.5px solid var(--violet);background:var(--blanc);color:var(--violet);font:600 .85rem var(--texte);padding:.45rem .9rem;border-radius:999px;cursor:pointer;text-decoration:none;white-space:nowrap;transition:background-color .2s,color .2s}
+.jour-resa:hover{background:var(--violet);color:#fff}
+.jour-resa.tel{border-color:var(--trait);color:var(--gris);font-weight:500}
+.jour-resa.tel:hover{background:var(--sable);color:var(--encre)}
+@media (max-width:620px){.jour-px{flex-direction:column;align-items:flex-end;gap:.4rem}}
+.nav-resa{margin-right:.4rem}
+@media (max-width:1440px){.nav-resa{display:none}}
+
+.rs{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:1rem}
+.rs[hidden]{display:none}
+.rs-fond{position:absolute;inset:0;background:rgba(29,23,27,.5);backdrop-filter:blur(4px);animation:rs-fond .25s}
+.rs-boite{position:relative;width:min(100%,540px);max-height:min(92vh,760px);display:flex;flex-direction:column;background:var(--blanc);border-radius:24px;box-shadow:0 40px 100px -20px rgba(0,0,0,.5);animation:rs-monte .35s var(--ease);overflow:hidden}
+body.rs-ouvert{overflow:hidden}
+.rs-tete{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.3rem 1.4rem 1rem}
+.rs-etape{margin:0 0 .1rem;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--violet)}
+.rs-tete h2{margin:0;font-size:1.7rem}
+.rs-x{flex:none;width:40px;height:40px;border:0;border-radius:50%;background:var(--sable);font-size:1.5rem;line-height:1;color:var(--encre);cursor:pointer}
+.rs-x:hover{background:var(--trait)}
+.rs-progres{position:absolute;left:1.4rem;right:1.4rem;bottom:0;height:3px;border-radius:3px;background:var(--sable);overflow:hidden}
+.rs-progres span{display:block;height:100%;width:50%;background:var(--violet);transition:width .4s var(--ease)}
+.rs-corps{flex:1;overflow:auto;padding:1.1rem 1.4rem .5rem;overscroll-behavior:contain}
+.rs-pied{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:1rem 1.4rem calc(1rem + env(safe-area-inset-bottom,0px));border-top:1px solid var(--trait);background:var(--blanc)}
+.rs-pied .btn-lg{flex:1;justify-content:center}
+.rs-q{margin:.3rem 0 .6rem;font-weight:700;font-size:1rem}
+.rs-q span{font-weight:400;color:var(--gris)}
+.rs-jours{display:flex;gap:.45rem;overflow-x:auto;padding:.2rem .1rem .6rem;margin:0 -.1rem .6rem;scrollbar-width:thin}
+.rs-jours button{flex:none;display:grid;justify-items:center;min-width:64px;padding:.55rem .4rem;border:1.5px solid var(--trait);border-radius:14px;background:var(--blanc);cursor:pointer;line-height:1.15;transition:border-color .2s,background-color .2s}
+.rs-jours button span,.rs-jours button small{font-size:.75rem;color:var(--gris);text-transform:capitalize}
+.rs-jours button b{font:700 1.45rem var(--titre)}
+.rs-jours button:hover{border-color:var(--violet)}
+.rs-jours button[aria-checked="true"]{background:var(--violet);border-color:var(--violet);color:#fff}
+.rs-jours button[aria-checked="true"] span,.rs-jours button[aria-checked="true"] small{color:rgba(255,255,255,.85)}
+.rs-plat{display:flex;align-items:center;gap:1rem;padding:1rem;margin-bottom:.6rem;border:1.5px solid var(--trait);border-radius:18px;transition:border-color .2s,background-color .2s}
+.rs-plat.choisi{border-color:var(--violet);background:#fdf8fb}
+.rs-plat-txt{flex:1;display:grid;gap:.1rem;min-width:0}
+.rs-plat-txt strong{font:700 1.15rem/1.2 var(--titre)}
+.rs-plat-txt small{color:var(--gris);font-size:.88rem}
+.rs-tag{justify-self:start;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--violet)}
+.rs-plat-fin{display:grid;justify-items:end;gap:.45rem}
+.rs-px{font:700 1.1rem var(--titre);white-space:nowrap}
+.rs-qte{display:flex;align-items:center;border:1.5px solid var(--trait);border-radius:999px;background:var(--blanc)}
+.rs-qte button{width:38px;height:38px;border:0;border-radius:50%;background:transparent;font-size:1.3rem;font-weight:600;color:var(--violet);cursor:pointer}
+.rs-qte button:hover:not(:disabled){background:var(--violet-pale)}
+.rs-qte button:disabled{color:var(--trait);cursor:default}
+.rs-qte output{min-width:1.8rem;text-align:center;font-weight:700;font-size:1.05rem}
+.rs-info{margin:.8rem 0 .4rem;font-size:.88rem;color:var(--gris)}
+.rs-total{display:grid;line-height:1.2}
+.rs-total span{font-size:.8rem;color:var(--gris)}
+.rs-total b{font:800 1.5rem var(--titre)}
+.rs-total small{font-size:.75rem;color:var(--gris)}
+.rs-recap{display:flex;align-items:center;gap:1rem;width:100%;margin-bottom:1rem;padding:.8rem 1rem;border:0;border-radius:14px;background:var(--violet-pale);text-align:left;cursor:pointer;font:inherit;color:var(--encre)}
+.rs-recap span{flex:1;display:grid}
+.rs-recap small{color:var(--gris)}
+.rs-recap em{font-style:normal;font-weight:600;font-size:.88rem;color:var(--violet);text-decoration:underline}
+.rs-2{display:grid;grid-template-columns:1fr 1fr;gap:0 .8rem}
+.rs-champ{display:grid;gap:.3rem;margin-bottom:.85rem}
+.rs-champ > span{font-weight:600;font-size:.9rem}
+.rs-champ em{font-style:normal;font-weight:400;color:var(--gris);font-size:.82rem}
+.rs-champ input,.rs-champ textarea{width:100%;padding:.8rem .9rem;border:1.5px solid var(--trait);border-radius:12px;font:400 1rem var(--texte);color:var(--encre);background:var(--blanc)}
+.rs-champ input:focus,.rs-champ textarea:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(112,9,84,.12)}
+.rs-champ [aria-invalid="true"]{border-color:#c0392b;background:#fff6f5}
+.rs-champ[hidden],.rs-case[hidden]{display:none}
+.rs-lien{display:block;margin:-.2rem 0 .8rem;padding:0;border:0;background:none;color:var(--violet);font:600 .9rem var(--texte);cursor:pointer}
+.rs-case{display:flex;gap:.6rem;align-items:flex-start;margin:.2rem 0 .6rem;font-size:.9rem;color:var(--gris);cursor:pointer}
+.rs-case input{width:1.15rem;height:1.15rem;margin:.1rem 0 0;flex:none;accent-color:var(--violet)}
+.rs-erreur{margin:.4rem 0;padding:.7rem .9rem;border-radius:12px;background:#fff1f0;color:#b4232c;font-weight:600;font-size:.92rem}
+.rs-erreur[hidden]{display:none}
+.rs-retour{flex:none;width:54px;padding-left:0;padding-right:0;font-size:1.2rem}
+.rs-paiement{flex-basis:100%;margin:0;text-align:center;font-size:.8rem;color:var(--gris)}
+.rs-ok{text-align:center;padding:.5rem 0 1rem}
+.rs-ok p{margin:0 0 .6rem}
+.rs-ok-titre{font:800 2rem/1.1 var(--titre);color:var(--violet)}
+.rs-num{display:inline-block;padding:.35rem .9rem;border-radius:999px;background:var(--violet-pale);color:var(--violet)}
+.rs-num b{font-size:1.15rem}
+.rs-ok-px{font-weight:700}
+.rs-coche{width:76px;height:76px;margin:0 auto .8rem}
+.rs-coche svg{width:100%;height:100%;fill:none;stroke:var(--violet);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.rs-coche circle{stroke-dasharray:151;stroke-dashoffset:151;animation:rs-trait .6s var(--ease) forwards}
+.rs-coche path{stroke-dasharray:36;stroke-dashoffset:36;animation:rs-trait .4s .45s var(--ease) forwards}
+@keyframes rs-trait{to{stroke-dashoffset:0}}
+@keyframes rs-fond{from{opacity:0}}
+@keyframes rs-monte{from{opacity:0;transform:translateY(24px) scale(.98)}}
+@media (max-width:620px){
+  .rs{padding:0;place-items:end stretch}
+  .rs-boite{width:100%;max-height:94vh;border-radius:22px 22px 0 0}
+  .rs-tete h2{font-size:1.45rem}
+  .rs-plat{flex-wrap:wrap}
+  .rs-plat-fin{grid-auto-flow:column;align-items:center;width:100%;justify-content:space-between}
+}
+@media (prefers-reduced-motion:reduce){.rs-boite,.rs-fond,.rs-coche *{animation:none!important;stroke-dashoffset:0!important}}

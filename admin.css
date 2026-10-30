@@ -685,3 +685,12 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .fr-cote .ico{width:13px;height:13px}
 .r-recap-cote td{background:#fffbea}
 .r-recap-cote small{display:block;color:#8a6d1a;font-size:.76rem}
+
+/* Réservation en ligne */
+.cmd-bloc{display:flex;align-items:center;gap:.6rem 1.2rem;flex-wrap:wrap;margin:-.4rem 0 1.2rem;padding:.8rem 1rem;border:1px solid var(--trait);border-radius:14px;background:var(--blanc)}
+.cmd-bloc.actif{border-color:#b6dec8;background:#f6fbf8}
+.cmd-limite{display:flex;align-items:center;gap:.4rem;font-size:.88rem;color:var(--gris);white-space:nowrap}
+.cmd-limite input{width:auto;padding:.35rem .5rem;border:1px solid var(--trait);border-radius:8px;font:600 .9rem var(--texte)}
+.cmd-bloc .lien{margin-left:auto}
+.r-web{display:inline-block;margin-left:.2rem;padding:.05rem .45rem;border-radius:6px;background:var(--vert-pale);color:var(--vert);font:700 .72rem var(--texte);vertical-align:middle}
+.auth .info{background:var(--vert-pale);color:var(--vert);padding:.75rem .9rem;border-radius:10px;font-weight:600;font-size:.9rem;margin:0 0 1rem}

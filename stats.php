@@ -4,7 +4,7 @@
 // - les robots et vos propres visites quand vous êtes connecté au back-office ne sont pas comptés ;
 // - un fichier par jour dans data/stats/, effacé automatiquement après 13 mois.
 const STATS = DATA . '/stats';
-const STATS_ACTIONS = ['tel', 'itin', 'mail', 'carte', 'evt', 'fb', 'insta', 'avis', 'lettre'];
+const STATS_ACTIONS = ['tel', 'itin', 'mail', 'carte', 'evt', 'fb', 'insta', 'avis', 'lettre', 'resa', 'resa-ok'];
 
 function stats_dossier() {
     if (!is_dir(STATS) && !@mkdir(STATS, 0755, true)) return false;

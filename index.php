@@ -27,6 +27,16 @@ $rayons = [
     ['vins',        'Vins et champagnes', 'Une cave à partager, et les huîtres de Normandie.'],
 ];
 $galerie = photos_galerie();
+// Réservation en ligne (interrupteur dans le back-office) : jours réservables à partir du lendemain
+$cmdJours = commande_config()['actif'] ? commande_jours($s) : [];
+$cmd = (bool)$cmdJours;
+$cmdDates = array_column($cmdJours, 'date');
+// Date d'un jour du menu (« Mardi » de la semaine du 27 au 31 octobre → 2026-10-27)
+$dateDuJour = function ($sw, $nom) {
+    if ($sw['du'] === '') return '';
+    for ($k = 0; $k < 7; $k++) { $d = date('Y-m-d', strtotime($sw['du'] . " +$k day")); if (norm(JOURS[(int)date('N', strtotime($d)) - 1]) === norm($nom)) return $d; }
+    return '';
+};
 ?>
 <!doctype html>
 <html lang="fr">
@@ -47,7 +57,7 @@ $galerie = photos_galerie();
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=11" rel="stylesheet">
+<link href="style.css?v=12" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -67,7 +77,8 @@ $galerie = photos_galerie();
       <a href="#maison">Qui sommes-nous</a>
       <a href="#contact">Contact</a>
     </nav>
-    <a class="btn btn-violet btn-sm nav-tel" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg><span><?= $tel ?></span></a>
+<?php if ($cmd): ?>    <button type="button" class="btn btn-ligne btn-sm nav-resa" data-reserver>Réserver</button>
+<?php endif; ?>    <a class="btn btn-violet btn-sm nav-tel" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg><span><?= $tel ?></span></a>
     <button class="burger" type="button" aria-controls="menu" aria-expanded="false" aria-label="Ouvrir le menu"><span></span><span></span></button>
   </div>
 </header>
@@ -86,8 +97,11 @@ $galerie = photos_galerie();
       <h1 class="anim" style="--d:1">Bienvenue dans notre <span class="accent">atelier gourmand.</span></h1>
       <p class="lead anim" style="--d:2">De bons produits, et des repas préparés selon vos envies, par Angel &amp; Fab, au cœur de Montdidier.</p>
       <div class="ctas anim" style="--d:3">
-<?php if ($aSemaine): ?>        <a class="btn btn-violet btn-lg" href="#semaine">Le menu de la semaine</a>
+<?php if ($cmd): ?>        <button type="button" class="btn btn-violet btn-lg" data-reserver>Réserver mon plat du jour</button>
+        <a class="btn btn-ligne btn-lg" href="#semaine">Le menu de la semaine</a>
+<?php else: if ($aSemaine): ?>        <a class="btn btn-violet btn-lg" href="#semaine">Le menu de la semaine</a>
 <?php endif; ?>        <a class="btn btn-ligne btn-lg" href="#traiteur">Nos cartes traiteur</a>
+<?php endif; ?>
       </div>
 <?php if ($platDuJour): ?>
       <a class="du-jour anim" style="--d:4" href="#semaine">
@@ -186,6 +200,13 @@ $galerie = photos_galerie();
 <?php elseif ($semaines[0]['s']['du']): ?>      <p class="periode">Semaine <?= h(periode_fr($semaines[0]['s']['du'], $semaines[0]['s']['au'])) ?></p>
 <?php endif; ?>
     </div>
+<?php if ($cmd): ?>
+    <div class="resa-bandeau reveal">
+      <span class="resa-bandeau-ico" aria-hidden="true"><svg><use href="#i-sac"/></svg></span>
+      <p><strong>Réservez en ligne, on vous le met de côté.</strong><span>En 1 minute, jusqu’à la veille <?= h(str_replace(':', 'h', commande_config()['limite'])) ?>. Vous payez sur place, au retrait.</span></p>
+      <button type="button" class="btn btn-violet" data-reserver>Réserver mon plat</button>
+    </div>
+<?php endif; ?>
 <?php foreach ($semaines as $k => $w): $semW = $w['s']; $congesW = $w['conges']; $enCoursW = $enCours && $w['courante']; ?>
     <div class="sem-panneau" id="sem-<?= $k ?>"<?= count($semaines) > 1 ? ' role="tabpanel" aria-labelledby="tab-sem-' . $k . '"' : '' ?><?= $k ? ' hidden' : '' ?>>
 <?php if ($congesW): ?>
@@ -206,7 +227,9 @@ $galerie = photos_galerie();
           <span class="jour-px"><span class="badge-ferme">Fermé</span></span>
 <?php else: ?>
           <span class="jour-plat"><strong><?= h($j['nom']) ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span>
-          <span class="jour-px"><?= h($j['prix']) ?></span>
+          <span class="jour-px"><?= h($j['prix']) ?><?php if ($cmd): $dj = $dateDuJour($semW, $j['jour']);
+            if (in_array($dj, $cmdDates, true)): ?><button type="button" class="jour-resa" data-reserver="<?= $dj ?>" aria-label="Réserver le plat du <?= h(strtolower($j['jour'])) ?>">Réserver</button><?php
+            elseif ($dj === date('Y-m-d')): ?><a class="jour-resa tel" href="<?= $telHref ?>">Par téléphone</a><?php endif; endif; ?></span>
 <?php endif; ?>
         </li>
 <?php endforeach; ?>
@@ -218,7 +241,10 @@ $galerie = photos_galerie();
 <?php endif; ?>        <h3><?= h($sp['nom']) ?></h3>
 <?php if ($sp['prix'] !== ''): ?>        <p class="special-px"><?= h($sp['prix']) ?></p>
 <?php endif; if ($sp['lignes']): ?>        <ul><?php foreach ($sp['lignes'] as $l): ?><li><?= h($l) ?></li><?php endforeach; ?></ul>
-<?php endif; ?>        <a class="btn btn-blanc" href="<?= $telHref ?>">Réserver au <?= $tel ?></a>
+<?php endif; ?><?php $jOffre = null; foreach ($cmdJours as $cj) if ($cj['special'] && $cj['special']['nom'] === $sp['nom']) { $jOffre = $cj; break; }
+      if ($jOffre): ?>        <button type="button" class="btn btn-blanc" data-reserver="<?= $jOffre['date'] ?>" data-offre>Réserver en ligne</button>
+<?php else: ?>        <a class="btn btn-blanc" href="<?= $telHref ?>">Réserver au <?= $tel ?></a>
+<?php endif; ?>
       </aside>
 <?php endif; ?>
     </div>
@@ -464,9 +490,27 @@ $galerie = photos_galerie();
 </footer>
 
 <div class="barre" aria-label="Actions rapides">
-  <a class="btn btn-violet" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Appeler</a>
+<?php if ($cmd): ?>  <button type="button" class="btn btn-violet" data-reserver><svg class="ico" aria-hidden="true"><use href="#i-sac"/></svg>Réserver</button>
+  <a class="btn btn-ligne" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Appeler</a>
+<?php else: ?>  <a class="btn btn-violet" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Appeler</a>
   <a class="btn btn-ligne" href="<?= h($maps) ?>" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Itinéraire</a>
+<?php endif; ?></div>
+<?php if ($cmd): ?>
+<!-- Réservation en ligne : 1. le plat  2. les coordonnées  3. c'est réservé (affichage par main.js) -->
+<div class="rs" id="rs" hidden>
+  <div class="rs-fond" data-rs="fermer"></div>
+  <div class="rs-boite" role="dialog" aria-modal="true" aria-labelledby="rs-titre">
+    <div class="rs-tete">
+      <div><p class="rs-etape" id="rs-etape">Étape 1 sur 2</p><h2 id="rs-titre">Réserver mon plat</h2></div>
+      <button type="button" class="rs-x" data-rs="fermer" aria-label="Fermer">×</button>
+      <div class="rs-progres" aria-hidden="true"><span id="rs-barre"></span></div>
+    </div>
+    <div class="rs-corps" id="rs-corps"></div>
+    <div class="rs-pied" id="rs-pied"></div>
+  </div>
 </div>
+<script type="application/json" id="rs-donnees"><?= json_encode(['jours' => $cmdJours, 'tel' => $tel, 'telHref' => $telHref, 'limite' => str_replace(':', 'h', commande_config()['limite'])], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<?php endif; ?>
 
 
 <?php $pop = null; foreach ($evts as $e) if ($e['popup']) { $pop = $e; break; }
@@ -504,6 +548,7 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sac" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></g></symbol>
   <symbol id="i-tel" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></g></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></g></symbol>
@@ -511,6 +556,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=9" defer></script>
+<script src="main.js?v=10" defer></script>
 </body>
 </html>

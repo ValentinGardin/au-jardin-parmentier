@@ -130,7 +130,8 @@ function resa_clean($in, $ancien, $qui) {
         'recupere' => $ancien['recupere'] ?? false, 'recupere_le' => $ancien['recupere_le'] ?? '',
         'par' => $ancien['par'] ?? $qui, 'cree' => $ancien['cree'] ?? date('Y-m-d H:i'),
         'modifie' => $ancien ? date('Y-m-d H:i') . ' · ' . $qui : '',
-        'rappel' => $ancien['rappel'] ?? '',   // SMS « votre commande vous attend » déjà envoyé (date · par qui)
+        'rappel' => $ancien['rappel'] ?? '',
+        'source' => $ancien['source'] ?? (($in['source'] ?? '') === 'site' ? 'site' : 'back-office'),   // « site » : commande passée sur le site   // SMS « votre commande vous attend » déjà envoyé (date · par qui)
     ];
     if (array_key_exists('paye', $in)) resa_etat($r, 'paye', !empty($in['paye']), $qui);
     return $r;
@@ -266,4 +267,51 @@ function lettre_auto($d) {
             json_save(LETTRE, $c);
         });
     });
+}
+
+// ---- Réservation en ligne (page d'accueil) ----
+const COMMANDE = DATA . '/commande.json';
+function commande_config() {
+    $c = lire_json(COMMANDE);
+    return ['actif' => !empty($c['actif']),
+            'limite' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)($c['limite'] ?? '')) ? $c['limite'] : '20:00'];   // la veille, jusqu'à cette heure
+}
+// L'offre spéciale est-elle proposée ce jour-là ? (« Vendredi et samedi » → seulement ces jours ; sans jour indiqué → toute la semaine)
+function special_le_jour($sp, $jour) {
+    if ($sp['nom'] === '') return false;
+    $t = norm($sp['titre']); $cites = array_filter(JOURS, function ($j) use ($t) { return strpos($t, norm($j)) !== false; });
+    return !$cites || strpos($t, norm($jour)) !== false;
+}
+// Jours réservables en ligne : à partir du lendemain (jusqu'à la veille à l'heure limite), uniquement les jours avec un plat
+function commande_jours($d) {
+    $c = commande_config(); $out = [];
+    $demain = date('Y-m-d', strtotime('tomorrow'));
+    $semaines = [$d['semaine']];
+    if ($d['semaine_suivante']['publie'] && semaine_remplie($d['semaine_suivante'])) $semaines[] = $d['semaine_suivante'];
+    foreach ($semaines as $s) {
+        if ($s['du'] === '' || $s['conges']['actif']) continue;
+        $fin = $s['au'] ?: date('Y-m-d', strtotime($s['du'] . ' +6 days'));
+        for ($date = max($s['du'], $demain); $date <= $fin; $date = date('Y-m-d', strtotime($date . ' +1 day'))) {
+            if (isset($out[$date]) || ($date === $demain && date('H:i') >= $c['limite'])) continue;
+            $nomJour = JOURS[(int)date('N', strtotime($date)) - 1];
+            foreach ($s['jours'] as $j) {
+                if (norm($j['jour']) !== norm($nomJour) || $j['nom'] === '' || $j['ferme']) continue;
+                $out[$date] = ['date' => $date, 'jour' => $nomJour, 'libelle' => date_fr($date, true), 'plat' => ['nom' => $j['nom'], 'desc' => $j['desc'], 'prix' => $j['prix']],
+                               'special' => special_le_jour($s['special'], $nomJour) ? ['nom' => $s['special']['nom'], 'prix' => $s['special']['prix'], 'titre' => $s['special']['titre'], 'lignes' => $s['special']['lignes']] : null];
+                break;
+            }
+        }
+    }
+    ksort($out);
+    return array_slice(array_values($out), 0, 12);
+}
+// Pas plus de $max envois par heure depuis une même connexion
+function limite_ip($quoi, $max) {
+    $f = DATA . '/limites.json';
+    $t = array_filter(lire_json($f), function ($x) { return time() - (int)$x < 3600; });
+    $k = substr(hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . $quoi), 0, 16);
+    if (count(array_filter(array_keys($t), function ($x) use ($k) { return strpos($x, $k) === 0; })) >= $max) return true;
+    $t[$k . '-' . bin2hex(random_bytes(3))] = time();
+    json_save($f, $t);
+    return false;
 }

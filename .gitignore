@@ -19,3 +19,5 @@ data/lettre-essais.json
 data/.verrou
 data/sms.json
 data/numeros.json
+data/commande.json
+data/limites.json

@@ -22,6 +22,14 @@ $comptes = comptes_charger();
 $moi = !empty($_SESSION['uid']) ? compte_par_id($_SESSION['uid']) : null;
 if (!empty($_SESSION['uid']) && !$moi) { $_SESSION = []; session_destroy(); session_start(); $_SESSION['csrf'] = bin2hex(random_bytes(16)); }
 $logged = (bool)$moi;
+$info = '';
+// Compte correspondant à un lien « mot de passe oublié » encore valable
+function compte_reinit($jeton) {
+    $jeton = (string)$jeton;
+    if (!preg_match('/^[a-f0-9]{48}$/', $jeton)) return null;
+    foreach (comptes_charger() as $u) if (!empty($u['reinit']) && hash_equals($u['reinit'], hash('sha256', $jeton)) && ($u['reinit_fin'] ?? 0) > time()) return $u;
+    return null;
+}
 $estAdmin = $logged && $moi['role'] === 'admin';
 $err = '';
 
@@ -355,6 +363,15 @@ if ($api !== '') {
             repondre(200, ['ok' => true, 'n' => $n, 'avert' => $e] + $listeClients());
         }
     }
+    // ---- Réservation en ligne : ouverte ou fermée, heure limite la veille ----
+    if ($api === 'commande-options' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        api_garde();
+        $in = entree(); $c = lire_json(COMMANDE);
+        if (array_key_exists('actif', $in)) $c['actif'] = !empty($in['actif']);
+        if (isset($in['limite']) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)$in['limite'])) $c['limite'] = $in['limite'];
+        if (!json_save(COMMANDE, $c)) repondre(500, ['erreur' => 'Impossible d’enregistrer : le dossier data/ n’est pas modifiable.']);
+        repondre(200, ['ok' => true, 'commande' => commande_config(), 'jours' => count(commande_jours(site_load()))]);
+    }
     // ---- SMS (service SMS d'OVH) ----
     if (strpos($api, 'sms') === 0) {
         if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
@@ -459,6 +476,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             usleep(700000); tentatives(true);
             $err = 'Identifiant, e-mail ou mot de passe incorrect.';
         }
+    } elseif ($action === 'oubli') {
+        // Mot de passe oublié : lien valable 1 heure envoyé à l'adresse du compte. Même réponse que le compte existe ou non.
+        $u = compte_par_login($_POST['login'] ?? '');
+        if (($_POST['site_web'] ?? '') === '' && !limite_ip('oubli', 5) && $u && $u['email'] !== '') {
+            $jeton = bin2hex(random_bytes(24));
+            $l = comptes_charger();
+            foreach ($l as &$x) if ($x['id'] === $u['id']) { $x['reinit'] = hash('sha256', $jeton); $x['reinit_fin'] = time() + 3600; }
+            unset($x);
+            comptes_enregistrer($l);
+            $lien = adresse_site() . '/' . ESPACE . '/?reinit=' . $jeton;
+            mail_envoyer($u['email'], 'Nouveau mot de passe · Gestion du site Au Jardin Parmentier',
+                '<div style="font:15px/1.6 Arial,sans-serif;color:#1d171b;max-width:520px"><p>Bonjour ' . h($u['nom'] ?: $u['identifiant']) . ',</p><p>Pour choisir un nouveau mot de passe pour la gestion du site, cliquez sur ce bouton (valable 1 heure) :</p>'
+                . '<p><a href="' . h($lien) . '" style="display:inline-block;background:#700954;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px">Choisir un nouveau mot de passe</a></p>'
+                . '<p style="font-size:13px;color:#6b6369">Vous n’avez rien demandé ? Ignorez cet e-mail : votre mot de passe actuel reste valable.<br>Votre identifiant : ' . h($u['identifiant']) . '</p></div>',
+                "Bonjour,\n\nPour choisir un nouveau mot de passe (lien valable 1 heure) :\n$lien\n\nVous n'avez rien demandé ? Ignorez cet e-mail.\nVotre identifiant : {$u['identifiant']}\n");
+        }
+        usleep(400000);
+        $info = 'Si un compte correspond, un e-mail avec un lien pour choisir un nouveau mot de passe vient d’être envoyé. Pensez à regarder dans les courriers indésirables.';
+    } elseif ($action === 'reinit') {
+        $u = compte_reinit($_POST['jeton'] ?? '');
+        if (!$u) $err = 'Ce lien a expiré ou a déjà servi. Refaites une demande avec « Mot de passe oublié ».';
+        elseif ($e = mdp_faible((string)($_POST['pwd'] ?? ''))) $err = $e;
+        elseif ((string)$_POST['pwd'] !== (string)($_POST['pwd2'] ?? '')) $err = 'Les deux mots de passe ne sont pas identiques.';
+        else {
+            $l = comptes_charger();
+            foreach ($l as &$x) if ($x['id'] === $u['id']) { $x['hash'] = password_hash((string)$_POST['pwd'], PASSWORD_DEFAULT); unset($x['reinit'], $x['reinit_fin']); }
+            unset($x);
+            comptes_enregistrer($l);
+            tentatives(false);
+            header('Location: ./?change=1'); exit;
+        }
     } elseif ($action === 'logout') {
         $_SESSION = []; session_destroy(); header('Location: ./'); exit;
     }
@@ -471,7 +519,8 @@ if ($logged) {
     $photos = [];
     foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
-             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant']];
+             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant'],
+             'commande' => commande_config() + ['jours' => count(commande_jours(site_load()))]];
 }
 ?>
 <!doctype html>
@@ -486,34 +535,51 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=18" rel="stylesheet">
+<link href="admin.css?v=19" rel="stylesheet">
 </head>
 <body>
 
-<?php if (!$logged): $setup = !$comptes; $_SESSION['form_t'] = time(); ?>
+<?php if (!$logged): $setup = !$comptes; $_SESSION['form_t'] = time();
+  $jetonReinit = (string)($_GET['reinit'] ?? $_POST['jeton'] ?? '');
+  $mode = $setup ? 'setup' : ($jetonReinit !== '' ? 'reinit' : (isset($_GET['oubli']) || ($_POST['action'] ?? '') === 'oubli' ? 'oubli' : 'login'));
+  if ($mode === 'reinit' && !compte_reinit($jetonReinit) && !$err) $err = 'Ce lien a expiré ou a déjà servi. Refaites une demande avec « Mot de passe oublié ».';
+  if (isset($_GET['change'])) $info = 'Mot de passe changé. Vous pouvez vous connecter.'; ?>
 <main class="auth">
   <form method="post" class="auth-carte">
     <img src="favicon.svg" alt="" width="56" height="56">
-    <h1><?= $setup ? 'Créer le compte administrateur' : 'Gestion du site' ?></h1>
-    <p class="aide"><?= $setup ? 'Première connexion : créez votre compte. Vous pourrez ensuite ajouter d’autres utilisateurs.' : 'Au Jardin Parmentier' ?></p>
+    <h1><?= ['setup' => 'Créer le compte administrateur', 'oubli' => 'Mot de passe oublié', 'reinit' => 'Nouveau mot de passe', 'login' => 'Gestion du site'][$mode] ?></h1>
+    <p class="aide"><?= ['setup' => 'Première connexion : créez votre compte. Vous pourrez ensuite ajouter d’autres utilisateurs.', 'oubli' => 'Indiquez votre identifiant ou votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.', 'reinit' => 'Choisissez votre nouveau mot de passe.', 'login' => 'Au Jardin Parmentier'][$mode] ?></p>
+<?php if ($info): ?>    <p class="info" role="status"><?= h($info) ?></p>
+<?php endif; ?>
 <?php if ($err): ?>    <p class="alerte" role="alert"><?= h($err) ?></p>
 <?php endif; ?>
     <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
-    <input type="hidden" name="action" value="<?= $setup ? 'setup' : 'login' ?>">
+    <input type="hidden" name="action" value="<?= $mode ?>">
+<?php if ($mode === 'reinit'): ?>    <input type="hidden" name="jeton" value="<?= h($jetonReinit) ?>">
+<?php endif; ?>
     <div class="piege" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Site web <input name="site_web" tabindex="-1" autocomplete="off"></label></div>
-<?php if ($setup): ?>
+<?php if ($mode === 'setup'): ?>
     <label class="champ"><span>Identifiant</span><input name="identifiant" required pattern="[A-Za-z0-9._\-]{3,30}" autocomplete="username" value="<?= h($_POST['identifiant'] ?? '') ?>"></label>
     <label class="champ"><span>Adresse e-mail</span><input type="email" name="email" required autocomplete="email" value="<?= h($_POST['email'] ?? '') ?>"></label>
     <label class="champ"><span>Mot de passe</span><input type="password" name="pwd" minlength="10" required autocomplete="new-password"><small>10 caractères minimum, avec au moins une lettre et un chiffre.</small></label>
     <label class="champ"><span>Confirmation</span><input type="password" name="pwd2" minlength="10" required autocomplete="new-password"></label>
+    <button class="btn btn-violet btn-plein">Créer le compte</button>
+<?php elseif ($mode === 'oubli'): ?>
+    <label class="champ"><span>Identifiant ou adresse e-mail</span><input name="login" required autocomplete="username" autofocus value="<?= h($_POST['login'] ?? '') ?>"></label>
+    <button class="btn btn-violet btn-plein">Recevoir le lien par e-mail</button>
+    <p class="aide petit-aide"><a href="<?= ESPACE ?>/">← Retour à la connexion</a></p>
+<?php elseif ($mode === 'reinit'): ?>
+    <label class="champ"><span>Nouveau mot de passe</span><input type="password" name="pwd" minlength="10" required autocomplete="new-password" autofocus><small>10 caractères minimum, avec au moins une lettre et un chiffre.</small></label>
+    <label class="champ"><span>Confirmation</span><input type="password" name="pwd2" minlength="10" required autocomplete="new-password"></label>
+    <button class="btn btn-violet btn-plein">Enregistrer le mot de passe</button>
 <?php else: ?>
     <label class="champ"><span>Identifiant ou adresse e-mail</span><input name="login" required autocomplete="username" autofocus value="<?= h($_POST['login'] ?? '') ?>"></label>
     <label class="champ"><span>Mot de passe</span>
       <span class="mdp-zone"><input type="password" name="pwd" required autocomplete="current-password"><button type="button" class="voir-mdp" aria-label="Afficher le mot de passe" onclick="var i=this.previousElementSibling;i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Afficher':'Masquer'">Afficher</button></span></label>
+    <button class="btn btn-violet btn-plein">Se connecter</button>
+    <p class="aide petit-aide"><a href="<?= ESPACE ?>/?oubli">Mot de passe oublié ?</a></p>
 <?php endif; ?>
-    <button class="btn btn-violet btn-plein"><?= $setup ? 'Créer le compte' : 'Se connecter' ?></button>
-<?php if (!$setup): ?>    <p class="aide petit-aide">Mot de passe oublié ? Demandez à un administrateur de le réinitialiser dans l’onglet « Utilisateurs ».</p>
-<?php endif; ?>    <a class="lien-site" href="./">← Retour au site</a>
+    <a class="lien-site" href="./">← Retour au site</a>
     <p class="version">Version <?= h(VERSION) ?></p>
   </form>
 </main>
@@ -555,7 +621,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=18"></script>
+<script src="admin.js?v=19"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

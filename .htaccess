@@ -26,6 +26,7 @@ RewriteRule ^affiche$ affiche.php [L]
 RewriteRule ^carte-traiteur$ carte.php [L]
 RewriteRule ^lettre$ lettre.php [L]
 RewriteRule ^rappels$ rappels.php [L]
+RewriteRule ^commander$ commander.php [L]
 </IfModule>
 
 # Site de test (test.lejardinparmentier.fr) : jamais référencé par Google

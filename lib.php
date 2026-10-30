@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.18 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
+const VERSION = '1.19 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');
