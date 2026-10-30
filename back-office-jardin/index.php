@@ -69,7 +69,7 @@ function photo_recue($f) {
             $w = imagesx($src); $h = imagesy($src); $r = min(1, 1600 / max($w, $h));
             $dst = imagecreatetruecolor((int)round($w * $r), (int)round($h * $r));
             imagecopyresampled($dst, $src, 0, 0, 0, 0, imagesx($dst), imagesy($dst), $w, $h);
-            if (@imagewebp($dst, "$dir/$nom.webp", 80)) return [$nom, null];
+            if (@imagewebp($dst, "$dir/$nom.webp", 80)) { variantes("img/photos/$nom.webp"); return [$nom, null]; }
         }
     }
     $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$info[2]];
@@ -183,9 +183,9 @@ if ($logged) {
 <base href="../">
 <title>Gestion du site · Au Jardin Parmentier</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link href="fonts/fonts.css" rel="stylesheet">
 <link href="admin.css?v=9" rel="stylesheet">
 </head>
 <body>

@@ -16,9 +16,9 @@ $titrePage = count($cartes) === 1 ? $cartes[0]['titre'] : 'Cartes traiteur';
 <meta name="robots" content="noindex">
 <title><?= h($titrePage) ?> · Au Jardin Parmentier</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link href="fonts/fonts.css" rel="stylesheet">
 <style>
   @page{size:A4;margin:11mm 12mm}
   :root{--violet:#700954;--violet-pale:#f6ecf2;--sable:#f2ece4;--encre:#1d171b;--gris:#5f575d;--trait:#e2d9cf}

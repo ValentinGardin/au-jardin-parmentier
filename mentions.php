@@ -29,10 +29,9 @@ $realisation = 'G’agency';
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="style.css?v=6" rel="stylesheet">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link href="style.css?v=8" rel="stylesheet">
 </head>
 <body>
 
@@ -92,7 +91,7 @@ $realisation = 'G’agency';
     <h2>Cookies et services tiers</h2>
     <p>Le site ne dépose aucun cookie. Pour connaître sa fréquentation, il utilise une mesure d’audience interne et anonyme : aucune adresse IP n’est conservée, seule une empreinte temporaire (renouvelée chaque jour) permet de compter les visiteurs. Ces statistiques restent sur notre hébergement, ne sont partagées avec personne et sont effacées au bout de 13 mois.</p>
     <p>Le plan d’accès est fourni par Google Maps, qui peut déposer des cookies : il n’est affiché qu’après votre accord, donné dans le bandeau « cookies ». Vous pouvez changer d’avis à tout moment avec le lien « Gérer les cookies » en bas de la page d’accueil ; votre choix est conservé 6 mois sur votre appareil.</p>
-    <p>Le site utilise aussi des services externes qui peuvent recevoir votre adresse IP lors de l’affichage de la page : Google Fonts (polices de caractères) et, si vous l’acceptez, Google Maps (plan d’accès). Ces services sont soumis à la politique de confidentialité de Google.</p>
+    <p>Les polices de caractères sont hébergées sur notre propre serveur : aucune donnée n’est transmise à un service tiers lors de l’affichage des pages, à l’exception de Google Maps si vous l’acceptez, soumis à la politique de confidentialité de Google.</p>
   </section>
 
   <section>
