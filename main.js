@@ -271,7 +271,7 @@
       else if (a === 'autres') { etat.voirAutres = true; var y2 = corps.scrollTop; etape1(); corps.scrollTop = y2; var c1 = corps.querySelector('.rs-autre [data-rs="plus"]'); if (c1) c1.focus(); }
       else if (a === 'idee') {
         var ta = corps.querySelector('textarea[name=note]'), v = b.dataset.t;
-        ta.value = ta.value.trim() ? ta.value.trim().replace(/[.,;]$/, '') + ', ' + v.charAt(0).toLowerCase() + v.slice(1) : v;
+        ta.value = v;   // la suggestion remplace le texte déjà écrit
         ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
       }
       else if (a === 'suite') etape2();
