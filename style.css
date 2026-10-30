@@ -390,3 +390,13 @@ body.pop-ouvert{overflow:hidden}
 .pied-reseaux{display:flex;gap:.5rem}
 .pied .reseau{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
 .pied .reseau:hover{background:#fff;color:var(--violet)}
+
+/* Menu de la semaine : jour fermé et congés */
+.jour.ferme{background:repeating-linear-gradient(135deg,var(--fond),var(--fond) 10px,#f3eee8 10px,#f3eee8 20px)}
+.jour.ferme .jour-nom{color:var(--gris)}
+.jour.ferme .jour-plat strong{color:var(--violet)}
+.badge-ferme{display:inline-block;font:600 .78rem var(--texte);text-transform:uppercase;letter-spacing:.06em;color:var(--gris);background:var(--blanc);border:1px solid var(--trait);padding:.35rem .7rem;border-radius:999px}
+.conges{position:relative;overflow:hidden;text-align:center;padding:clamp(2.5rem,7vw,4.5rem) clamp(1.5rem,5vw,4rem);border-radius:var(--r);background:var(--violet-pale);border:1px solid #ead3e2}
+.conges-sym{height:70px;width:auto;margin:0 auto 1.2rem;animation:balance 4s ease-in-out infinite}
+.conges h3{font-size:clamp(2rem,5vw,3rem);color:var(--violet);margin-bottom:.8rem}
+.conges p{max-width:36rem;margin:0 auto;font-size:1.12rem;color:var(--gris)}

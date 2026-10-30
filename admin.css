@@ -371,3 +371,21 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .visuel.en-cours .visuel-cadre{outline:3px solid var(--violet);outline-offset:-3px}
 #visuels .aide.petit{margin:1rem 0 0}
 #visuels{scroll-margin-top:90px}
+
+/* Menu de la semaine : jours fermés et congés */
+.jour-col{display:flex;flex-direction:column;gap:.45rem}
+.interrupteur.petit{font-size:.78rem;gap:.45rem}
+.interrupteur.petit span{width:32px;height:19px}
+.interrupteur.petit span::after{width:13px;height:13px}
+.interrupteur.petit input:checked + span::after{transform:translateX(13px)}
+.jour-ligne.est-ferme{background:repeating-linear-gradient(135deg,var(--fond),var(--fond) 10px,#efe9e2 10px,#efe9e2 20px)}
+.jour-ligne .badge-ferme{align-self:center;justify-self:end;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gris);background:var(--blanc);border:1px solid var(--trait);padding:.35rem .6rem;border-radius:999px}
+.bloc-conges.actif{border-color:#f0c48f;box-shadow:0 0 0 3px var(--orange-pale)}
+.alerte-info{background:var(--orange-pale);color:var(--orange);font-weight:600;font-size:.88rem;padding:.7rem .9rem;border-radius:10px;margin:0 0 1rem}
+.attenue{opacity:.45;transition:opacity .2s}
+.attenue:hover,.attenue:focus-within{opacity:.8}
+.af-conges{text-align:center;border-top:2px solid var(--violet);padding:1.2rem .5rem;display:grid;gap:.4rem}
+.af-conges strong{font:800 1.1rem var(--titre);color:var(--violet)}
+.af-conges span{color:var(--gris)}
+.af-ferme span strong{color:var(--violet)}
+.af-ferme em{color:var(--gris)!important;font-size:.7rem;text-transform:uppercase}

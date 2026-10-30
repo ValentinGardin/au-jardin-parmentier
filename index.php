@@ -5,12 +5,13 @@ $tel = '09 50 17 39 62'; $telHref = 'tel:+33950173962';
 $maps = 'https://www.google.com/maps/search/?api=1&query=9+place+Parmentier+80500+Montdidier';
 $sem = $s['semaine'];
 // Seuls les jours avec un plat sont affichés ; sans aucun plat, la section est masquée
-$sem['jours'] = array_values(array_filter($sem['jours'], function ($j) { return $j['nom'] !== ''; }));
-$aSemaine = (bool)$sem['jours'];
+$sem['jours'] = jours_visibles($sem['jours']);
+$conges = $sem['conges']['actif'];
+$aSemaine = $conges || (bool)$sem['jours'];
 $enCours = semaine_en_cours($sem);
 $auj = jour_actuel();
 $platDuJour = null;
-if ($enCours) foreach ($sem['jours'] as $j) if (norm($j['jour']) === norm($auj) && $j['nom'] !== '') $platDuJour = $j;
+if ($enCours && !$conges) foreach ($sem['jours'] as $j) if (norm($j['jour']) === norm($auj) && $j['nom'] !== '' && !$j['ferme']) $platDuJour = $j;
 $rayons = [
     ['traiteur',    'Traiteur',          'Plats cuisinés, buffets, plateaux et apéritifs préparés par nos soins.'],
     ['fromagerie',  'Fromagerie',        'Des fromages choisis, pour le plateau comme pour la cuisine.'],
@@ -41,7 +42,7 @@ $galerie = photos_galerie();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="style.css?v=6" rel="stylesheet">
+<link href="style.css?v=7" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -168,13 +169,26 @@ $galerie = photos_galerie();
 <?php if ($sem['du']): ?>      <p class="periode">Semaine <?= h(periode_fr($sem['du'], $sem['au'])) ?></p>
 <?php endif; ?>
     </div>
+<?php if ($conges): ?>
+    <div class="conges reveal">
+      <img class="conges-sym" src="img/logo/symbole-violet.svg" alt="">
+      <h3><?= h($sem['conges']['titre'] ?: 'Fermeture pour congés') ?></h3>
+<?php if ($sem['conges']['message'] !== ''): ?>      <p><?= nl2br(h($sem['conges']['message'])) ?></p>
+<?php endif; ?>
+    </div>
+<?php else: ?>
     <div class="semaine-in<?= $sem['special']['nom'] !== '' || $sem['special']['lignes'] ? ' avec-special' : '' ?>">
       <ol class="jours">
 <?php foreach ($sem['jours'] as $i => $j): $estAuj = $enCours && norm($j['jour']) === norm($auj); ?>
-        <li class="jour reveal<?= $estAuj ? ' auj' : '' ?>" style="--d:<?= $i ?>">
+        <li class="jour reveal<?= $estAuj ? ' auj' : '' ?><?= $j['ferme'] ? ' ferme' : '' ?>" style="--d:<?= $i ?>">
           <span class="jour-nom"><?= h($j['jour']) ?><?php if ($estAuj): ?> <em>Aujourd’hui</em><?php endif; ?></span>
+<?php if ($j['ferme']): ?>
+          <span class="jour-plat"><strong><?= h($j['motif'] ?: 'Fermé') ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span>
+          <span class="jour-px"><span class="badge-ferme">Fermé</span></span>
+<?php else: ?>
           <span class="jour-plat"><strong><?= h($j['nom']) ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span>
           <span class="jour-px"><?= h($j['prix']) ?></span>
+<?php endif; ?>
         </li>
 <?php endforeach; ?>
       </ol>
@@ -189,9 +203,11 @@ $galerie = photos_galerie();
       </aside>
 <?php endif; ?>
     </div>
+<?php endif; ?>
 <?php if ($sem['note'] !== ''): ?>    <p class="semaine-note reveal"><?= h($sem['note']) ?></p>
 <?php endif; ?>
-    <p class="semaine-note reveal">À emporter, à réserver de préférence par téléphone au <a href="<?= $telHref ?>"><?= $tel ?></a>.</p>
+<?php if (!$conges): ?>    <p class="semaine-note reveal">À emporter, à réserver de préférence par téléphone au <a href="<?= $telHref ?>"><?= $tel ?></a>.</p>
+<?php endif; ?>
   </div>
 </section>
 <?php endif; ?>

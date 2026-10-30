@@ -47,6 +47,7 @@
   }
   function statutSemaine(s) {
     var t = E.aujourdhui;
+    if (s.conges && s.conges.actif) return ['orange', 'Fermeture affichée à la place du menu'];
     if (!s.du) return ['gris', 'Dates à renseigner'];
     if (s.du > t) return ['bleu', 'À venir : s’affichera le ' + dateFr(s.du)];
     if (s.au && s.au < t) return ['orange', 'Semaine terminée : pensez à préparer la suivante'];
@@ -57,7 +58,7 @@
   var MODELES = {
     jour: function (arr) {
       var dernier = arr.length ? JOURS.indexOf(arr[arr.length - 1].jour) : 0;
-      return { jour: JOURS[Math.min(6, dernier + 1)] || 'Mardi', nom: '', desc: '', prix: '' };
+      return { jour: JOURS[Math.min(6, dernier + 1)] || 'Mardi', nom: '', desc: '', prix: '', ferme: false, motif: '', message: '' };
     },
     plat: function () { return { nom: '', desc: '', prix: '' }; },
     cat: function () { return { titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }; },
@@ -104,14 +105,20 @@
     var s = site.semaine, st = statutSemaine(s), n = s.jours.length;
     var jours = s.jours.map(function (j, i) {
       var p = 'semaine.jours.' + i;
-      return '<div class="jour-ligne">' +
+      return '<div class="jour-ligne' + (j.ferme ? ' est-ferme' : '') + '"><div class="jour-col">' +
         '<select data-p="' + p + '.jour" aria-label="Jour">' + JOURS.map(function (d) { return '<option' + (d === j.jour ? ' selected' : '') + '>' + d + '</option>'; }).join('') +
         (JOURS.indexOf(j.jour) < 0 ? '<option selected>' + esc(j.jour) + '</option>' : '') + '</select>' +
-        '<div class="jour-champs">' +
-        '<input class="fort" data-p="' + p + '.nom" value="' + esc(j.nom) + '" placeholder="Plat, ex. Waterzooï de volaille" aria-label="Plat du ' + esc(j.jour) + '">' +
-        '<input data-p="' + p + '.desc" value="' + esc(j.desc) + '" placeholder="Accompagnement, ex. légumes et riz pilaf" aria-label="Accompagnement">' +
-        '</div>' +
-        '<input class="prix" data-p="' + p + '.prix" data-prix value="' + esc(j.prix) + '" placeholder="9.50 €" inputmode="decimal" aria-label="Prix">' +
+        '<label class="interrupteur petit" title="Jour férié, fermeture exceptionnelle…"><input type="checkbox" data-p="' + p + '.ferme"' + (j.ferme ? ' checked' : '') + '><span></span>Fermé</label></div>' +
+        (j.ferme
+          ? '<div class="jour-champs">' +
+              '<input class="fort" data-p="' + p + '.motif" value="' + esc(j.motif) + '" placeholder="Titre, ex. Férié, Fermeture exceptionnelle" aria-label="Titre de la fermeture">' +
+              '<input data-p="' + p + '.message" value="' + esc(j.message) + '" placeholder="Message, ex. Bon 11 novembre à tous !" aria-label="Message">' +
+            '</div><span class="badge-ferme">Fermé</span>'
+          : '<div class="jour-champs">' +
+              '<input class="fort" data-p="' + p + '.nom" value="' + esc(j.nom) + '" placeholder="Plat, ex. Waterzooï de volaille" aria-label="Plat du ' + esc(j.jour) + '">' +
+              '<input data-p="' + p + '.desc" value="' + esc(j.desc) + '" placeholder="Accompagnement, ex. légumes et riz pilaf" aria-label="Accompagnement">' +
+            '</div>' +
+            '<input class="prix" data-p="' + p + '.prix" data-prix value="' + esc(j.prix) + '" placeholder="9.50 €" inputmode="decimal" aria-label="Prix">') +
         boutonsOrdre('semaine.jours', i, n) + '</div>';
     }).join('');
     var sp = specialOuvert
@@ -125,20 +132,29 @@
       '<div class="deux-cols"><div class="col-form">' +
         '<section class="bloc"><div class="bloc-tete"><h2>1. La semaine</h2><span class="statut statut-' + st[0] + '" id="statut-sem">' + st[1] + '</span></div>' +
           '<div class="grille-3">' + champ('Du', 'semaine.du', { type: 'date' }) + champ('Au', 'semaine.au', { type: 'date' }) + champ('Titre', 'semaine.titre', { ph: 'Inspirations de la semaine' }) + '</div></section>' +
+        '<section class="bloc bloc-conges' + (s.conges.actif ? ' actif' : '') + '"><div class="bloc-tete"><h2>Fermeture de la semaine <em>congés, travaux…</em></h2>' +
+          '<label class="interrupteur"><input type="checkbox" data-p="semaine.conges.actif"' + (s.conges.actif ? ' checked' : '') + '><span></span>' + (s.conges.actif ? 'Activée' : 'Désactivée') + '</label></div>' +
+          (s.conges.actif
+            ? '<p class="alerte-info">Le menu est remplacé sur le site par ce message. Les plats restent enregistrés pour plus tard.</p>' +
+              champ('Titre', 'semaine.conges.titre', { ph: 'Fermeture pour congés' }) +
+              champ('Message', 'semaine.conges.message', { zone: true, rows: 3, ph: 'ex. Nous sommes en congés du 24 décembre au 4 janvier. Réouverture le mardi 5 janvier, à très vite !' })
+            : '<p class="aide">À activer si la boutique est fermée toute la semaine : un titre et un message remplacent le menu sur le site et sur les visuels. Pour un seul jour (férié…), utilisez plutôt le bouton « Fermé » du jour concerné.</p>') + '</section>' +
+        '<div class="' + (s.conges.actif ? 'attenue' : '') + '">' +
         '<section class="bloc"><div class="bloc-tete"><h2>2. Les plats du jour</h2><span class="compte">' + pluriel(n, 'jour') + '</span></div>' +
           '<div class="jours-liste">' + (jours || '<p class="vide">Aucun jour. Ajoutez le premier plat.</p>') + '</div>' +
           '<button type="button" class="btn-ajout" data-act="add" data-p="semaine.jours" data-tpl="jour">' + ico('plus') + 'Ajouter un jour</button></section>' +
         '<section class="bloc"><div class="bloc-tete"><h2>3. Offre spéciale <em>facultatif</em></h2>' +
           '<label class="interrupteur"><input type="checkbox" data-act="special"' + (specialOuvert ? ' checked' : '') + '><span></span>' + (specialOuvert ? 'Affichée' : 'Masquée') + '</label></div>' +
           (specialOuvert ? sp : '<p class="aide">Un plateau ou une formule pour quelques jours (ex. plateau apéritif du week-end). Elle apparaît dans un encadré à côté des plats.</p>') + '</section>' +
-        '<section class="bloc">' + champ('Petite note sous le menu', 'semaine.note', { opt: true, ph: 'ex. Fermé le mercredi 11 novembre' }) + '</section>' +
+        '<section class="bloc">' + champ('Petite note sous le menu', 'semaine.note', { opt: true, ph: 'ex. Commandes la veille avant 18 h' }) + '</section>' +
+        '</div>' +
         vueVisuels() +
       '</div><aside class="col-apercu"><p class="apercu-titre">Aperçu de l’affiche</p><div class="affiche-mini" id="apercu">' + apercu() + '</div></aside></div>';
   }
   // ---------- Visuels à télécharger (dessinés par visuels.js) ----------
   function donneesVisuels() {
     var s = site.semaine;
-    return { titre: s.titre, du: s.du, au: s.au, jours: s.jours, special: specialOuvert ? s.special : null };
+    return { titre: s.titre, du: s.du, au: s.au, jours: s.jours, special: specialOuvert ? s.special : null, conges: s.conges.actif ? s.conges : null };
   }
   function vueVisuels() {
     var fv = window.Visuels && Visuels.formatVideo(), mp4 = fv && fv.indexOf('mp4') >= 0;
@@ -164,8 +180,11 @@
   }
   function apercu() {
     var s = site.semaine, sp = s.special;
-    return '<div class="af-tete"><b>' + esc(s.titre || 'Inspirations de la semaine') + '</b><small>' + esc(periode(s.du, s.au) ? 'semaine ' + periode(s.du, s.au) : '') + '</small></div>' +
+    var tete_ = '<div class="af-tete"><b>' + esc(s.titre || 'Inspirations de la semaine') + '</b><small>' + esc(periode(s.du, s.au) ? 'semaine ' + periode(s.du, s.au) : '') + '</small></div>';
+    if (s.conges.actif) return tete_ + '<div class="af-conges"><strong>' + esc(s.conges.titre || 'Fermeture pour congés') + '</strong><span>' + esc(s.conges.message) + '</span></div>';
+    return tete_ +
       s.jours.map(function (j) {
+        if (j.ferme) return '<div class="af-jour af-ferme"><b>' + esc(j.jour) + '</b><span><strong>' + esc(j.motif || 'Fermé') + '</strong>' + esc(j.message) + '</span><em>Fermé</em></div>';
         return '<div class="af-jour"><b>' + esc(j.jour) + '</b><span><strong>' + (esc(j.nom) || '<i>Plat à saisir</i>') + '</strong>' + esc(j.desc) + '</span><em>' + esc(j.prix) + '</em></div>';
       }).join('') +
       (specialOuvert && (sp.nom || sp.lignes.join('')) ? '<div class="af-special"><b>' + esc(sp.titre) + '</b><strong>' + esc(sp.nom) + (sp.prix ? ' · ' + esc(sp.prix) : '') + '</strong>' +
@@ -814,7 +833,7 @@
       if (!r) return;
       s.du = du; s.au = au;
       if (r === 'vider') {
-        s.jours.forEach(function (j) { j.nom = ''; j.desc = ''; j.prix = ''; });
+        s.jours.forEach(function (j) { j.nom = ''; j.desc = ''; j.prix = ''; j.ferme = false; j.motif = ''; j.message = ''; });
         s.special = { titre: '', nom: '', prix: '', lignes: [] }; specialOuvert = false;
       }
       render(true);

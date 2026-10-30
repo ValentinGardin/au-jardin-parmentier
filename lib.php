@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.6 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
+const VERSION = '1.7 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');
@@ -47,7 +47,9 @@ function semaine_clean($s) {
     $s = is_array($s) ? $s : [];
     $jours = [];
     foreach (liste($s['jours'] ?? []) as $j) {
-        $j = ['jour' => txt($j['jour'] ?? '', 30), 'nom' => txt($j['nom'] ?? '', 140), 'desc' => txt($j['desc'] ?? '', 200), 'prix' => txt($j['prix'] ?? '', 20)];
+        // « ferme » : jour férié ou fermeture exceptionnelle, avec un titre (motif) et un message à la place du plat
+        $j = ['jour' => txt($j['jour'] ?? '', 30), 'nom' => txt($j['nom'] ?? '', 140), 'desc' => txt($j['desc'] ?? '', 200), 'prix' => txt($j['prix'] ?? '', 20),
+              'ferme' => !empty($j['ferme']), 'motif' => txt($j['motif'] ?? '', 60), 'message' => txt($j['message'] ?? '', 200)];
         if ($j['jour'] !== '' || $j['nom'] !== '') $jours[] = $j;
     }
     $sp = is_array($s['special'] ?? null) ? $s['special'] : [];
@@ -56,8 +58,12 @@ function semaine_clean($s) {
         'du' => date_ok($s['du'] ?? ''), 'au' => date_ok($s['au'] ?? ''), 'jours' => $jours,
         'special' => ['titre' => txt($sp['titre'] ?? '', 60), 'nom' => txt($sp['nom'] ?? '', 100), 'prix' => txt($sp['prix'] ?? '', 20), 'lignes' => liste_txt($sp['lignes'] ?? [], 160)],
         'note' => txt($s['note'] ?? '', 200),
+        // Fermeture de toute la semaine (congés) : un titre et un message remplacent le menu
+        'conges' => ['actif' => !empty($s['conges']['actif']), 'titre' => txt($s['conges']['titre'] ?? '', 80), 'message' => txt($s['conges']['message'] ?? '', 400)],
     ];
 }
+// Jours à afficher : ceux qui ont un plat, ou qui sont marqués fermés
+function jours_visibles($jours) { return array_values(array_filter($jours, function ($j) { return $j['nom'] !== '' || $j['ferme']; })); }
 // Couleurs suggérées pour les événements (toute autre couleur peut être choisie dans le back-office)
 const THEMES = ['violet' => '#700954', 'vin' => '#5e1426', 'sapin' => '#1c4634', 'printemps' => '#4f7a2b', 'or' => '#2a2118'];
 function hex_ok($v) { $v = strtolower(trim((string)$v)); return preg_match('/^#[0-9a-f]{6}$/', $v) ? $v : ''; }

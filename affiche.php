@@ -3,7 +3,8 @@
 require __DIR__ . '/lib.php';
 header('X-Robots-Tag: noindex');
 $sem = site_load()['semaine'];
-$sem['jours'] = array_values(array_filter($sem['jours'], function ($j) { return $j['nom'] !== ''; }));
+$sem['jours'] = jours_visibles($sem['jours']);
+$conges = $sem['conges']['actif'];
 $sp = $sem['special'];
 $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
 ?>
@@ -41,6 +42,12 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   .jour strong{display:block;font-size:4.4mm;line-height:1.3}
   .jour span span{font-size:4mm;color:var(--gris)}
   .jour em{font:700 6mm "Baloo 2",sans-serif;font-style:normal;color:var(--violet);white-space:nowrap}
+  .jour.ferme b{color:var(--gris)}
+  .jour.ferme strong{color:var(--violet)}
+  .jour em.badge{font:600 3.2mm Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--gris);border:.3mm solid var(--gris);border-radius:5mm;padding:1.2mm 3mm}
+  .conges{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;margin:8mm 0;padding:14mm 12mm;border-radius:6mm;background:#f6ecf2}
+  .conges h2{margin:0 0 5mm;font:800 14mm/1.05 "Baloo 2",sans-serif;color:var(--violet)}
+  .conges p{margin:0;font-size:5.2mm;line-height:1.5;color:var(--gris)}
   .special{text-align:center}
   .special h2{margin:0;font:800 9mm/1 "Baloo 2",sans-serif;color:var(--orange);text-transform:uppercase}
   .special .nom{margin:1.5mm 0 2.5mm;font-weight:700;font-style:italic;color:var(--orange);font-size:4.4mm}
@@ -61,12 +68,23 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
 <?php if ($sem['du']): ?>    <p class="quand">semaine <?= h(periode_fr($sem['du'], $sem['au'])) ?></p>
 <?php endif; ?>
   </header>
+<?php if ($conges): ?>
+  <section class="conges">
+    <h2><?= h($sem['conges']['titre'] ?: 'Fermeture pour congés') ?></h2>
+<?php if ($sem['conges']['message'] !== ''): ?>    <p><?= nl2br(h($sem['conges']['message'])) ?></p>
+<?php endif; ?>
+  </section>
+<?php else: ?>
   <section class="jours">
 <?php foreach ($sem['jours'] as $j): ?>
+<?php if ($j['ferme']): ?>
+    <div class="jour ferme"><b><?= h($j['jour']) ?></b><span><strong><?= h($j['motif'] ?: 'Fermé') ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span><em class="badge">Fermé</em></div>
+<?php else: ?>
     <div class="jour"><b><?= h($j['jour']) ?></b><span><strong><?= h($j['nom']) ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span><em><?= h($j['prix']) ?></em></div>
-<?php endforeach; ?>
+<?php endif; endforeach; ?>
   </section>
-<?php if ($sp['nom'] !== '' || $sp['lignes']): ?>
+<?php endif; ?>
+<?php if (!$conges && ($sp['nom'] !== '' || $sp['lignes'])): ?>
   <section class="special">
 <?php if ($sp['titre'] !== ''): ?>    <h2><?= h($sp['titre']) ?></h2>
 <?php endif; ?>    <p class="nom"><?= h($sp['nom']) ?><?= $sp['prix'] !== '' ? '&nbsp;&nbsp;&nbsp;' . h($sp['prix']) : '' ?></p>

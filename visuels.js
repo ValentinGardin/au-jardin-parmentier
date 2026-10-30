@@ -55,8 +55,9 @@ window.Visuels = (function () {
     var C = violet
       ? { fond: VIOLET, texte: '#fff', jour: CREME, doux: 'rgba(255,255,255,.78)', trait: 'rgba(255,255,255,.28)', prix: '#fff', special: '#f4c08f', sym: 'symB' }
       : { fond: '#fffaf5', texte: ENCRE, jour: VIOLET, doux: GRIS, trait: VIOLET, prix: VIOLET, special: ORANGE, sym: 'symV' };
-    var jours = d.jours.filter(function (j) { return j.nom; });
-    var sp = d.special && (d.special.nom || (d.special.lignes || []).filter(Boolean).length) ? d.special : null;
+    var conges = d.conges && d.conges.actif ? d.conges : null;   // semaine fermée : un message remplace le menu
+    var jours = conges ? [] : d.jours.filter(function (j) { return j.nom || j.ferme; });
+    var sp = !conges && d.special && (d.special.nom || (d.special.lignes || []).filter(Boolean).length) ? d.special : null;
     var mots = String(d.titre || 'Inspirations de la semaine').trim().split(/\s+/);
     var t1 = mots.shift().toUpperCase(), t2 = mots.join(' ').toUpperCase();
 
@@ -83,27 +84,48 @@ window.Visuels = (function () {
       var colJ = Math.round(285 * f), colP = Math.round(170 * f), xPlat = P + colJ, lPlat = W - 2 * P - colJ - colP;
       var pad = Math.round(20 * f + air);
       t = 1.5;
+      if (conges) {
+        // Semaine fermée : grand titre et message dans un encadré
+        var ft = Math.round(70 * f), fm = '500 ' + Math.round(34 * f) + 'px Inter', lw = W - 2 * P - 100;
+        var lt = couper(ctx, conges.titre || 'Fermeture pour congés', '800 ' + ft + 'px "Baloo 2"', lw);
+        var lm = []; String(conges.message || '').split(/\n/).forEach(function (para) { lm = lm.concat(couper(ctx, para, fm, lw)); });
+        var hC = 90 * f + lt.length * ft * 1.02 + (lm.length ? 24 * f + lm.length * 34 * f * 1.45 : 0) + 30 * f;
+        el(hC, t, 'pop', function (c, y0) {
+          c.fillStyle = violet ? 'rgba(255,255,255,.1)' : '#f6ecf2'; arrondi(c, P, y0, W - 2 * P, hC, 36); c.fill();
+          var yy = y0 + 60 * f; c.textAlign = 'center'; c.textBaseline = 'top';
+          c.font = '800 ' + ft + 'px "Baloo 2"'; c.fillStyle = violet ? '#fff' : VIOLET;
+          lt.forEach(function (l) { c.fillText(l, W / 2, yy); yy += ft * 1.02; });
+          yy += 24 * f; c.font = fm; c.fillStyle = violet ? 'rgba(255,255,255,.88)' : GRIS;
+          lm.forEach(function (l) { c.fillText(l, W / 2, yy); yy += 34 * f * 1.45; });
+        });
+        t += 1;
+      }
       jours.forEach(function (j, i) {
         var fp = '700 ' + Math.round(31 * f) + 'px Inter', fd = '400 ' + Math.round(26 * f) + 'px Inter';
-        var lp = couper(ctx, j.nom, fp, lPlat), ld = couper(ctx, j.desc, fd, lPlat);
+        var t1 = j.ferme ? (j.motif || 'Fermé') : j.nom, t2 = j.ferme ? j.message : j.desc;
+        var lp = couper(ctx, t1, fp, lPlat), ld = couper(ctx, t2, fd, lPlat);
         var hT = lp.length * 31 * f * 1.25 + ld.length * 26 * f * 1.35, hJ = 50 * f;
         var h = Math.max(hT, hJ) + 2 * pad;
         el(h, t + i * 0.55, 'glisse', function (c, y0) {
           c.fillStyle = C.trait; c.fillRect(P, y0, W - 2 * P, violet ? 2 : 4 * f);
           var mid = y0 + h / 2;
           c.textBaseline = 'middle'; c.textAlign = 'left';
-          c.font = '800 ' + Math.round(50 * f) + 'px "Baloo 2"'; c.fillStyle = C.jour;
+          c.font = '800 ' + Math.round(50 * f) + 'px "Baloo 2"'; c.fillStyle = j.ferme ? C.doux : C.jour;
           c.fillText(String(j.jour).toUpperCase(), P + 4, mid + 4 * f);
           var yy = mid - hT / 2;
-          c.textBaseline = 'top'; c.fillStyle = C.texte; c.font = fp;
+          c.textBaseline = 'top'; c.fillStyle = j.ferme ? C.jour : C.texte; c.font = fp;
           lp.forEach(function (l) { c.fillText(l, xPlat, yy); yy += 31 * f * 1.25; });
           c.font = fd; c.fillStyle = C.doux;
           ld.forEach(function (l) { c.fillText(l, xPlat, yy + 2); yy += 26 * f * 1.35; });
-          if (j.prix) { c.textAlign = 'right'; c.textBaseline = 'middle'; c.font = '700 ' + Math.round(42 * f) + 'px "Baloo 2"'; c.fillStyle = C.prix; c.fillText(j.prix, W - P, mid + 3 * f); }
+          if (j.ferme) {
+            c.font = '700 ' + Math.round(22 * f) + 'px Inter'; var bw = c.measureText('FERMÉ').width + 34 * f, bh = 44 * f;
+            c.strokeStyle = C.doux; c.lineWidth = 2; arrondi(c, W - P - bw, mid - bh / 2, bw, bh, bh / 2); c.stroke();
+            c.fillStyle = C.doux; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('FERMÉ', W - P - bw / 2, mid + 1);
+          } else if (j.prix) { c.textAlign = 'right'; c.textBaseline = 'middle'; c.font = '700 ' + Math.round(42 * f) + 'px "Baloo 2"'; c.fillStyle = C.prix; c.fillText(j.prix, W - P, mid + 3 * f); }
         });
       });
       t += jours.length * 0.55;
-      el(violet ? 2 : 4 * f, t - 0.3, 'fondu', function (c, y0) { c.fillStyle = C.trait; c.fillRect(P, y0, W - 2 * P, violet ? 2 : 4 * f); });
+      if (jours.length) el(violet ? 2 : 4 * f, t - 0.3, 'fondu', function (c, y0) { c.fillStyle = C.trait; c.fillRect(P, y0, W - 2 * P, violet ? 2 : 4 * f); });
       // Offre spéciale
       if (sp) {
         y += 34 * f + air;
@@ -130,7 +152,7 @@ window.Visuels = (function () {
       var fr = Math.round(30 * f);
       el(fr * 2.6, t + 0.4, violet ? 'pulse' : 'fondu', function (c, y0) {
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        var txt = 'Réservations au 09 50 17 39 62';
+        var txt = conges ? 'À très bientôt !  ·  09 50 17 39 62' : 'Réservations au 09 50 17 39 62';
         c.font = '700 ' + fr + 'px Inter';
         var w = c.measureText(txt).width + 70 * f, hh = fr * 2.2;
         c.fillStyle = violet ? CREME : VIOLET; arrondi(c, W / 2 - w / 2, y0, w, hh, hh / 2); c.fill();
