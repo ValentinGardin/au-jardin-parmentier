@@ -815,3 +815,10 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .faq-conseils[open] summary{margin-bottom:.4rem}
 @media (max-width:1100px){.faq-cote{position:static}}
 .mots-apercu + .aide{margin-top:.7rem}
+/* Raccourci : réservation pour un événement à venir */
+.r-evts{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1rem}
+.r-evt-btn{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem .55rem .65rem;border:1px solid var(--trait);border-left:4px solid var(--c,var(--violet));border-radius:12px;background:var(--blanc);cursor:pointer;text-align:left;font:inherit;color:var(--encre)}
+.r-evt-btn:hover{border-color:var(--c,var(--violet))}
+.r-evt-btn .ico{color:var(--c,var(--violet))}
+.r-evt-btn span{display:grid;font-size:.88rem;line-height:1.25}
+.r-evt-btn small{color:var(--gris);font-size:.78rem}

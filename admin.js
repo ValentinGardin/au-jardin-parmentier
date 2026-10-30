@@ -766,6 +766,11 @@
     });
     return out;
   }
+  function evtsAVenir(date) {
+    return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) {
+      return x.e.actif && x.e.items.length && (!x.e.date || x.e.date >= E.aujourdhui || x.e.date === date);
+    }).sort(function (a, b) { return (a.e.date || '9') < (b.e.date || '9') ? -1 : 1; });
+  }
   function evtsDu(date) {
     return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) { return x.e.actif && x.e.date === date && x.e.items.length; });
   }
@@ -862,7 +867,10 @@
     var outils = '<div class="r-outils">' + (n ? '<div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
       return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
     }).join('') + '</div>' : '') + '<input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone, un n° de commande…" aria-label="Rechercher"></div>';
-    return semaine + titre + resume + deCote() + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
+    var aVenir = evtsAVenir('').filter(function (x) { return x.e.date; }).map(function (x) {
+      return '<button type="button" class="r-evt-btn" data-act="resa-evt" data-e="' + x.i + '" style="--c:' + esc(x.e.couleur) + '">' + ico('plus') + '<span>Réservation pour <b>' + esc(x.e.titre) + '</b><small>retrait ' + esc(jourNom(x.e.date).toLowerCase() + ' ' + dateFr(x.e.date)) + '</small></span></button>';
+    }).join('');
+    return semaine + titre + (aVenir ? '<div class="r-evts">' + aVenir + '</div>' : '') + resume + deCote() + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
   }
   function offresDuJour() {
     var m = menuDu(R.date), h = '';
@@ -985,16 +993,17 @@
   function ligneVide(date, type) {
     // « jour:2026-10-28 » : le plat d'un jour précédent, à mettre de côté ce jour-là
     if (String(type).indexOf('jour:') === 0) { var j = type.slice(5), pj = menuDu(j).plat; if (pj && !pj.epuise) return { type: 'plat', nom: pj.nom, prix: pj.prix, qte: 1, jour: j }; }
-    var m = menuDu(date);
-    if (type !== 'autre' && type !== 'special' && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
-    if (type === 'special' && m.special && !m.special.epuise) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
     if (String(type).indexOf('evt:') === 0) { var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]]; if (it) return { type: 'evenement', nom: it.nom, prix: it.prix, qte: 1 }; }
+    var m = menuDu(date);
+    if (type !== 'autre' && type !== 'special' && String(type).indexOf('evt:') !== 0 && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
+    if (type === 'special' && m.special && !m.special.epuise) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
     return { type: 'autre', nom: '', prix: '', qte: 1 };
   }
-  function formResa(r, clientInit) {
+  function formResa(r, clientInit, depart) {
     var nouveau = !r;
     var f = r ? { id: r.id, date: r.date, c: { id: r.c.id, prenom: r.c.prenom, nom: r.c.nom, tel: r.c.tel, email: r.c.email, lettre: '', sms: '' }, lignes: clone(r.lignes), note: r.note, paye: r.paye }
               : { id: '', date: R.date, c: { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '', sms: '' }, lignes: [ligneVide(R.date)], note: '', paye: false };
+    if (depart) { f.date = depart.date; f.lignes = depart.lignes; }
     if (clientInit) f.c = { id: clientInit.id, prenom: clientInit.prenom, nom: clientInit.nom, tel: clientInit.tel, email: clientInit.email, lettre: '', sms: '' };
     var d = document.createElement('div');
     d.className = 'modale-fond';
@@ -1037,20 +1046,25 @@
       var dj0 = l.type === 'plat' && !l.jour;
       if (m.plat || dj0) o.push(['plat', 'Plat du jour · ' + (dj0 ? l.nom : m.plat.nom) + ((dj0 ? l.prix : m.plat.prix) ? ' · ' + (dj0 ? l.prix : m.plat.prix) : '') + (m.plat && m.plat.epuise ? ' · ÉPUISÉ' : ''), m.plat && m.plat.epuise && !dj0]);
       if (m.special || l.type === 'special') o.push(['special', 'Offre spéciale · ' + (l.type === 'special' ? l.nom : m.special.nom) + (m.special && m.special.epuise ? ' · ÉPUISÉE' : ''), m.special && m.special.epuise && l.type !== 'special']);
-      evtsDu(f.date).forEach(function (x) {
-        x.e.items.forEach(function (it, k) { o.push(['evt:' + x.i + ':' + k, x.e.titre + ' · ' + it.nom + (it.prix ? ' · ' + it.prix : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)]); });
+      // produits des événements à venir (un groupe par événement) : on peut les choisir depuis n'importe quel jour
+      var evts = evtsAVenir(f.date).map(function (x) {
+        return { label: x.e.titre + (x.e.date ? ' · ' + jourNom(x.e.date).toLowerCase() + ' ' + dateFr(x.e.date) : ''), o: x.e.items.map(function (it, k) {
+          return ['evt:' + x.i + ':' + k, it.nom + (it.prix ? ' · ' + it.prix : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)];
+        }) };
       });
-      if (l.type === 'evenement' && !o.some(function (x) { return x[0].indexOf('evt:') === 0 && x[1].indexOf(l.nom) >= 0; })) o.push(['evt:-', 'Événement · ' + l.nom]);
+      if (l.type === 'evenement' && !evts.some(function (g) { return g.o.some(function (x) { return x[1].indexOf(l.nom) === 0; }); })) o.push(['evt:-', 'Événement · ' + l.nom]);
       // plats des 6 jours précédents (pour un client qui veut le plat de mercredi le vendredi)
       var avant = [], v = l.jour ? 'jour:' + l.jour : l.type;
-      if (l.type === 'evenement') { v = 'evt:-'; evtsDu(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { if (it.nom === l.nom) v = 'evt:' + x.i + ':' + k; }); }); }
+      if (l.type === 'evenement') { v = 'evt:-'; evtsAVenir(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { if (it.nom === l.nom) v = 'evt:' + x.i + ':' + k; }); }); }
       for (var k = 6; k >= 1; k--) {
         var dj = plus(f.date, -k), pj = menuDu(dj).plat;
         if (pj || dj === l.jour) avant.push(['jour:' + dj, jourNom(dj) + ' ' + dateFr(dj) + ' · ' + (dj === l.jour ? l.nom : pj.nom) + ((dj === l.jour ? l.prix : pj.prix) ? ' · ' + (dj === l.jour ? l.prix : pj.prix) : '') + (pj && pj.epuise ? ' · ÉPUISÉ' : ''), pj && pj.epuise && dj !== l.jour]);
       }
       o.push(['autre', 'Autre chose…']);
       function opt(x) { return '<option value="' + x[0] + '"' + (x[0] === v ? ' selected' : '') + (x[2] ? ' disabled' : '') + '>' + esc(x[1]) + '</option>'; }
-      return o.slice(0, -1).map(opt).join('') + (avant.length ? '<optgroup label="Plats des jours précédents (à mettre de côté)">' + avant.map(opt).join('') + '</optgroup>' : '') + opt(o[o.length - 1]);
+      return o.slice(0, -1).map(opt).join('') +
+        evts.map(function (g) { return '<optgroup label="Événement : ' + esc(g.label) + '">' + g.o.map(opt).join('') + '</optgroup>'; }).join('') +
+        (avant.length ? '<optgroup label="Plats des jours précédents (à mettre de côté)">' + avant.map(opt).join('') + '</optgroup>' : '') + opt(o[o.length - 1]);
     }
     function htmlLignes() {
       var tot = 0;
@@ -1118,6 +1132,15 @@
       if (t.dataset.k === 'type') {
         var i = +t.dataset.l, nv = ligneVide(f.date, t.value);
         nv.qte = f.lignes[i].qte; f.lignes[i] = nv;
+        if (t.value.indexOf('evt:') === 0) {
+          var ev = saved.evenements[+t.value.split(':')[1]];
+          if (ev && ev.date && ev.date !== f.date) {
+            f.date = ev.date;
+            f.lignes = f.lignes.map(function (l) { if (l.type === 'autre' || l.type === 'evenement' || l.jour) return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
+            part('fr-dates', htmlDates());
+            toast('Retrait le jour de l’événement : ' + dateLongue(f.date).toLowerCase() + '.');
+          }
+        }
         part('fr-lignes', htmlLignes());
         if (nv.type === 'autre') d.querySelector('[data-l="' + i + '"][data-k="nom"]').focus();
       } else if (t.dataset.k === 'prix') { var fp = formatPrix(t.value); f.lignes[+t.dataset.l].prix = fp; t.value = fp; }
@@ -1864,6 +1887,9 @@
       changerEtat(b);
     } else if (a === 'resa-nouvelle') {
       formResa(null);
+    } else if (a === 'resa-evt') {
+      var ev = saved.evenements[+b.dataset.e], k0 = ev.items.map(function (it) { return !it.epuise; }).indexOf(true);
+      formResa(null, null, { date: ev.date, lignes: [k0 >= 0 ? ligneVide(ev.date, 'evt:' + b.dataset.e + ':' + k0) : ligneVide(ev.date, 'autre')] });
     } else if (a === 'resa-modif') {
       formResa(resaParId(b.dataset.id));
     } else if (a === 'resa-suppr') {
