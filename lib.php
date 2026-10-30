@@ -1,6 +1,7 @@
 <?php
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (admin.php)
 const DATA = __DIR__ . '/data';
+const VERSION = '1.2 · 30 octobre 2026';   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 date_default_timezone_set('Europe/Paris');

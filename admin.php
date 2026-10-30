@@ -206,6 +206,7 @@ if ($logged) {
     <button class="btn btn-violet btn-plein"><?= $setup ? 'Créer le compte' : 'Se connecter' ?></button>
 <?php if (!$setup): ?>    <p class="aide petit-aide">Mot de passe oublié ? Demandez à un administrateur de le réinitialiser dans l’onglet « Utilisateurs ».</p>
 <?php endif; ?>    <a class="lien-site" href="index.php">← Retour au site</a>
+    <p class="version">Version <?= h(VERSION) ?></p>
   </form>
 </main>
 
