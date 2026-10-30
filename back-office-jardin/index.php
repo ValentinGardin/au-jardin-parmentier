@@ -96,7 +96,7 @@ if ($api !== '') {
         api_garde();
         $in = entree();
         $part = $in['part'] ?? '';
-        if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis'], true)) repondre(400, ['erreur' => 'Données invalides.']);
+        if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis', 'faq'], true)) repondre(400, ['erreur' => 'Données invalides.']);
         $d = site_load();
         $ancien = $d[$part] ?? null;
         $d[$part] = $in['data'] ?? null;
@@ -630,7 +630,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=22" rel="stylesheet">
+<link href="admin.css?v=23" rel="stylesheet">
 </head>
 <body>
 
@@ -703,6 +703,7 @@ if ($logged) {
 <div class="notifs" id="notifs" role="dialog" aria-label="Notifications récentes" hidden></div>
 <div class="plus-liste" id="plus-liste" role="menu" aria-labelledby="plus-btn" hidden>
   <button role="menuitem" data-onglet="avis" aria-selected="false"><svg class="ico"><use href="#i-etoile"/></svg>Avis</button>
+  <button role="menuitem" data-onglet="faq" aria-selected="false"><svg class="ico"><use href="#i-question"/></svg>Questions fréquentes</button>
   <button role="menuitem" data-onglet="mots" aria-selected="false"><svg class="ico"><use href="#i-mots"/></svg>Mots défilants</button>
   <button role="menuitem" data-onglet="stats" aria-selected="false"><svg class="ico"><use href="#i-stats"/></svg>Statistiques</button>
 </div>
@@ -718,7 +719,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=22"></script>
+<script src="admin.js?v=23"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -752,6 +753,7 @@ if ($logged) {
     <symbol id="i-envoyer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></g></symbol>
     <symbol id="i-telecharger" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></g></symbol>
     <symbol id="i-sac" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></g></symbol>
+    <symbol id="i-question" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></g></symbol>
     <symbol id="i-cloche" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></g></symbol>
   </defs>
 </svg>

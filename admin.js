@@ -9,9 +9,9 @@
   var saved = clone(site);
   var app = document.getElementById('app');
   var JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', semaine_suivante: 'le menu de la semaine suivante', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis' };
+  var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', semaine_suivante: 'le menu de la semaine suivante', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis', faq: 'les questions fréquentes' };
   var onglet = lire('onglet') || 'resas';
-  var PARTS = ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis'];
+  var PARTS = ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis', 'faq'];
   var SEM = lire('sem') === 'semaine_suivante' ? 'semaine_suivante' : 'semaine';   // semaine affichée dans l'onglet Menu de la semaine
   function partActive() { return onglet === 'semaine' ? SEM : onglet; }
   function aSpecial(s) { return !!(s.special.nom || s.special.lignes.length || s.special.titre); }
@@ -73,6 +73,7 @@
     carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
     item: function () { return { nom: '', prix: '', epuise: false }; },
+    faq: function () { return { q: '', r: '' }; },
     evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
   };
 
@@ -1413,8 +1414,32 @@
       });
   }
 
+  // =============== Questions fréquentes ===============
+  function vueFaq() {
+    var n = site.faq.length;
+    var liste = site.faq.map(function (x, i) {
+      var p = 'faq.' + i;
+      return '<div class="faq-ligne"><span class="faq-num">' + (i + 1) + '</span><div class="faq-champs">' +
+        '<input class="fort" data-p="' + p + '.q" value="' + esc(x.q) + '" placeholder="La question, comme un client la taperait dans Google" aria-label="Question ' + (i + 1) + '" maxlength="200">' +
+        '<textarea rows="3" data-p="' + p + '.r" placeholder="La réponse : 2 à 4 phrases claires, avec les bons mots (Montdidier, traiteur, plat du jour…)" aria-label="Réponse ' + (i + 1) + '" maxlength="1500">' + esc(x.r) + '</textarea></div>' +
+        boutonsOrdre('faq', i, n, { quoi: 'la question « ' + x.q + ' »' }) + '</div>';
+    }).join('');
+    return tete('Questions fréquentes', 'Affichées en bas de la page d’accueil. Google peut les reprendre directement dans ses résultats de recherche.',
+        '<a class="btn btn-discret" href="./#faq" target="_blank" rel="noopener">' + ico('oeil') + 'Voir sur le site</a>' +
+        '<button type="button" class="btn btn-violet" data-act="add" data-p="faq" data-tpl="faq">' + ico('plus') + 'Nouvelle question</button>') +
+      '<div class="deux-cols"><section class="bloc"><div class="bloc-tete"><h2>' + pluriel(n, 'question') + '</h2><span class="compte">Flèches : changer l’ordre</span></div><div class="faq-liste">' +
+        (liste || '<p class="vide">Aucune question : la rubrique est masquée sur le site.</p>') + '</div>' +
+        '<button type="button" class="btn-ajout" data-act="add" data-p="faq" data-tpl="faq">' + ico('plus') + 'Ajouter une question</button></section>' +
+      '<aside class="bloc a-retenir"><h2>Pour plaire à Google</h2><ul>' +
+        '<li>Écrivez la question <b>comme un client la tape</b> : « Où acheter un plat du jour à Montdidier ? »</li>' +
+        '<li>Commencez la réponse par <b>la réponse directe</b>, puis le détail. 2 à 4 phrases suffisent.</li>' +
+        '<li>Glissez naturellement les mots qu’on recherche : <b>Montdidier, traiteur, plat du jour, buffet, épicerie fine</b>…</li>' +
+        '<li>Une question par sujet. 8 à 12 questions, c’est idéal.</li>' +
+        '<li>Ne mettez que des informations exactes (horaires, délais…) : Google les affiche telles quelles.</li></ul></aside></div>';
+  }
+
   // =============== Affichage ===============
-  var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
+  var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, faq: vueFaq, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
   function render(garderScroll) {
     var y = window.scrollY;
     document.querySelectorAll('[data-onglet]').forEach(function (b) {

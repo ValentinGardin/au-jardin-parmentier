@@ -60,8 +60,20 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=17" rel="stylesheet">
+<link href="style.css?v=18" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
+<?php
+$ld = [['@context' => 'https://schema.org', '@type' => ['FoodEstablishment', 'LocalBusiness'], 'name' => 'Au Jardin Parmentier',
+        'description' => 'Épicerie fine et traiteur à Montdidier : plats du jour à emporter, buffets, plateaux repas, fromagerie, charcuterie.',
+        'url' => 'https://www.lejardinparmentier.fr/', 'telephone' => '+33950173962', 'email' => 'info@lejardinparmentier.fr', 'image' => 'https://www.lejardinparmentier.fr/img/og-image.png',
+        'address' => ['@type' => 'PostalAddress', 'streetAddress' => '9, place Parmentier', 'postalCode' => '80500', 'addressLocality' => 'Montdidier', 'addressRegion' => 'Somme', 'addressCountry' => 'FR'],
+        'servesCuisine' => 'Française', 'sameAs' => ['https://www.facebook.com/p/Au-Jardin-Parmentier-100045063797396/', 'https://www.instagram.com/au_jardin_parmentier/']]];
+if ($s['faq']) $ld[] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => array_map(function ($x) {
+    return ['@type' => 'Question', 'name' => $x['q'], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $x['r']]];
+}, $s['faq'])];
+foreach ($ld as $bloc): ?>
+<script type="application/ld+json"><?= json_encode($bloc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
+<?php endforeach; ?>
 </head>
 <body>
 
@@ -452,6 +464,27 @@ $dateDuJour = function ($sw, $nom) {
 </section>
 
 <!-- ============ Contact ============ -->
+<?php if ($s['faq']): ?>
+<!-- ============ Questions fréquentes (modifiables dans le back-office : Plus → Questions fréquentes) ============ -->
+<section id="faq" class="section faq" aria-labelledby="faq-titre">
+  <div class="wrap faq-in">
+    <div class="faq-tete reveal">
+      <p class="eyebrow">Questions fréquentes</p>
+      <h2 id="faq-titre">Vous vous demandez peut-être…</h2>
+      <p class="faq-sous">Une autre question ? Appelez-nous au <a href="<?= $telHref ?>"><?= $tel ?></a>, c’est avec plaisir.</p>
+    </div>
+    <div class="faq-liste">
+<?php foreach ($s['faq'] as $i => $x): ?>
+      <details class="faq-q reveal" style="--d:<?= min($i, 6) ?>">
+        <summary><h3><?= h($x['q']) ?></h3><span class="faq-plus" aria-hidden="true"></span></summary>
+        <div class="faq-r"><?= nl2br(h($x['r'])) ?></div>
+      </details>
+<?php endforeach; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
+
 <section id="contact" class="section contact">
   <div class="wrap contact-in">
     <div class="contact-txt">
@@ -494,7 +527,7 @@ $dateDuJour = function ($sw, $nom) {
       <a class="reseau" href="https://www.instagram.com/au_jardin_parmentier/" target="_blank" rel="noopener" aria-label="Instagram"><svg aria-hidden="true"><use href="#i-insta"/></svg></a>
       <a class="reseau" href="https://www.facebook.com/p/Au-Jardin-Parmentier-100045063797396/" target="_blank" rel="noopener" aria-label="Facebook"><svg aria-hidden="true"><use href="#i-fb"/></svg></a>
     </p>
-    <p class="pied-liens"><a href="mentions-legales">Mentions légales</a> · <button type="button" class="lien-cookies" data-cookies="gerer">Gérer les cookies</button> · Réalisation G’agency</p>
+    <p class="pied-liens"><?php if ($s['faq']): ?><a href="#faq">Questions fréquentes</a> · <?php endif; ?><a href="mentions-legales">Mentions légales</a> · <button type="button" class="lien-cookies" data-cookies="gerer">Gérer les cookies</button> · Réalisation G’agency</p>
   </div>
 </footer>
 

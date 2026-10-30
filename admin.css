@@ -777,3 +777,11 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .r-evt ul{list-style:none;margin:.35rem 0 0;padding:0;display:grid;gap:.3rem}
 .r-evt li{font-size:.9rem}
 .bloc-tete .tete-actions{align-items:center;gap:.8rem}
+/* Questions fréquentes */
+.faq-liste{display:grid;gap:.7rem;margin-bottom:.8rem}
+.faq-ligne{display:grid;grid-template-columns:auto 1fr auto;gap:.8rem;align-items:start;padding:.8rem;border:1px solid var(--trait);border-radius:12px}
+.faq-num{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--violet-pale);color:var(--violet);font-weight:700;font-size:.85rem}
+.faq-champs{display:grid;gap:.45rem}
+.faq-champs input,.faq-champs textarea{width:100%;padding:.6rem .75rem;border:1px solid var(--trait);border-radius:10px;font:inherit;resize:vertical}
+.faq-champs input.fort{font-weight:600}
+.faq-ligne .ordre{flex-direction:column}

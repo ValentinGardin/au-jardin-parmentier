@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.26 · 31 octobre 2026';
+const VERSION = '1.27 · 31 octobre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -142,6 +142,8 @@ function site_clean($d) {
         'menus' => array_map('carte_clean', liste($d['menus'] ?? [])),
         'mots' => $mots ?: ['épicerie fine', 'traiteur', 'charcuterie', 'fromagerie', 'fruits et légumes'],
         'avis' => $avis,
+        // Foire aux questions (bas de la page d'accueil, et réponses directes dans Google)
+        'faq' => array_key_exists('faq', $d) ? faq_clean($d['faq']) : FAQ_DEPART,
     ];
 }
 
@@ -251,3 +253,27 @@ function json_save($file, $data) {
 // Coupe un texte à $n caractères (sans dépendre de l'extension mbstring)
 function cut($s, $n) { return function_exists('mb_substr') ? mb_substr((string)$s, 0, $n) : substr((string)$s, 0, $n); }
 function lignes($t) { return array_values(array_filter(array_map('trim', preg_split('/\R/u', (string)$t) ?: []), 'strlen')); }
+
+// ---- Foire aux questions ----
+function faq_clean($l) {
+    $out = [];
+    foreach (liste($l) as $x) {
+        $x = ['q' => txt($x['q'] ?? '', 200), 'r' => cut(trim(preg_replace("/[ \t]+/u", ' ', str_replace("\r", '', (string)($x['r'] ?? '')))), 1500)];
+        if ($x['q'] !== '' && $x['r'] !== '') $out[] = $x;
+    }
+    return $out;
+}
+// Questions de départ : rédigées comme les gens les tapent dans Google (à adapter dans le back-office)
+const FAQ_DEPART = [
+    ['q' => 'Où trouver un plat du jour à emporter à Montdidier ?', 'r' => "Au Jardin Parmentier, 9 place Parmentier à Montdidier, nous préparons chaque jour un plat du jour différent, à emporter. Le menu de la semaine est affiché sur cette page et mis à jour chaque semaine."],
+    ['q' => 'Comment réserver mon plat du jour ?', 'r' => "Le plus simple : en ligne sur cette page, avec le bouton « Réserver », jusqu'à la veille au soir. Vous pouvez aussi nous appeler au 09 50 17 39 62. Vous payez sur place, au moment du retrait."],
+    ['q' => 'Peut-on réserver un plat pour le jour même ?', 'r' => "Pour le jour même, appelez-nous directement au 09 50 17 39 62 : nous ferons notre possible selon ce qu'il reste."],
+    ['q' => 'Faites-vous traiteur pour un mariage, un anniversaire ou un repas d’entreprise ?', 'r' => "Oui. Notre atelier traiteur prépare des plats cuisinés, des buffets, des plateaux repas et des apéritifs pour vos repas de famille, anniversaires, réunions et événements, de 10 à 50 personnes. Consultez nos cartes traiteur sur cette page et appelez-nous pour composer votre menu."],
+    ['q' => 'Combien de temps à l’avance faut-il commander un buffet ou des plateaux repas ?', 'r' => "Le plus tôt est le mieux, surtout en période de fêtes. Appelez-nous au 09 50 17 39 62 dès que vous connaissez la date et le nombre de personnes : nous vous confirmons ce qui est possible."],
+    ['q' => 'Que trouve-t-on dans votre épicerie fine à Montdidier ?', 'r' => "Une fromagerie, une charcuterie à la coupe, des fruits et légumes de saison, une épicerie fine (conserves, condiments, douceurs), des vins et champagnes, et les huîtres de Normandie selon la saison."],
+    ['q' => 'Proposez-vous des plateaux de fromages et de charcuterie ?', 'r' => "Oui, nous préparons des plateaux de fromages et de charcuterie, à partager ou pour vos apéritifs. Passez commande en boutique ou par téléphone au 09 50 17 39 62."],
+    ['q' => 'Comment payer ma commande ?', 'r' => "Le paiement se fait sur place, en boutique, au moment où vous récupérez votre commande. Il n'y a pas de paiement en ligne."],
+    ['q' => 'Comment recevoir le menu de la semaine ?', 'r' => "Inscrivez-vous avec votre adresse e-mail dans la rubrique « Le menu de la semaine dans votre boîte mail » : vous le recevez chaque lundi. Vous pouvez vous désinscrire en un clic."],
+    ['q' => 'Prêtez-vous du matériel pour les buffets ?', 'r' => "Oui : nous louons des chafing-dish pour garder vos plats au chaud, et nous pouvons prêter des caissons isothermes (contre un chèque de caution)."],
+    ['q' => 'Où se trouve Au Jardin Parmentier ?', 'r' => "Au 9, place Parmentier, 80500 Montdidier, dans la Somme, en plein centre-ville. Le plan et l'itinéraire sont en bas de cette page."],
+];
