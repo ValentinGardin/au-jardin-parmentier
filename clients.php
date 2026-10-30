@@ -86,17 +86,27 @@ function client_public($c, $masquer) {
 // ---- Réservations ----
 function resas_charger() { return array_values(array_filter(lire_json(RESAS), 'is_array')); }
 function resas_enregistrer($l) { return json_save(RESAS, array_values($l)); }
-function resa_num_suivant($l) { return 1 + array_reduce($l, function ($m, $r) { return max($m, (int)($r['num'] ?? 0)); }, 0); }
-// Les réservations créées avant les numéros en reçoivent un (dans l'ordre de création)
+// Numéros de commande : un compteur qui ne recule jamais (data/numeros.json), même si une réservation est supprimée.
+// Un numéro n'est donc jamais attribué deux fois. À appeler sous verrou().
+const NUMEROS = DATA . '/numeros.json';
+function resa_num_suivant($l) {
+    $n = max((int)(lire_json(NUMEROS)['dernier'] ?? 0), array_reduce($l, function ($m, $r) { return max($m, (int)($r['num'] ?? 0)); }, 0)) + 1;
+    json_save(NUMEROS, ['dernier' => $n]);
+    return $n;
+}
+// Vérification à chaque chargement : les réservations sans numéro (créées avant les numéros) ou en double en reçoivent un nouveau
 function resas_numeroter() {
     verrou(function () {
         $l = resas_charger();
-        if (!array_filter($l, function ($r) { return empty($r['num']); })) return;
         $ordre = array_keys($l);
         usort($ordre, function ($a, $b) use ($l) { return strcmp($l[$a]['cree'], $l[$b]['cree']); });
-        $n = resa_num_suivant($l);
-        foreach ($ordre as $k) if (empty($l[$k]['num'])) $l[$k]['num'] = $n++;
-        resas_enregistrer($l);
+        $vus = []; $change = false;
+        foreach ($ordre as $k) {
+            $n = (int)($l[$k]['num'] ?? 0);
+            if ($n < 1 || isset($vus[$n])) { $n = resa_num_suivant($l); $l[$k]['num'] = $n; $change = true; }
+            $vus[$n] = true;
+        }
+        if ($change) resas_enregistrer($l);
     });
 }
 
