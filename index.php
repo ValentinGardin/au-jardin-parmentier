@@ -60,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=15" rel="stylesheet">
+<link href="style.css?v=16" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -131,7 +131,7 @@ $dateDuJour = function ($sw, $nom) {
 <?php for ($r = 0; $r < 2; $r++): ?>
     <div class="defile-groupe">
 <?php for ($k = 0; $k < 2; $k++): foreach ($s['mots'] as $w): ?>
-      <span class="mot"><?= h($w) ?></span><img class="sep" src="img/logo/symbole-blanc.svg" alt="" width="164" height="244">
+      <span class="mot"><?= h($w) ?></span><img class="sep" src="img/logo/symbole-violet.svg" alt="" width="164" height="244">
 <?php endforeach; endfor; ?>
     </div>
 <?php endfor; ?>
