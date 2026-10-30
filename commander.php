@@ -27,6 +27,15 @@ $q = max(0, min(20, (int)($in['plat'] ?? 0)));
 if ($q) $lignes[] = ['type' => 'plat', 'nom' => $jour['plat']['nom'], 'prix' => $jour['plat']['prix'], 'qte' => $q];
 $q = max(0, min(20, (int)($in['special'] ?? 0)));
 if ($q && $jour['special']) $lignes[] = ['type' => 'special', 'nom' => $jour['special']['nom'], 'prix' => $jour['special']['prix'], 'qte' => $q];
+// Plats d'autres jours (avant le jour de retrait, eux aussi réservables en ligne) : mis de côté ce jour-là
+$dispo = [];
+foreach (commande_jours(site_load()) as $j) $dispo[$j['date']] = $j;
+foreach ((is_array($in['autres'] ?? null) ? $in['autres'] : []) as $dj => $q) {
+    $q = max(0, min(20, (int)$q));
+    if (!$q) continue;
+    if (!isset($dispo[$dj]) || $dj >= $jour['date'] || $dj < date('Y-m-d', strtotime('monday this week', strtotime($jour['date'])))) fin(400, ['erreur' => 'Un des plats d’un autre jour n’est plus réservable. Retirez-le, ou appelez-nous au ' . TEL_BOUTIQUE . '.']);
+    $lignes[] = ['type' => 'plat', 'nom' => $dispo[$dj]['plat']['nom'], 'prix' => $dispo[$dj]['plat']['prix'], 'qte' => $q, 'jour' => $dj];
+}
 if (!$lignes) fin(400, ['erreur' => 'Choisissez au moins un plat.']);
 
 $ci = ['prenom' => txt($in['prenom'] ?? '', 40), 'nom' => txt($in['nom'] ?? '', 60), 'tel' => (string)($in['tel'] ?? ''), 'email' => (string)($in['email'] ?? '')];
@@ -53,7 +62,7 @@ if (!$res) fin(500, ['erreur' => 'La réservation n’a pas pu être enregistré
 
 // E-mails : confirmation au client (s'il a donné son adresse) et prévenir la boutique
 $total = array_reduce($r['lignes'], function ($t, $l) { return $t + (float)str_replace(',', '.', preg_replace('/[^\d,.]/', '', $l['prix'])) * $l['qte']; }, 0);
-$detail = implode("\n", array_map(function ($l) { return $l['qte'] . ' × ' . $l['nom'] . ($l['prix'] !== '' ? ' (' . $l['prix'] . ')' : ''); }, $r['lignes']));
+$detail = implode("\n", array_map(function ($l) { return $l['qte'] . ' × ' . $l['nom'] . ($l['prix'] !== '' ? ' (' . $l['prix'] . ')' : '') . ($l['jour'] !== '' ? ' · plat du ' . date_fr($l['jour'], true) . ', mis de côté' : ''); }, $r['lignes']));
 $quand = date_fr($r['date'], true);
 if ($c['email'] !== '') {
     $html = '<div style="font:15px/1.6 Arial,sans-serif;color:#1d171b;max-width:520px"><p>Bonjour ' . h($c['prenom']) . ',</p>'

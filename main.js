@@ -113,14 +113,21 @@
   if (rs) (function () {
     var D = JSON.parse(document.getElementById('rs-donnees').textContent);
     var corps = document.getElementById('rs-corps'), pied = document.getElementById('rs-pied');
-    var etat = { etape: 1, date: '', plat: 1, special: 0, t: 0 }, client = { prenom: '', nom: '', tel: '', email: '', note: '', lettre: false, memo: true }, avant = null;
+    var etat = { etape: 1, date: '', plat: 1, special: 0, autres: {}, t: 0 }, client = { prenom: '', nom: '', tel: '', email: '', note: '', lettre: false, memo: true }, avant = null;
     try { var m = JSON.parse(localStorage.getItem('jp-client') || 'null'); if (m) { client.prenom = m.prenom || ''; client.nom = m.nom || ''; client.tel = m.tel || ''; client.email = m.email || ''; } } catch (e) {}
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function num(p) { var x = String(p || '').replace(',', '.').match(/\d+(\.\d+)?/); return x ? +x[0] : 0; }
     function euros(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
     function jour() { return D.jours.filter(function (j) { return j.date === etat.date; })[0] || D.jours[0]; }
-    function total() { var j = jour(); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0); }
-    function nb() { return etat.plat + (jour().special ? etat.special : 0); }
+    // Plats des jours d'avant (réservables en ligne eux aussi), mis de côté pour le jour du retrait
+    // (même semaine seulement : un plat n'attend pas plusieurs jours d'un week-end à l'autre)
+    function lundi(d) { var x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x.toISOString().slice(0, 10); }
+    function avant_() { var l = lundi(jour().date); return D.jours.filter(function (j) { return j.date < jour().date && j.date >= l; }); }
+    function autres() { return avant_().filter(function (j) { return etat.autres[j.date]; }); }
+    function total() { var j = jour(); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
+    function nb() { return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
+    function getQ(k) { return k.indexOf('a:') === 0 ? (etat.autres[k.slice(2)] || 0) : etat[k]; }
+    function setQ(k, v) { if (k.indexOf('a:') === 0) etat.autres[k.slice(2)] = v; else etat[k] = v; }
     function court(d) { var x = new Date(d + 'T12:00:00'); return { j: x.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''), n: x.getDate(), m: x.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') }; }
     function qte(nom, v, min) {
       return '<div class="rs-qte" role="group" aria-label="Quantité"><button type="button" data-rs="moins" data-q="' + nom + '" aria-label="Un de moins"' + (v <= min ? ' disabled' : '') + '>−</button><output aria-live="polite">' + v + '</output><button type="button" data-rs="plus" data-q="' + nom + '" aria-label="Un de plus"' + (v >= 20 ? ' disabled' : '') + '>+</button></div>';
@@ -143,14 +150,26 @@
           '<div class="rs-plat-fin">' + (j.plat.prix ? '<span class="rs-px">' + esc(j.plat.prix) + '</span>' : '') + qte('plat', etat.plat, 0) + '</div></div>' +
         (j.special ? '<div class="rs-plat rs-offre' + (etat.special ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">' + esc(j.special.titre || 'Offre spéciale') + '</span><strong>' + esc(j.special.nom) + '</strong>' + (j.special.lignes.length ? '<small>' + esc(j.special.lignes.join(' · ')) + '</small>' : '') + '</div>' +
           '<div class="rs-plat-fin">' + (j.special.prix ? '<span class="rs-px">' + esc(j.special.prix) + '</span>' : '') + qte('special', etat.special, 0) + '</div></div>' : '') +
+        blocAutres() +
         '<p class="rs-info">Pour aujourd’hui, appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a> : on fait notre possible.</p>';
       pied.innerHTML = '<div class="rs-total"><span>Total</span><b>' + (total() ? euros(total()) : '–') + '</b><small>à régler sur place</small></div>' +
         '<button type="button" class="btn btn-violet btn-lg" data-rs="suite"' + (nb() ? '' : ' disabled') + '>Continuer</button>';
+    }
+    function blocAutres() {
+      var l = avant_();
+      if (!l.length) return '';
+      if (!etat.voirAutres && !autres().length) return '<button type="button" class="rs-ajout" data-rs="autres"><span aria-hidden="true">+</span><b>Ajouter un plat d’un autre jour</b><small>' + l.map(function (a) { return esc(a.plat.nom); }).join(' · ') + '</small></button>';
+      return '<p class="rs-q rs-q2">Plats des jours d’avant <span>on vous les met de côté pour ' + esc(jour().libelle) + '</span></p>' + l.map(function (a) {
+        var q = etat.autres[a.date] || 0;
+        return '<div class="rs-plat rs-autre' + (q ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">Plat du ' + esc(a.libelle) + '</span><strong>' + esc(a.plat.nom) + '</strong>' + (a.plat.desc ? '<small>' + esc(a.plat.desc) + '</small>' : '') + '</div>' +
+          '<div class="rs-plat-fin">' + (a.plat.prix ? '<span class="rs-px">' + esc(a.plat.prix) + '</span>' : '') + qte('a:' + a.date, q, 0) + '</div></div>';
+      }).join('');
     }
     function recap() {
       var j = jour(), l = [];
       if (etat.plat) l.push(etat.plat + ' × ' + j.plat.nom);
       if (j.special && etat.special) l.push(etat.special + ' × ' + j.special.nom);
+      autres().forEach(function (a) { l.push(etat.autres[a.date] + ' × ' + a.plat.nom + ' (plat du ' + a.jour.toLowerCase() + ')'); });
       return l;
     }
     function etape2() {
@@ -162,8 +181,10 @@
         '<label class="rs-champ"><span>Nom</span><input name="nom" autocomplete="family-name" required value="' + esc(client.nom) + '"></label></div>' +
         '<label class="rs-champ"><span>Téléphone <em>pour vous joindre si besoin</em></span><input name="tel" type="tel" inputmode="tel" autocomplete="tel" required value="' + esc(client.tel) + '" placeholder="06 12 34 56 78"></label>' +
         '<label class="rs-champ"><span>E-mail <em>facultatif, pour recevoir la confirmation</em></span><input name="email" type="email" autocomplete="email" value="' + esc(client.email) + '"></label>' +
-        (client.note ? '' : '<button type="button" class="rs-lien" data-rs="note">+ Ajouter une précision (allergie, heure de passage…)</button>') +
-        '<label class="rs-champ rs-note"' + (client.note ? '' : ' hidden') + '><span>Précision <em>facultatif</em></span><textarea name="note" rows="2" maxlength="500">' + esc(client.note) + '</textarea></label>' +
+        '<label class="rs-champ rs-note"><span>Un petit mot pour nous ? <em>facultatif</em></span><textarea name="note" rows="2" maxlength="500" placeholder="ex. Je passe vers 12h15">' + esc(client.note) + '</textarea></label>' +
+        '<div class="rs-idees" aria-label="Suggestions">' + ['Je passe vers 12h', 'Je passe en fin de journée', 'Sans sauce, svp', 'Allergie : ', 'C’est pour offrir'].map(function (t) {
+          return '<button type="button" data-rs="idee" data-t="' + esc(t) + '">' + esc(t.replace(/ : $/, '…')) + '</button>';
+        }).join('') + '</div>' +
         '<label class="rs-case rs-case-lettre"' + (client.email ? '' : ' hidden') + '><input type="checkbox" name="lettre"' + (client.lettre ? ' checked' : '') + '><span>Recevoir aussi le menu de la semaine chaque lundi par e-mail</span></label>' +
         '<label class="rs-case"><input type="checkbox" name="memo"' + (client.memo ? ' checked' : '') + '><span>Me reconnaître la prochaine fois sur cet appareil</span></label>' +
         '<div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><input name="site_web" tabindex="-1" autocomplete="off"></div>' +
@@ -196,7 +217,7 @@
       if (client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
       var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';
       fetch('commander', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
+        body: JSON.stringify({ date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j.ok) { if (j.jours) { D.jours = j.jours; } throw j; }
@@ -218,7 +239,7 @@
       etat.fini = true;
     }
     function ouvrir(date, offre) {
-      if (etat.fini) { etat = { etape: 1, date: '', plat: 1, special: 0, t: 0 }; client.note = ''; }
+      if (etat.fini) { etat = { etape: 1, date: '', plat: 1, special: 0, autres: {}, t: 0 }; client.note = ''; }
       if (offre) { etat.plat = 0; etat.special = 1; }
       etat.date = date && D.jours.some(function (j) { return j.date === date; }) ? date : (etat.date || D.jours[0].date);
       etat.t = Math.floor(Date.now() / 1000);
@@ -238,14 +259,23 @@
       var b = e.target.closest('[data-rs]'); if (!b || !rs.contains(b)) return;
       var a = b.dataset.rs;
       if (a === 'fermer') fermer();
-      else if (a === 'jour') { etat.date = b.dataset.d; if (!jour().special) etat.special = 0; if (!nb()) etat.plat = 1; etape1(); corps.querySelector('[data-d="' + etat.date + '"]').focus(); }
+      else if (a === 'jour') {
+        etat.date = b.dataset.d; if (!jour().special) etat.special = 0;
+        Object.keys(etat.autres).forEach(function (k) { if (k >= etat.date) delete etat.autres[k]; });
+        if (!nb()) etat.plat = 1; etape1(); corps.querySelector('[data-d="' + etat.date + '"]').focus(); }
       else if (a === 'plus' || a === 'moins') {
-        etat[b.dataset.q] = Math.max(0, Math.min(20, etat[b.dataset.q] + (a === 'plus' ? 1 : -1)));
-        etape1(); var n = corps.querySelector('[data-rs="' + a + '"][data-q="' + b.dataset.q + '"]'); if (n && !n.disabled) n.focus();
+        setQ(b.dataset.q, Math.max(0, Math.min(20, getQ(b.dataset.q) + (a === 'plus' ? 1 : -1))));
+        var y = corps.scrollTop; etape1(); corps.scrollTop = y;
+        var n = corps.querySelector('[data-rs="' + a + '"][data-q="' + b.dataset.q + '"]'); if (n && !n.disabled) n.focus();
+      }
+      else if (a === 'autres') { etat.voirAutres = true; var y2 = corps.scrollTop; etape1(); corps.scrollTop = y2; var c1 = corps.querySelector('.rs-autre [data-rs="plus"]'); if (c1) c1.focus(); }
+      else if (a === 'idee') {
+        var ta = corps.querySelector('textarea[name=note]'), v = b.dataset.t;
+        ta.value = ta.value.trim() ? ta.value.trim().replace(/[.,;]$/, '') + ', ' + v.charAt(0).toLowerCase() + v.slice(1) : v;
+        ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
       }
       else if (a === 'suite') etape2();
       else if (a === 'retour') { var f = document.getElementById('rs-form'); if (f) ['prenom', 'nom', 'tel', 'email', 'note'].forEach(function (k) { client[k] = f[k].value; }); etape1(); }
-      else if (a === 'note') { b.remove(); var n2 = corps.querySelector('.rs-note'); n2.hidden = false; n2.querySelector('textarea').focus(); }
     });
     document.addEventListener('keydown', function (e) {
       if (rs.hidden) return;

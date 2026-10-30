@@ -553,3 +553,13 @@ body.rs-ouvert{overflow:hidden}
   .rs-plat-fin{grid-auto-flow:column;align-items:center;width:100%;justify-content:space-between}
 }
 @media (prefers-reduced-motion:reduce){.rs-boite,.rs-fond,.rs-coche *{animation:none!important;stroke-dashoffset:0!important}}
+.rs-ajout{display:grid;grid-template-columns:auto 1fr;gap:0 .8rem;align-items:center;width:100%;margin:.2rem 0 .4rem;padding:.85rem 1rem;border:1.5px dashed #d9c3d2;border-radius:18px;background:transparent;text-align:left;cursor:pointer;font:inherit;color:var(--encre);transition:border-color .2s,background-color .2s}
+.rs-ajout:hover{border-color:var(--violet);background:#fdf8fb}
+.rs-ajout span{grid-row:span 2;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--violet-pale);color:var(--violet);font-size:1.3rem;font-weight:600}
+.rs-ajout b{font-weight:600;color:var(--violet)}
+.rs-ajout small{color:var(--gris);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-q2{margin-top:1rem}
+.rs-autre .rs-tag{color:#245ea8}
+.rs-idees{display:flex;flex-wrap:wrap;gap:.4rem;margin:-.35rem 0 .9rem}
+.rs-idees button{border:1px solid var(--trait);background:var(--blanc);border-radius:999px;padding:.35rem .75rem;font:500 .82rem var(--texte);color:var(--gris);cursor:pointer;transition:border-color .2s,color .2s}
+.rs-idees button:hover{border-color:var(--violet);color:var(--violet)}
