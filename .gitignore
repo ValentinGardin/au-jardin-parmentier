@@ -12,3 +12,8 @@ Thumbs.db
 img/photos/envoi-*
 data/google.json
 data/google-avis.json
+data/clients.json
+data/reservations.json
+data/lettre.json
+data/lettre-essais.json
+data/.verrou

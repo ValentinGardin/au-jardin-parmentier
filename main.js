@@ -86,6 +86,28 @@
     });
   });
 
+  // Lettre « menu de la semaine » : inscription sans quitter la page
+  var lettre = document.querySelector('.lettre-form');
+  if (lettre && window.fetch) lettre.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = lettre.querySelector('.lettre-msg');
+    function erreur(t) { msg.textContent = t; msg.hidden = false; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lettre.email.value.trim())) { lettre.email.focus(); return erreur('Indiquez une adresse e-mail valide.'); }
+    if (!lettre.accord.checked) return erreur('Cochez la case pour accepter de recevoir le menu.');
+    msg.hidden = true; lettre.classList.add('envoi');
+    fetch(lettre.action, { method: 'POST', body: new FormData(lettre), headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) throw new Error(j.erreur);
+        var p = lettre.prenom.value.trim(), ok = document.createElement('p');
+        ok.className = 'lettre-ok'; ok.setAttribute('role', 'status');
+        ok.textContent = 'C’est noté' + (p ? ', ' + p : '') + ' ! Vous recevrez le prochain menu lundi.';
+        lettre.replaceWith(ok);
+        suivre('lettre');
+      })
+      .catch(function (er) { lettre.classList.remove('envoi'); erreur(er.message || 'L’inscription n’a pas fonctionné, réessayez.'); });
+  });
+
   // Cookies : la carte Google Maps n'est chargée qu'avec l'accord du visiteur (choix gardé 6 mois)
   function lireChoix() {
     try { var v = JSON.parse(localStorage.getItem('jp-cookies') || 'null'); return v && Date.now() - v.t < 182 * 864e5 ? v.c : null; } catch (err) { return null; }

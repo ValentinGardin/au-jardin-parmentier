@@ -81,9 +81,11 @@ $realisation = 'G’agency';
     <p>L’ensemble des contenus de ce site (textes, photographies, logo, menus) est la propriété d’Au Jardin Parmentier, sauf mention contraire. Toute reproduction, totale ou partielle, sans autorisation écrite préalable est interdite.</p>
   </section>
 
-  <section>
+  <section id="donnees">
     <h2>Données personnelles</h2>
-    <p>Ce site ne comporte aucun formulaire et ne collecte aucune donnée personnelle. Lorsque vous nous écrivez par e-mail ou nous appelez, vos coordonnées servent uniquement à répondre à votre demande et à préparer votre commande ; elles ne sont jamais transmises à des tiers.</p>
+    <p><strong>Menu de la semaine par e-mail.</strong> Si vous vous inscrivez, votre adresse e-mail (et votre prénom, si vous l’indiquez) sert uniquement à vous envoyer chaque semaine le menu des plats du jour, avec votre accord. Chaque e-mail contient un lien pour vous désinscrire en un clic ; votre adresse est alors retirée de l’envoi.</p>
+    <p><strong>Réservations.</strong> Lorsque vous réservez un plat, nous notons votre nom, votre téléphone et, si vous le souhaitez, votre e-mail, pour préparer votre commande et vous joindre si besoin. Ces informations restent dans notre outil de gestion, hébergé chez OVH, et ne sont jamais vendues ni transmises à des tiers.</p>
+    <p>Lorsque vous nous écrivez par e-mail ou nous appelez, vos coordonnées servent uniquement à répondre à votre demande et à préparer votre commande.</p>
     <p>Conformément au Règlement général sur la protection des données (RGPD), vous pouvez demander l’accès, la rectification ou la suppression de vos données en écrivant à <a href="mailto:<?= h($editeur['email']) ?>"><?= h($editeur['email']) ?></a>.</p>
   </section>
 

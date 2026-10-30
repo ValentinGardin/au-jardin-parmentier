@@ -612,8 +612,458 @@
     });
   }
 
+  // =============== Réservations ===============
+  // Une journée à la fois : qui a commandé quoi, payé ou non, récupéré ou non. Tout se fait en un clic.
+  var JC = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  var R = { date: E.aujourdhui, filtre: 'tout', q: '', data: null, charge: '' };
+  var CL = null, LETTRE = null, clFiltre = 'tout', clQ = '';
+  function lundi(s) { var d = parse(s), l = (d.getDay() + 6) % 7; d.setDate(d.getDate() - l); return iso(d); }
+  function jourNom(s) { return JOURS[(parse(s).getDay() + 6) % 7]; }
+  function dateLongue(s) { return jourNom(s) + ' ' + dateFr(s) + (s.slice(0, 4) !== E.aujourdhui.slice(0, 4) ? ' ' + s.slice(0, 4) : ''); }
+  function prixNum(p) { var m = String(p || '').replace(',', '.').match(/\d+(\.\d+)?/); return m ? +m[0] : 0; }
+  function euros(n) { return n.toFixed(2) + ' €'; }
+  function totalResa(r) { return r.lignes.reduce(function (t, l) { return t + prixNum(l.prix) * l.qte; }, 0); }
+  function sansAccent(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function nomClient(c) { return ((c.prenom || '') + ' ' + (c.nom || '')).trim(); }
+  function heure(s) { return s ? s.slice(11, 16).replace(':', 'h') : ''; }
+  // « 2026-10-30 10:12 · Valentin » → « aujourd’hui à 10h12 par Valentin »
+  function quand(s) {
+    if (!s) return '';
+    var p = s.split(' · '), d = p[0].slice(0, 10);
+    return (d === E.aujourdhui ? 'aujourd’hui' : 'le ' + dateFr(d)) + ' à ' + heure(p[0]) + (p[1] ? ' par ' + p[1] : '');
+  }
+  // Plat du jour et offre spéciale prévus à une date (menu de la semaine en cours ou suivante, version enregistrée)
+  function menuDu(date) {
+    var out = { plat: null, special: null };
+    ['semaine', 'semaine_suivante'].forEach(function (k) {
+      var s = saved[k];
+      if (!s || !s.du || date < s.du || (s.au && date > s.au) || s.conges.actif) return;
+      var j = s.jours.filter(function (x) { return sansAccent(x.jour) === sansAccent(jourNom(date)); })[0];
+      if (j && j.nom && !j.ferme && !out.plat) out.plat = j;
+      if (s.special.nom && !out.special) out.special = s.special;
+    });
+    return out;
+  }
+  function getJSON(q) {
+    return fetch(E.api + '?api=' + q, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.ok) throw new Error(j.erreur || 'Erreur.'); return j; });
+  }
+  function chargerResas() {
+    var du = lundi(R.date);
+    if (R.charge === du) return;
+    R.charge = du;
+    getJSON('resas&du=' + du + '&au=' + plus(du, 6)).then(function (j) {
+      if (lundi(R.date) !== du) return;
+      R.data = j; if (onglet === 'resas') majResas();
+    }).catch(function (e) { R.charge = ''; toast(e.message, true); });
+  }
+  function chargerClients() {
+    return getJSON('clients').then(function (j) { CL = j.clients; LETTRE = j.lettre; if (onglet === 'clients') majClients(); return j; })
+      .catch(function (e) { toast(e.message, true); });
+  }
+  function majResas() { var z = document.getElementById('resas'); if (z) z.innerHTML = resasContenu(); }
+  function majListe() { var z = document.getElementById('r-liste'); if (z) z.innerHTML = resasListe(); }
+
+  function vueResas() {
+    if (!R.data || R.data.du !== lundi(R.date) || !R.charge) chargerResas();
+    return tete('Réservations', 'Les plats réservés, jour par jour. Un clic pour noter qu’une commande est payée, puis récupérée.',
+      '<button type="button" class="btn btn-ligne" data-act="r-imprimer">' + ico('imprim') + 'Imprimer la liste</button>' +
+      '<button type="button" class="btn btn-violet" data-act="resa-nouvelle">' + ico('plus') + 'Nouvelle réservation</button>') +
+      '<div id="resas">' + resasContenu() + '</div>';
+  }
+  function resasDuJour() { return R.data && R.data.du === lundi(R.date) ? R.data.resas.filter(function (r) { return r.date === R.date; }) : null; }
+  function resasContenu() {
+    var du = lundi(R.date), toutes = R.data && R.data.du === du ? R.data.resas : [];
+    var jours = '';
+    for (var i = 0; i < 7; i++) {
+      var d = plus(du, i), n = toutes.filter(function (r) { return r.date === d; }).length, pd = menuDu(d).plat;
+      jours += '<button type="button" class="r-jour' + (d === R.date ? ' actif' : '') + (d === E.aujourdhui ? ' auj' : '') + (pd ? '' : ' sans-plat') + '" data-act="r-date" data-d="' + d + '" title="' + esc(dateLongue(d) + (pd ? ' · ' + pd.nom : '')) + '">' +
+        '<span>' + JC[parse(d).getDay()] + '</span><b>' + parse(d).getDate() + '</b>' + (n ? '<em>' + n + '</em>' : '') + '</button>';
+    }
+    var semaine = '<div class="r-semaine"><button type="button" class="ib" data-act="r-date" data-d="' + plus(du, -7) + '" title="Semaine précédente" aria-label="Semaine précédente">' + ico('retour') + '</button>' +
+      '<div class="r-jours">' + jours + '</div>' +
+      '<button type="button" class="ib" data-act="r-date" data-d="' + plus(du, 7) + '" title="Semaine suivante" aria-label="Semaine suivante">' + ico('suivant') + '</button>' +
+      '<div class="r-aller">' + (R.date !== E.aujourdhui ? '<button type="button" class="btn btn-discret" data-act="r-date" data-d="' + E.aujourdhui + '">Aujourd’hui</button>' : '') +
+      '<label class="r-cal" title="Aller à une date">' + ico('cal') + '<input type="date" id="r-cal" value="' + R.date + '" aria-label="Aller à une date"></label></div></div>';
+    var m = menuDu(R.date);
+    var titre = '<div class="r-titre"><h2>' + (R.date === E.aujourdhui ? 'Aujourd’hui · ' : '') + esc(dateLongue(R.date)) + '</h2><p>' +
+      (m.plat ? 'Plat du jour : <b>' + esc(m.plat.nom) + '</b>' + (m.plat.prix ? ' · ' + esc(m.plat.prix) : '') : 'Pas de plat du jour prévu dans le menu de la semaine.') + '</p></div>';
+    var jour = resasDuJour();
+    if (!jour) return semaine + titre + '<p class="chargement">Chargement…</p>';
+    var prep = {}, total = 0, encaisse = 0, nbP = 0, nbR = 0, nbPlats = 0;
+    jour.forEach(function (r) {
+      var t = totalResa(r); total += t;
+      if (r.paye) { nbP++; encaisse += t; }
+      if (r.recupere) nbR++;
+      r.lignes.forEach(function (l) { prep[l.nom] = (prep[l.nom] || 0) + l.qte; nbPlats += l.qte; });
+    });
+    var n = jour.length;
+    var prepHtml = Object.keys(prep).sort(function (a, b) { return prep[b] - prep[a]; }).map(function (k) { return '<li><b>' + prep[k] + '</b> ' + esc(k) + '</li>'; }).join('');
+    var resume = n ? '<div class="r-resume">' +
+      '<div class="tuile"><p>Commandes</p><strong>' + n + '</strong><small>' + pluriel(nbPlats, 'plat') + (total ? ' · ' + euros(total) : '') + '</small></div>' +
+      '<div class="tuile r-prep"><p>À préparer</p><ul>' + prepHtml + '</ul></div>' +
+      '<div class="tuile"><p>Payées</p><strong>' + nbP + '<em>/' + n + '</em></strong><small>' + (total ? euros(encaisse) + ' encaissés sur ' + euros(total) : (n - nbP ? (n - nbP) + ' à encaisser' : 'tout est réglé')) + '</small></div>' +
+      '<div class="tuile"><p>Récupérées</p><strong>' + nbR + '<em>/' + n + '</em></strong><small>' + (n - nbR ? (n - nbR) + ' encore à venir' : 'tout le monde est passé') + '</small></div></div>' : '';
+    var f = [['tout', 'Toutes', n], ['attente', 'À récupérer', n - nbR], ['impaye', 'Non payées', n - nbP], ['fait', 'Récupérées', nbR]];
+    var outils = n ? '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
+      return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
+    }).join('') + '</div><input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone…" aria-label="Rechercher"></div>' : '';
+    return semaine + titre + resume + outils + '<div id="r-liste">' + resasListe() + '</div>';
+  }
+  function resasListe() {
+    var jour = resasDuJour() || [];
+    if (!jour.length) return '<div class="vide grand">Aucune réservation pour ce jour.<br><button type="button" class="btn btn-violet" data-act="resa-nouvelle">' + ico('plus') + 'Nouvelle réservation</button></div>';
+    var q = sansAccent(R.q).trim(), qc = q.replace(/\D/g, '');
+    var l = jour.filter(function (r) {
+      if (R.filtre === 'attente' && r.recupere) return false;
+      if (R.filtre === 'impaye' && r.paye) return false;
+      if (R.filtre === 'fait' && !r.recupere) return false;
+      if (!q) return true;
+      return sansAccent(nomClient(r.c) + ' ' + r.c.email + ' ' + r.note + ' ' + r.lignes.map(function (x) { return x.nom; }).join(' ')).indexOf(q) >= 0 || (qc.length > 2 && r.c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
+    });
+    // Les commandes déjà récupérées passent en bas de la liste
+    l.sort(function (a, b) { return (a.recupere - b.recupere) || (a.cree < b.cree ? -1 : 1); });
+    if (!l.length) return '<p class="vide">Aucune réservation ne correspond.</p>';
+    return '<div class="r-liste">' + l.map(ligneResa).join('') + '</div>';
+  }
+  function ligneResa(r) {
+    var c = r.c, t = totalResa(r);
+    return '<article class="r-ligne' + (r.recupere ? ' fait' : '') + '">' +
+      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + '</strong>' +
+        (c.tel ? '<a href="tel:' + esc(c.tel.replace(/[^\d+]/g, '')) + '">' + ico('tel') + esc(c.tel) + '</a>' : '') +
+        '<small>Prise par ' + esc(r.par) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small></div>' +
+      '<div class="r-cmd"><ul>' + r.lignes.map(function (x) { return '<li><b>' + x.qte + ' ×</b> ' + esc(x.nom) + '</li>'; }).join('') + '</ul>' +
+        (r.note ? '<p class="r-note">' + ico('note') + esc(r.note) + '</p>' : '') + '</div>' +
+      '<div class="r-total">' + (t ? euros(t) : '') + '</div>' +
+      '<div class="r-etats">' +
+        '<button type="button" class="r-etat r-paye' + (r.paye ? ' on' : '') + '" data-act="r-etat" data-champ="paye" data-id="' + r.id + '" aria-pressed="' + r.paye + '" title="' + esc(r.paye ? 'Payé ' + quand(r.paye_le) + ' · cliquer pour annuler' : 'Cliquer quand le client a payé') + '">' + (r.paye ? ico('ok') + 'Payé' : 'Non payé') + '</button>' +
+        '<button type="button" class="r-etat r-recup' + (r.recupere ? ' on' : '') + '" data-act="r-etat" data-champ="recupere" data-id="' + r.id + '" aria-pressed="' + r.recupere + '" title="' + esc(r.recupere ? 'Récupéré ' + quand(r.recupere_le) + ' · cliquer pour annuler' : 'Cliquer quand le client est passé') + '">' + (r.recupere ? ico('ok') + 'Récupéré' : 'À récupérer') + '</button>' +
+      '</div>' +
+      '<div class="r-actions"><button type="button" class="ib" data-act="resa-modif" data-id="' + r.id + '" title="Modifier" aria-label="Modifier">' + ico('crayon') + '</button>' +
+        '<button type="button" class="ib ib-suppr" data-act="resa-suppr" data-id="' + r.id + '" title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div>' +
+      '</article>';
+  }
+  function resaParId(id) { return R.data ? R.data.resas.filter(function (r) { return r.id === id; })[0] : null; }
+  function changerEtat(b) {
+    var r = resaParId(b.dataset.id), ch = b.dataset.champ, v = !r[ch];
+    r[ch] = v; r[ch + '_le'] = v ? E.aujourdhui + ' ' + new Date().toTimeString().slice(0, 5) + ' · ' + E.qui : '';
+    majResas();
+    if (VISITE) return toast('Mode visite : ce changement n’est pas enregistré.');
+    api('resa-etat', { id: r.id, champ: ch, valeur: v }).then(function (j) { remplacerResa(j.resa); })
+      .catch(function (e) { r[ch] = !v; majResas(); toast(e.message, true); });
+  }
+  function remplacerResa(n) {
+    if (!R.data) return;
+    var i = R.data.resas.map(function (r) { return r.id; }).indexOf(n.id);
+    var dedans = n.date >= R.data.du && n.date <= R.data.au;
+    if (i >= 0) { if (dedans) R.data.resas[i] = n; else R.data.resas.splice(i, 1); }
+    else if (dedans) R.data.resas.push(n);
+    if (onglet === 'resas') majResas();
+  }
+
+  // ---------- Fenêtre « Nouvelle réservation » ----------
+  // Pensée pour aller vite au téléphone : on tape le nom (les clients connus sont proposés), le jour est déjà choisi,
+  // le plat du jour est déjà dans la commande ; il reste la quantité, puis Entrée.
+  function ligneVide(date, type) {
+    var m = menuDu(date);
+    if (type !== 'autre' && type !== 'special' && m.plat) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
+    if (type === 'special' && m.special) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
+    return { type: 'autre', nom: '', prix: '', qte: 1 };
+  }
+  function formResa(r, clientInit) {
+    var nouveau = !r;
+    var f = r ? { id: r.id, date: r.date, c: { id: r.c.id, prenom: r.c.prenom, nom: r.c.nom, tel: r.c.tel, email: r.c.email, lettre: '' }, lignes: clone(r.lignes), note: r.note, paye: r.paye }
+              : { id: '', date: R.date, c: { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '' }, lignes: [ligneVide(R.date)], note: '', paye: false };
+    if (clientInit) f.c = { id: clientInit.id, prenom: clientInit.prenom, nom: clientInit.nom, tel: clientInit.tel, email: clientInit.email, lettre: '' };
+    var d = document.createElement('div');
+    d.className = 'modale-fond';
+    document.body.appendChild(d);
+    function connu() { return f.c.id && CL ? CL.filter(function (c) { return c.id === f.c.id; })[0] : null; }
+    function suggestions() {
+      if (f.c.id || !CL) return [];
+      var q = sansAccent((f.c.prenom + ' ' + f.c.nom).trim()), t = f.c.tel.replace(/\D/g, '');
+      if (q.length < 2 && t.length < 3) return [];
+      return CL.filter(function (c) {
+        var n = sansAccent(nomClient(c)), n2 = sansAccent((c.nom || '') + ' ' + (c.prenom || ''));
+        return (q.length >= 2 && (n.indexOf(q) >= 0 || n2.indexOf(q) >= 0 || q.split(' ').every(function (m) { return n.indexOf(m) >= 0; }))) || (t.length >= 3 && c.tel.replace(/\D/g, '').indexOf(t) >= 0);
+      }).slice(0, 4);
+    }
+    function htmlSugg() {
+      var s = suggestions();
+      return s.length ? '<div class="fr-sugg"><p>Client déjà connu ?</p>' + s.map(function (c) {
+        return '<button type="button" data-f="choisir" data-id="' + c.id + '"><span class="avatar">' + esc((nomClient(c) || '?').charAt(0).toUpperCase()) + '</span><span><b>' + esc(nomClient(c)) + '</b><small>' + esc([c.tel, c.email].filter(Boolean).join(' · ')) + (c.nb ? ' · ' + pluriel(c.nb, 'commande') : '') + '</small></span>' + ico('suivant') + '</button>';
+      }).join('') + '</div>' : '';
+    }
+    function htmlLettre() {
+      var k = connu();
+      if (!f.c.email.trim()) return '';
+      if (k && k.lettre.statut === 'oui' && k.email === f.c.email.trim().toLowerCase()) return '<p class="fr-lettre deja">' + ico('ok') + 'Reçoit déjà le menu de la semaine par e-mail</p>';
+      return '<div class="fr-lettre"><span>Envoyer le menu de la semaine par e-mail chaque lundi ?</span><div class="seg" role="group" aria-label="Menu par e-mail">' +
+        '<button type="button" data-f="lettre" data-v="oui" aria-pressed="' + (f.c.lettre === 'oui') + '">Oui, il accepte</button>' +
+        '<button type="button" data-f="lettre" data-v="non" aria-pressed="' + (f.c.lettre === 'non') + '">Non</button></div></div>';
+    }
+    function optionsLigne(l) {
+      var m = menuDu(f.date), o = [];
+      if (m.plat || l.type === 'plat') o.push(['plat', 'Plat du jour · ' + (l.type === 'plat' ? l.nom : m.plat.nom) + ((l.type === 'plat' ? l.prix : m.plat.prix) ? ' · ' + (l.type === 'plat' ? l.prix : m.plat.prix) : '')]);
+      if (m.special || l.type === 'special') o.push(['special', 'Offre spéciale · ' + (l.type === 'special' ? l.nom : m.special.nom)]);
+      o.push(['autre', 'Autre chose…']);
+      return o.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === l.type ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('');
+    }
+    function htmlLignes() {
+      var tot = 0;
+      var h = f.lignes.map(function (l, i) {
+        tot += prixNum(l.prix) * l.qte;
+        return '<div class="fr-ligne' + (l.type === 'autre' ? ' autre' : '') + '">' +
+          '<select data-l="' + i + '" data-k="type" aria-label="Plat">' + optionsLigne(l) + '</select>' +
+          (l.type === 'autre' ? '<input data-l="' + i + '" data-k="nom" value="' + esc(l.nom) + '" placeholder="Quoi ? ex. Quiche lorraine" aria-label="Quoi ?"><input class="prix" data-l="' + i + '" data-k="prix" value="' + esc(l.prix) + '" placeholder="Prix" inputmode="decimal" aria-label="Prix à l’unité">' : '') +
+          '<div class="qte"><button type="button" data-f="moins" data-i="' + i + '" aria-label="Un de moins">−</button><input type="number" min="1" max="99" data-l="' + i + '" data-k="qte" value="' + l.qte + '" aria-label="Quantité"><button type="button" data-f="plus" data-i="' + i + '" aria-label="Un de plus">+</button></div>' +
+          (f.lignes.length > 1 ? '<button type="button" class="ib ib-suppr" data-f="retirer" data-i="' + i + '" title="Retirer" aria-label="Retirer">' + ico('suppr') + '</button>' : '') + '</div>';
+      }).join('');
+      return h + '<div class="fr-pied-cmd"><button type="button" class="btn btn-discret" data-f="ajouter">' + ico('plus') + 'Ajouter un plat</button>' + (tot ? '<span class="fr-total">Total <b>' + euros(tot) + '</b></span>' : '') + '</div>';
+    }
+    function htmlDates() {
+      var du = lundi(f.date), h = '';
+      for (var i = 0; i < 7; i++) {
+        var x = plus(du, i), pd = menuDu(x).plat;
+        h += '<button type="button" class="r-jour' + (x === f.date ? ' actif' : '') + (x === E.aujourdhui ? ' auj' : '') + (pd ? '' : ' sans-plat') + '" data-f="date" data-d="' + x + '" title="' + esc(dateLongue(x) + (pd ? ' · ' + pd.nom : ' · pas de plat du jour')) + '"><span>' + JC[parse(x).getDay()] + '</span><b>' + parse(x).getDate() + '</b></button>';
+      }
+      return '<div class="fr-dates"><button type="button" class="ib" data-f="date" data-d="' + plus(du, -7) + '" aria-label="Semaine précédente">' + ico('retour') + '</button><div class="r-jours">' + h + '</div>' +
+        '<button type="button" class="ib" data-f="date" data-d="' + plus(du, 7) + '" aria-label="Semaine suivante">' + ico('suivant') + '</button></div><p class="fr-date-txt">' + esc(dateLongue(f.date)) + '</p>';
+    }
+    function dessiner() {
+      var k = connu();
+      d.innerHTML = '<form class="modale modale-resa" role="dialog" aria-modal="true" aria-labelledby="fr-t" novalidate>' +
+        '<h2 id="fr-t">' + (nouveau ? 'Nouvelle réservation' : 'Modifier la réservation') + '</h2>' +
+        '<fieldset class="fr-bloc"><legend>Client' + (k ? ' <span class="statut statut-violet">' + ico('ok') + 'Client connu' + (k.nb ? ' · ' + pluriel(k.nb, 'commande') : '') + '</span> <button type="button" class="lien" data-f="oublier">Autre client</button>' : '') + '</legend>' +
+          '<div class="grille-2"><label class="champ"><span>Prénom</span><input data-c="prenom" value="' + esc(f.c.prenom) + '" autocomplete="off" placeholder="ex. Marie"></label>' +
+          '<label class="champ"><span>Nom</span><input data-c="nom" value="' + esc(f.c.nom) + '" autocomplete="off" placeholder="ex. Dupont"></label></div>' +
+          '<div id="fr-sugg">' + htmlSugg() + '</div>' +
+          '<div class="grille-2"><label class="champ"><span>Téléphone</span><input data-c="tel" type="tel" value="' + esc(f.c.tel) + '" autocomplete="off" placeholder="06 12 34 56 78"></label>' +
+          '<label class="champ"><span>E-mail <em>facultatif</em></span><input data-c="email" type="email" value="' + esc(f.c.email) + '" autocomplete="off" placeholder="marie@exemple.fr"></label></div>' +
+          '<div id="fr-lettre">' + htmlLettre() + '</div></fieldset>' +
+        '<fieldset class="fr-bloc"><legend>Pour quel jour ?</legend><div id="fr-dates">' + htmlDates() + '</div></fieldset>' +
+        '<fieldset class="fr-bloc"><legend>Commande</legend><div id="fr-lignes">' + htmlLignes() + '</div></fieldset>' +
+        '<label class="champ"><span>Note <em>facultatif</em></span><textarea rows="2" data-n placeholder="ex. sans sauce, passe vers 12 h 30">' + esc(f.note) + '</textarea></label>' +
+        '<label class="interrupteur grand fr-paye"><input type="checkbox" data-paye' + (f.paye ? ' checked' : '') + '><span></span>Déjà payé</label>' +
+        '<p class="alerte" hidden></p>' +
+        '<div class="modale-actions"><button type="button" class="btn btn-discret" data-f="fermer">Annuler</button><button class="btn btn-violet">' + (nouveau ? 'Enregistrer la réservation' : 'Enregistrer') + '</button></div></form>';
+    }
+    function part(id, html) { var z = d.querySelector('#' + id); if (z) z.innerHTML = html; }
+    function fin() { d.remove(); document.removeEventListener('keydown', echap); }
+    function echap(e) { if (e.key === 'Escape') fin(); }
+    document.addEventListener('keydown', echap);
+    dessiner();
+    // la liste des clients (pour les suggestions) arrive en arrière-plan
+    if (CL === null) chargerClients().then(function () { if (d.isConnected) { part('fr-sugg', htmlSugg()); part('fr-lettre', htmlLettre()); } });
+    (f.c.id ? d.querySelector('[data-l="0"][data-k="qte"]') : d.querySelector('[data-c="prenom"]')).focus();
+    d.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t.dataset.c) {
+        f.c[t.dataset.c] = t.value;
+        if (t.dataset.c !== 'email') part('fr-sugg', htmlSugg());
+        part('fr-lettre', htmlLettre());
+      } else if (t.dataset.l != null) {
+        var l = f.lignes[+t.dataset.l];
+        if (t.dataset.k === 'qte') l.qte = Math.max(1, Math.min(99, parseInt(t.value, 10) || 1));
+        else if (t.dataset.k !== 'type') l[t.dataset.k] = t.value;
+        if (t.dataset.k === 'prix' || t.dataset.k === 'qte') { var tt = d.querySelector('.fr-total'); var s = f.lignes.reduce(function (a, x) { return a + prixNum(x.prix) * x.qte; }, 0); if (tt) tt.innerHTML = 'Total <b>' + euros(s) + '</b>'; else if (s) part('fr-lignes', htmlLignes()); }
+      } else if ('n' in t.dataset) f.note = t.value;
+    });
+    d.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t.dataset.k === 'type') {
+        var i = +t.dataset.l, nv = ligneVide(f.date, t.value);
+        nv.qte = f.lignes[i].qte; f.lignes[i] = nv;
+        part('fr-lignes', htmlLignes());
+        if (nv.type === 'autre') d.querySelector('[data-l="' + i + '"][data-k="nom"]').focus();
+      } else if (t.dataset.k === 'prix') { var fp = formatPrix(t.value); f.lignes[+t.dataset.l].prix = fp; t.value = fp; }
+      else if ('paye' in t.dataset) f.paye = t.checked;
+    });
+    d.addEventListener('click', function (e) {
+      if (e.target === d) return fin();
+      var b = e.target.closest('[data-f]'); if (!b) return;
+      var a = b.dataset.f, i = +b.dataset.i;
+      if (a === 'fermer') fin();
+      else if (a === 'choisir') {
+        var c = CL.filter(function (x) { return x.id === b.dataset.id; })[0];
+        f.c = { id: c.id, prenom: c.prenom, nom: c.nom, tel: c.tel, email: c.email, lettre: '' };
+        dessiner(); d.querySelector('[data-l="0"][data-k="qte"]').focus();
+      } else if (a === 'oublier') { f.c = { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '' }; dessiner(); d.querySelector('[data-c="prenom"]').focus(); }
+      else if (a === 'lettre') { f.c.lettre = f.c.lettre === b.dataset.v ? '' : b.dataset.v; part('fr-lettre', htmlLettre()); }
+      else if (a === 'date') {
+        f.date = b.dataset.d;
+        // le plat du jour suit le jour choisi
+        f.lignes = f.lignes.map(function (l) { if (l.type === 'autre') return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
+        part('fr-dates', htmlDates()); part('fr-lignes', htmlLignes());
+      } else if (a === 'plus' || a === 'moins') { f.lignes[i].qte = Math.max(1, Math.min(99, f.lignes[i].qte + (a === 'plus' ? 1 : -1))); part('fr-lignes', htmlLignes()); }
+      else if (a === 'retirer') { f.lignes.splice(i, 1); part('fr-lignes', htmlLignes()); }
+      else if (a === 'ajouter') {
+        // deuxième ligne : « autre chose » (le plat du jour est déjà dans la commande, il suffit d'augmenter la quantité)
+        f.lignes.push(ligneVide(f.date, f.lignes.some(function (l) { return l.type === 'plat'; }) ? 'autre' : 'plat'));
+        part('fr-lignes', htmlLignes());
+        var n = d.querySelectorAll('.fr-ligne'); var z = n[n.length - 1].querySelector('select'); if (z) z.focus();
+      }
+    });
+    d.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var al = d.querySelector('.alerte');
+      function erreur(m) { al.textContent = m; al.hidden = false; }
+      if (!f.c.prenom.trim() && !f.c.nom.trim()) { d.querySelector('[data-c="prenom"]').focus(); return erreur('Indiquez le nom ou le prénom du client.'); }
+      var lignes = f.lignes.filter(function (l) { return l.nom.trim(); });
+      if (!lignes.length) return erreur('Ajoutez au moins un plat à la commande.');
+      if (VISITE) { fin(); return toast('Mode visite : la réservation n’est pas enregistrée.'); }
+      var btn = d.querySelector('.modale-actions .btn-violet'); btn.disabled = true;
+      api('resa', { id: f.id, date: f.date, c: f.c, lignes: lignes, note: f.note, paye: f.paye })
+        .then(function (j) {
+          fin(); chargerClients();
+          if (lundi(j.resa.date) !== lundi(R.date)) { R.date = j.resa.date; R.data = null; R.charge = ''; }
+          else { R.date = j.resa.date; remplacerResa(j.resa); }
+          if (onglet === 'resas') render(true); else if (onglet === 'clients') chargerClients();
+          toast((nouveau ? 'Réservation enregistrée' : 'Réservation modifiée') + ' pour ' + dateLongue(j.resa.date).toLowerCase() + '.');
+        })
+        .catch(function (er) { btn.disabled = false; erreur(er.message); });
+    });
+  }
+
+  // =============== Clients ===============
+  function majClients() { var z = document.getElementById('clients'); if (z) z.innerHTML = clientsContenu(); }
+  function vueClients() {
+    if (CL === null) chargerClients();
+    return tete('Clients', 'Toutes les personnes qui ont réservé ou qui reçoivent le menu par e-mail. Un client est reconnu automatiquement par son téléphone ou son e-mail.',
+      (VISITE ? '' : '<a class="btn btn-ligne" href="' + E.api + '?api=clients-csv" download>' + ico('telecharger') + 'Exporter (Excel)</a>') +
+      '<button type="button" class="btn btn-violet" data-act="client-fiche">' + ico('plus') + 'Nouveau client</button>') +
+      '<div id="clients">' + clientsContenu() + '</div>';
+  }
+  function statutLettre(c) {
+    var s = c.lettre.statut;
+    if (s === 'oui') return ['vert', 'Reçoit le menu'];
+    if (s === 'non') return ['orange', c.lettre.source === 'désinscription' ? 'Désinscrit' : 'A refusé'];
+    return ['gris', 'Pas demandé'];
+  }
+  function blocLettre() {
+    var L = LETTRE, s = L.semaine, txt;
+    var dernier = L.envois.filter(function (e) { return e.mode !== 'test'; })[0];
+    if (!s) txt = 'Aucun menu ne commence cette semaine : rien ne sera envoyé. Préparez le menu dans l’onglet « Menu de la semaine ».';
+    else if (s.envoye) txt = ico('ok') + 'Le menu ' + esc(periode(s.du, s.au)) + ' a été envoyé ' + quand(s.envoye.date) + (s.envoye.en_cours ? ' (envoi en cours).' : ' à ' + pluriel(s.envoye.ok, 'personne') + '.');
+    else if (!L.auto) txt = 'Envoi automatique désactivé : le menu ' + esc(periode(s.du, s.au)) + ' ne partira que si vous cliquez sur « Envoyer maintenant ».';
+    else if (!s.complete) txt = 'Le menu ' + esc(periode(s.du, s.au)) + ' n’est pas complet : il partira automatiquement dès que chaque jour aura son plat (ou sera marqué fermé).';
+    else txt = 'Le menu ' + esc(periode(s.du, s.au)) + ' partira automatiquement lundi à partir de 8 h.';
+    return '<section class="bloc lettre-bloc"><div class="bloc-tete"><div><h2>Le menu de la semaine par e-mail</h2><p class="aide">Les inscrits reçoivent chaque lundi le menu de la semaine, avec un lien pour se désinscrire. Ils s’inscrivent sur le site, ou vous les inscrivez avec leur accord.</p></div>' +
+      '<span class="lettre-nb"><b>' + L.inscrits + '</b> inscrit' + (L.inscrits > 1 ? 's' : '') + '</span></div>' +
+      '<label class="interrupteur"><input type="checkbox" data-lettre-auto' + (L.auto ? ' checked' : '') + (VISITE ? ' disabled' : '') + '><span></span>Envoi automatique chaque lundi matin</label>' +
+      '<p class="lettre-etat">' + txt + '</p>' +
+      '<div class="lettre-actions"><button type="button" class="btn btn-ligne" data-act="lettre-test">' + ico('mail') + 'M’envoyer un essai</button>' +
+      '<button type="button" class="btn btn-ligne" data-act="lettre-envoyer"' + (L.inscrits ? '' : ' disabled') + '>' + ico('envoyer') + 'Envoyer maintenant</button>' +
+      (VISITE ? '' : '<a class="btn btn-discret" href="' + E.api + '?api=clients-csv&f=lettre" download>Liste des inscrits (Excel)</a>') + '</div>' +
+      (dernier ? '<p class="aide petit">Dernier envoi : ' + quand(dernier.date) + ' · ' + pluriel(dernier.ok, 'e-mail') + (dernier.mode === 'auto' ? ' (automatique)' : '') + '</p>' : '') +
+      '</section>';
+  }
+  function clientsContenu() {
+    if (CL === null) return '<p class="chargement">Chargement…</p>';
+    var nb = { tout: CL.length, oui: 0, non: 0, '': 0 };
+    CL.forEach(function (c) { nb[c.lettre.statut]++; });
+    var q = sansAccent(clQ).trim(), qc = q.replace(/\D/g, '');
+    var l = CL.filter(function (c) {
+      if (clFiltre !== 'tout' && c.lettre.statut !== clFiltre) return false;
+      return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
+    });
+    var f = [['tout', 'Tous'], ['oui', 'Reçoivent le menu'], ['non', 'Ont refusé'], ['', 'Pas demandé']];
+    return blocLettre() +
+      '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
+        return '<button type="button" data-act="cl-filtre" data-f="' + x[0] + '" aria-pressed="' + (clFiltre === x[0]) + '">' + x[1] + ' <span>' + nb[x[0]] + '</span></button>';
+      }).join('') + '</div><input type="search" id="cl-q" class="r-q" value="' + esc(clQ) + '" placeholder="Rechercher un nom, un téléphone, un e-mail…" aria-label="Rechercher"></div>' +
+      '<div id="cl-liste">' + clientsListe(l) + '</div>';
+  }
+  function clientsListe(l) {
+    if (!CL.length) return '<div class="vide grand">Pas encore de client. Ils s’ajoutent tout seuls à chaque réservation et à chaque inscription au menu par e-mail.</div>';
+    if (!l.length) return '<p class="vide">Aucun client ne correspond.</p>';
+    return '<div class="cl-liste">' + l.map(function (c) {
+      var st = statutLettre(c);
+      return '<button type="button" class="cl-ligne" data-act="client-fiche" data-id="' + c.id + '"><span class="avatar grand">' + esc((nomClient(c) || '?').charAt(0).toUpperCase()) + '</span>' +
+        '<span class="cl-nom"><strong>' + esc(nomClient(c) || 'Sans nom') + '</strong><small>' + esc([c.tel, c.email].filter(Boolean).join(' · ') || 'pas de coordonnées') + '</small></span>' +
+        '<span class="statut statut-' + st[0] + '">' + st[1] + '</span>' +
+        '<span class="cl-cmd">' + (c.nb ? pluriel(c.nb, 'commande') + '<small>dernière le ' + dateFr(c.der) + '</small>' : '<small>aucune commande</small>') + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function majClientsListe() {
+    var z = document.getElementById('cl-liste'); if (!z) return;
+    var q = sansAccent(clQ).trim(), qc = q.replace(/\D/g, '');
+    z.innerHTML = clientsListe(CL.filter(function (c) {
+      if (clFiltre !== 'tout' && c.lettre.statut !== clFiltre) return false;
+      return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
+    }));
+  }
+  function ficheClient(c) {
+    var nouveau = !c; c = c || { id: '', prenom: '', nom: '', tel: '', email: '', note: '', lettre: { statut: '', historique: [] } };
+    var d = document.createElement('div');
+    d.className = 'modale-fond';
+    var hist = (c.lettre.historique || []).slice().reverse().map(function (h) {
+      return '<li>' + (h.statut === 'oui' ? 'Inscrit' : 'Désinscrit') + ' ' + quand(h.date) + ' · ' + esc(h.source === 'site' ? 'depuis le site' : h.source === 'désinscription' ? 'avec le lien de l’e-mail' : h.source.replace('back-office · ', 'dans le back-office par ')) + '</li>';
+    }).join('');
+    d.innerHTML = '<form class="modale modale-large" role="dialog" aria-modal="true" aria-labelledby="fc-t"><h2 id="fc-t">' + (nouveau ? 'Nouveau client' : esc(nomClient(c) || 'Client')) + '</h2>' +
+      (nouveau ? '' : '<p>Client depuis le ' + dateFr(c.cree.slice(0, 10)) + ' ' + c.cree.slice(0, 4) + (c.nb ? ' · ' + pluriel(c.nb, 'commande') : '') + '</p>') +
+      '<div class="grille-2"><label class="champ"><span>Prénom</span><input name="prenom" value="' + esc(c.prenom) + '"></label><label class="champ"><span>Nom</span><input name="nom" value="' + esc(c.nom) + '"></label></div>' +
+      '<div class="grille-2"><label class="champ"><span>Téléphone</span><input name="tel" type="tel" value="' + esc(c.tel) + '"></label><label class="champ"><span>E-mail</span><input name="email" type="email" value="' + esc(c.email) + '"></label></div>' +
+      '<label class="champ"><span>Note <em>facultatif</em></span><textarea name="note" rows="2" placeholder="ex. allergique aux fruits à coque, préfère être appelé le matin">' + esc(c.note) + '</textarea></label>' +
+      '<div class="champ"><span>Menu de la semaine par e-mail</span><div class="seg" role="radiogroup" aria-label="Menu par e-mail">' +
+        [['oui', 'Oui, il accepte'], ['non', 'Non, il refuse']].concat(c.lettre.statut === '' ? [['', 'Pas encore demandé']] : []).map(function (x) {
+          return '<label><input type="radio" name="lettre" value="' + x[0] + '"' + (c.lettre.statut === x[0] ? ' checked' : '') + '><span>' + x[1] + '</span></label>';
+        }).join('') + '</div>' + (hist ? '<ul class="fc-hist">' + hist + '</ul>' : '') + '</div>' +
+      (nouveau ? '' : '<div class="champ"><span>Commandes</span><div id="fc-cmd" class="fc-cmd"><p class="aide">Chargement…</p></div></div>') +
+      '<p class="alerte" hidden></p><div class="modale-actions">' +
+        (nouveau ? '' : '<button type="button" class="btn btn-discret fc-suppr" data-r="suppr">' + ico('suppr') + 'Supprimer</button><button type="button" class="btn btn-ligne" data-r="resa">' + ico('plus') + 'Réservation</button>') +
+        '<button type="button" class="btn btn-discret" data-r="0">Annuler</button><button class="btn btn-violet">Enregistrer</button></div></form>';
+    document.body.appendChild(d);
+    var f = d.querySelector('form'), al = d.querySelector('.alerte');
+    f.querySelector('input').focus();
+    function fin() { d.remove(); document.removeEventListener('keydown', echap); }
+    function echap(e) { if (e.key === 'Escape') fin(); }
+    document.addEventListener('keydown', echap);
+    if (!nouveau) getJSON('resas&client=' + c.id).then(function (j) {
+      var z = d.querySelector('#fc-cmd'); if (!z) return;
+      z.innerHTML = j.resas.length ? '<ul>' + j.resas.slice().reverse().slice(0, 12).map(function (r) {
+        return '<li><b>' + esc(dateLongue(r.date)) + '</b><span>' + r.lignes.map(function (x) { return x.qte + ' × ' + esc(x.nom); }).join(', ') + '</span><em class="statut statut-' + (r.paye ? 'vert' : 'orange') + '">' + (r.paye ? 'Payé' : 'Non payé') + '</em></li>';
+      }).join('') + '</ul>' : '<p class="aide">Aucune commande pour l’instant.</p>';
+    }).catch(function () {});
+    d.addEventListener('click', function (e) {
+      if (e.target === d) return fin();
+      var b = e.target.closest('[data-r]'); if (!b) return;
+      if (b.dataset.r === '0') fin();
+      else if (b.dataset.r === 'resa') { fin(); formResa(null, c); }
+      else if (b.dataset.r === 'suppr') {
+        demander('Supprimer ce client ?', esc(nomClient(c) || 'Ce client') + ' sera effacé (nom, téléphone, e-mail, inscription au menu). Ses anciennes réservations restent dans l’historique, sans son nom.', [{ txt: 'Garder', val: false }, { txt: 'Supprimer', val: true, cls: 'btn-danger' }])
+          .then(function (r) { if (!r) return; if (VISITE) return toast('Mode visite : rien n’est supprimé.'); api('client-suppr', { id: c.id }).then(function (j) { CL = j.clients; LETTRE = j.lettre; fin(); majClients(); toast('Client supprimé.'); }).catch(function (er) { toast(er.message, true); }); });
+      }
+    });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (VISITE) { fin(); return toast('Mode visite : rien n’est enregistré.'); }
+      var lt = f.querySelector('[name=lettre]:checked');
+      api('client', { id: c.id, prenom: f.prenom.value, nom: f.nom.value, tel: f.tel.value, email: f.email.value, note: f.note.value, lettre: lt ? lt.value : '' })
+        .then(function (j) { CL = j.clients; LETTRE = j.lettre; fin(); majClients(); toast(nouveau ? 'Client ajouté.' : 'Fiche client enregistrée.'); })
+        .catch(function (er) { al.textContent = er.message; al.hidden = false; });
+    });
+  }
+  function actionLettre(a, b) {
+    if (VISITE) return toast('Mode visite : aucun e-mail n’est envoyé.');
+    if (a === 'lettre-test') {
+      b.disabled = true;
+      api('lettre-test', {}).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast('Essai envoyé à ' + j.a + '. Regardez votre boîte mail (et les indésirables).'); })
+        .catch(function (e) { toast(e.message, true); }).then(function () { b.disabled = false; });
+      return;
+    }
+    var s = LETTRE.semaine;
+    demander('Envoyer le menu maintenant ?', 'Le menu de la semaine va partir par e-mail à ' + pluriel(LETTRE.inscrits, 'inscrit') + '.' + (s && s.envoye ? '<br><b>Attention : il a déjà été envoyé ' + quand(s.envoye.date) + '.</b>' : ''), [{ txt: 'Annuler', val: false }, { txt: 'Envoyer', val: true, cls: 'btn-violet' }])
+      .then(function (r) {
+        if (!r) return;
+        b.disabled = true; b.textContent = 'Envoi en cours…';
+        api('lettre-envoyer', {}).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast('Menu envoyé à ' + pluriel(j.n, 'personne') + '.' + (j.avert ? ' ' + j.avert : '')); })
+          .catch(function (e) { toast(e.message, true); majClients(); });
+      });
+  }
+
   // =============== Affichage ===============
-  var VUES = { comptes: vueComptes, stats: vueStats, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
+  var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
   function render(garderScroll) {
     var y = window.scrollY;
     document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) {
@@ -772,12 +1222,16 @@
   document.querySelector('.onglets').addEventListener('click', function (e) {
     var b = e.target.closest('[data-onglet]'); if (!b) return;
     onglet = b.dataset.onglet; ecrire('onglet', onglet);
+    if (onglet === 'resas') R.charge = '';   // on recharge : quelqu'un d'autre a pu prendre des réservations
+    if (onglet === 'clients') CL = null;
     if (onglet !== 'menus') carteOuverte = null;
     render();
   });
 
   app.addEventListener('input', function (e) {
     var t = e.target, p = t.dataset.p;
+    if (t.id === 'r-q') { R.q = t.value; majListe(); return; }
+    if (t.id === 'cl-q') { clQ = t.value; majClientsListe(); return; }
     if (!p || t.type === 'radio' || t.type === 'color' || t.type === 'checkbox') return;
     var v = t.value;
     if ('lignes' in t.dataset) v = v.split('\n');
@@ -794,6 +1248,12 @@
   });
   app.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.id === 'r-cal') { if (t.value) { R.date = t.value; render(true); } return; }
+    if ('lettreAuto' in t.dataset) {
+      api('lettre-auto', { auto: t.checked }).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast(t.checked ? 'Envoi automatique activé : le menu partira chaque lundi matin.' : 'Envoi automatique désactivé.'); })
+        .catch(function (er) { t.checked = !t.checked; toast(er.message, true); });
+      return;
+    }
     if (t.type === 'radio' && t.dataset.p) { set(t.dataset.p, t.value); apresSaisie(); render(true); return; }
     if (t.type === 'checkbox' && t.dataset.p) { set(t.dataset.p, t.checked); render(true); return; }
     if (t.type === 'color' && t.dataset.p) { set(t.dataset.p, t.value); render(true); return; }
@@ -928,6 +1388,32 @@
       ouvrirApres(SEM, SEM === 'semaine_suivante' ? 'affiche?s=suivante' : 'affiche');
     } else if (a === 'imprimer-carte') {
       ouvrirApres('menus', 'carte-traiteur?c=' + b.dataset.i);
+    } else if (a === 'r-date') {
+      R.date = b.dataset.d; render(true);
+    } else if (a === 'r-filtre') {
+      R.filtre = b.dataset.f; majResas();
+    } else if (a === 'r-etat') {
+      changerEtat(b);
+    } else if (a === 'resa-nouvelle') {
+      formResa(null);
+    } else if (a === 'resa-modif') {
+      formResa(resaParId(b.dataset.id));
+    } else if (a === 'resa-suppr') {
+      var rs = resaParId(b.dataset.id);
+      demander('Supprimer cette réservation ?', 'La commande de ' + esc(nomClient(rs.c) || 'ce client') + ' pour ' + esc(dateLongue(rs.date)) + ' sera supprimée.', [{ txt: 'Garder', val: false }, { txt: 'Supprimer', val: true, cls: 'btn-danger' }])
+        .then(function (r) {
+          if (!r) return;
+          if (VISITE) return toast('Mode visite : rien n’est supprimé.');
+          api('resa-suppr', { id: rs.id }).then(function () { R.data.resas = R.data.resas.filter(function (x) { return x.id !== rs.id; }); chargerClients(); majResas(); toast('Réservation supprimée.'); }).catch(function (er) { toast(er.message, true); });
+        });
+    } else if (a === 'r-imprimer') {
+      window.print();
+    } else if (a === 'cl-filtre') {
+      clFiltre = b.dataset.f; majClients();
+    } else if (a === 'client-fiche') {
+      ficheClient(b.dataset.id ? CL.filter(function (c) { return c.id === b.dataset.id; })[0] : null);
+    } else if (a === 'lettre-test' || a === 'lettre-envoyer') {
+      actionLettre(a, b);
     } else if (a === 'aller') {
       var cible = document.getElementById(b.dataset.cible);
       if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -956,6 +1442,12 @@
     if (!site.semaine_suivante.jours.length) site.semaine_suivante.jours = ['Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(function (d) { return { jour: d, nom: '', desc: '', prix: '', ferme: false, motif: '', message: '' }; });
   }
 
+
+  // Réservations : mise à jour toutes les minutes (plusieurs personnes peuvent prendre des commandes en même temps)
+  setInterval(function () {
+    if (onglet !== 'resas' || document.hidden || document.querySelector('.modale-fond') || document.activeElement.id === 'r-q') return;
+    R.charge = ''; chargerResas();
+  }, 60000);
 
   if (!VUES[onglet]) onglet = 'stats';
   render();

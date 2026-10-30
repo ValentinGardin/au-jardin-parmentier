@@ -1,4 +1,5 @@
-<?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; require __DIR__ . '/google.php'; $s = site_load();
+<?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; require __DIR__ . '/google.php'; require __DIR__ . '/clients.php'; $s = site_load();
+lettre_auto($s);   // envoi du menu aux inscrits le lundi (si activé dans le back-office)
 stats_vue();
 $evts = evenements_visibles($s['evenements']);
 $tel = '09 50 17 39 62'; $telHref = 'tel:+33950173962';
@@ -45,7 +46,7 @@ $galerie = photos_galerie();
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=10" rel="stylesheet">
+<link href="style.css?v=11" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -230,6 +231,34 @@ $galerie = photos_galerie();
   </div>
 </section>
 <?php endif; ?>
+
+<!-- ============ Lettre : le menu de la semaine par e-mail ============ -->
+<section id="lettre" class="lettre-zone" aria-labelledby="lettre-titre">
+  <div class="wrap">
+    <div class="lettre reveal">
+      <img class="lettre-sym" src="img/logo/symbole-violet.svg" alt="" width="164" height="244" loading="lazy">
+      <div class="lettre-txt">
+        <h2 id="lettre-titre">Le menu de la semaine dans votre boîte mail</h2>
+        <p>Chaque lundi, les plats du jour de la semaine. Rien d’autre, et désinscription en un clic.</p>
+      </div>
+<?php $lettreEtat = $_GET['lettre'] ?? ''; if ($lettreEtat === 'ok'): ?>
+      <p class="lettre-ok" role="status">C’est noté ! Vous recevrez le prochain menu lundi.</p>
+<?php else: ?>
+      <form class="lettre-form" method="post" action="lettre" novalidate>
+        <div class="lettre-champs">
+          <label><span class="sr-only">Prénom</span><input name="prenom" autocomplete="given-name" placeholder="Prénom" maxlength="40"></label>
+          <label><span class="sr-only">Adresse e-mail</span><input name="email" type="email" required autocomplete="email" placeholder="Adresse e-mail" maxlength="120"></label>
+          <button class="btn btn-violet" type="submit">Je m’inscris</button>
+        </div>
+        <label class="lettre-accord"><input type="checkbox" name="accord" value="1" required><span>J’accepte de recevoir le menu de la semaine par e-mail. Mon adresse n’est utilisée que pour cela (<a href="mentions-legales#donnees">en savoir plus</a>).</span></label>
+        <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><input name="site_web" tabindex="-1" autocomplete="off"></div>
+        <input type="hidden" name="t" value="<?= time() ?>">
+        <p class="lettre-msg" role="alert"<?= $lettreEtat === 'erreur' ? '' : ' hidden' ?>><?= $lettreEtat === 'erreur' ? 'L’inscription n’a pas fonctionné : vérifiez votre adresse et cochez la case.' : '' ?></p>
+      </form>
+<?php endif; ?>
+    </div>
+  </div>
+</section>
 
 <!-- ============ Cartes traiteur (gérées dans le back-office) ============ -->
 <section id="traiteur" class="section traiteur">
@@ -481,6 +510,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=8" defer></script>
+<script src="main.js?v=9" defer></script>
 </body>
 </html>

@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/lib.php';
 require dirname(__DIR__) . '/stats.php';
 require dirname(__DIR__) . '/comptes.php';
 require dirname(__DIR__) . '/google.php';
+require dirname(__DIR__) . '/clients.php';
 session_name('jp_admin');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
@@ -190,6 +191,149 @@ if ($api !== '') {
             repondre(200, $etatGoogle());
         }
     }
+    // ---- Réservations et clients ----
+    if (in_array($api, ['resas', 'resa', 'resa-etat', 'resa-suppr', 'clients', 'client', 'client-suppr', 'clients-csv', 'lettre-auto', 'lettre-test', 'lettre-envoyer'], true)) {
+        if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
+        $masquer = $moi['role'] === 'visiteur';
+        $qui = $moi['nom'] ?: $moi['identifiant'];
+        $resaPublique = function ($r, $clients) use ($masquer) {
+            $i = client_par_id($clients, $r['client']);
+            $r['c'] = $i === null ? ['id' => '', 'prenom' => 'Client supprimé', 'nom' => '', 'tel' => '', 'email' => '', 'lettre' => ['statut' => '']] : client_public($clients[$i], $masquer);
+            return $r;
+        };
+        $etatLettre = function ($clients) {
+            $c = lettre_config(); $s = lettre_semaine(site_load());
+            return ['auto' => $c['auto'], 'envois' => array_reverse($c['envois']), 'inscrits' => count(lettre_inscrits($clients)),
+                    'semaine' => $s ? ['du' => $s['du'], 'au' => $s['au'], 'complete' => semaine_complete($s), 'envoye' => lettre_deja($s['du'])] : null];
+        };
+        $listeClients = function () use ($masquer, $etatLettre) {
+            $clients = clients_charger(); $stats = [];
+            foreach (resas_charger() as $r) {
+                $k = $r['client']; $stats[$k]['n'] = ($stats[$k]['n'] ?? 0) + 1;
+                if ($r['date'] > ($stats[$k]['der'] ?? '')) $stats[$k]['der'] = $r['date'];
+            }
+            $out = [];
+            foreach ($clients as $c) { $p = client_public($c, $masquer); $p['nb'] = $stats[$c['id']]['n'] ?? 0; $p['der'] = $stats[$c['id']]['der'] ?? ''; $out[] = $p; }
+            usort($out, function ($a, $b) { return strcasecmp(client_nom($a), client_nom($b)); });
+            return ['ok' => true, 'clients' => $out, 'lettre' => $etatLettre($clients)];
+        };
+        // Lecture : réservations d'une période (une semaine affichée dans l'onglet)
+        if ($api === 'resas') {
+            $du = date_ok($_GET['du'] ?? '') ?: date('Y-m-d'); $au = date_ok($_GET['au'] ?? '') ?: $du;
+            $cl = (string)($_GET['client'] ?? '');   // toutes les commandes d'un client (fiche client)
+            $clients = clients_charger(); $out = [];
+            foreach (resas_charger() as $r) if ($cl !== '' ? $r['client'] === $cl : $r['date'] >= $du && $r['date'] <= $au) $out[] = $resaPublique($r, $clients);
+            usort($out, function ($a, $b) { return strcmp($a['date'] . $a['cree'], $b['date'] . $b['cree']); });
+            repondre(200, ['ok' => true, 'du' => $du, 'au' => $au, 'resas' => $out]);
+        }
+        if ($api === 'clients') repondre(200, $listeClients());
+        if ($api === 'clients-csv') {
+            if ($masquer) repondre(403, ['erreur' => 'Mode visite : export désactivé.']);
+            $l = $listeClients()['clients'];
+            if (($_GET['f'] ?? '') === 'lettre') $l = array_filter($l, function ($c) { return $c['lettre']['statut'] === 'oui' && $c['email'] !== ''; });
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="clients-' . date('Y-m-d') . '.csv"');
+            $o = fopen('php://output', 'w');
+            fwrite($o, "\xEF\xBB\xBF");   // pour qu'Excel lise bien les accents
+            fputcsv($o, ['Prénom', 'Nom', 'Téléphone', 'E-mail', 'Menu par e-mail', 'Depuis le', 'Commandes', 'Dernière commande', 'Note'], ';');
+            foreach ($l as $c) fputcsv($o, [$c['prenom'], $c['nom'], $c['tel'], $c['email'], $c['lettre']['statut'] === 'oui' ? 'oui' : ($c['lettre']['statut'] === 'non' ? 'non' : ''), $c['lettre']['date'], $c['nb'], $c['der'], $c['note']], ';');
+            exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') repondre(405, ['erreur' => 'Méthode non autorisée.']);
+        api_garde();
+        $in = entree();
+        // Création ou modification d'une réservation (le client est créé ou retrouvé par son téléphone / e-mail)
+        if ($api === 'resa') {
+            $res = verrou(function () use ($in, $qui) {
+                $ci = is_array($in['c'] ?? null) ? $in['c'] : [];
+                if (txt($ci['prenom'] ?? '', 40) === '' && txt($ci['nom'] ?? '', 60) === '') return [null, 'Indiquez au moins le nom ou le prénom du client.'];
+                if (($ci['email'] ?? '') !== '' && email_ok($ci['email']) === '') return [null, 'L’adresse e-mail du client n’est pas valide.'];
+                $clients = clients_charger();
+                $i = ($ci['id'] ?? '') !== '' ? client_par_id($clients, $ci['id']) : null;
+                if ($i === null) $i = client_index($clients, $ci['tel'] ?? '', $ci['email'] ?? '');
+                if ($i === null) { $clients[] = client_clean($ci); $i = count($clients) - 1; }
+                else {
+                    // client existant : les champs laissés vides gardent leur valeur
+                    $m = $clients[$i];
+                    foreach (['prenom', 'nom', 'tel', 'email'] as $f) if (trim((string)($ci[$f] ?? '')) !== '') $m[$f] = $ci[$f];
+                    $clients[$i] = client_clean($m, $clients[$i]);
+                }
+                if (in_array($ci['lettre'] ?? '', ['oui', 'non'], true) && $clients[$i]['email'] !== '') client_lettre($clients[$i], $ci['lettre'] === 'oui', 'back-office · ' . $qui);
+                $l = resas_charger(); $k = null;
+                foreach ($l as $j => $r) if ($r['id'] === ($in['id'] ?? '')) $k = $j;
+                $r = resa_clean(['client' => $clients[$i]['id']] + $in, $k === null ? null : $l[$k], $qui);
+                if (!$r['lignes']) return [null, 'Ajoutez au moins un plat à la commande.'];
+                if ($k === null) $l[] = $r; else $l[$k] = $r;
+                if (!clients_enregistrer($clients) || !resas_enregistrer($l)) return [null, 'Enregistrement impossible : le dossier data/ n’est pas modifiable.'];
+                return [[$r, $clients], null];
+            });
+            if ($res[1]) repondre(400, ['erreur' => $res[1]]);
+            repondre(200, ['ok' => true, 'resa' => $resaPublique($res[0][0], $res[0][1])]);
+        }
+        if ($api === 'resa-etat' || $api === 'resa-suppr') {
+            $res = verrou(function () use ($api, $in, $qui) {
+                $l = resas_charger(); $k = null;
+                foreach ($l as $j => $r) if ($r['id'] === ($in['id'] ?? '')) $k = $j;
+                if ($k === null) return [null, 'Cette réservation n’existe plus (supprimée par quelqu’un d’autre ?). Rechargez la page.'];
+                if ($api === 'resa-suppr') { array_splice($l, $k, 1); resas_enregistrer($l); return [true, null]; }
+                if (!in_array($in['champ'] ?? '', ['paye', 'recupere'], true)) return [null, 'Données invalides.'];
+                resa_etat($l[$k], $in['champ'], !empty($in['valeur']), $qui);
+                resas_enregistrer($l);
+                return [$l[$k], null];
+            });
+            if ($res[1]) repondre(400, ['erreur' => $res[1]]);
+            repondre(200, $api === 'resa-suppr' ? ['ok' => true] : ['ok' => true, 'resa' => $resaPublique($res[0], clients_charger())]);
+        }
+        if ($api === 'client') {
+            $e = verrou(function () use ($in, $qui) {
+                if (txt($in['prenom'] ?? '', 40) === '' && txt($in['nom'] ?? '', 60) === '') return 'Indiquez au moins le nom ou le prénom.';
+                if (($in['email'] ?? '') !== '' && email_ok($in['email']) === '') return 'L’adresse e-mail n’est pas valide.';
+                $l = clients_charger();
+                $i = client_par_id($l, (string)($in['id'] ?? ''));
+                $d = client_index($l, $in['tel'] ?? '', $in['email'] ?? '');
+                if ($d !== null && $d !== $i) return 'Ce téléphone ou cet e-mail appartient déjà à ' . (client_nom($l[$d]) ?: 'un autre client') . '.';
+                $c = client_clean($in, $i === null ? null : $l[$i]);
+                if (in_array($in['lettre'] ?? '', ['oui', 'non'], true)) {
+                    if ($in['lettre'] === 'oui' && $c['email'] === '') return 'Ajoutez une adresse e-mail pour l’inscrire au menu de la semaine.';
+                    client_lettre($c, $in['lettre'] === 'oui', 'back-office · ' . $qui);
+                }
+                if ($i === null) $l[] = $c; else $l[$i] = $c;
+                return clients_enregistrer($l) ? null : 'Enregistrement impossible : le dossier data/ n’est pas modifiable.';
+            });
+            if ($e) repondre(400, ['erreur' => $e]);
+            repondre(200, $listeClients());
+        }
+        if ($api === 'client-suppr') {
+            // Droit à l'effacement : le client disparaît, ses anciennes réservations restent (sans nom) pour l'historique
+            verrou(function () use ($in) {
+                clients_enregistrer(array_filter(clients_charger(), function ($c) use ($in) { return $c['id'] !== ($in['id'] ?? ''); }));
+            });
+            repondre(200, $listeClients());
+        }
+        if ($api === 'lettre-auto') {
+            $c = lire_json(LETTRE); $c['auto'] = !empty($in['auto']);
+            if (!json_save(LETTRE, $c)) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable.']);
+            repondre(200, $listeClients());
+        }
+        if ($api === 'lettre-test' || $api === 'lettre-envoyer') {
+            $d = site_load();
+            $s = lettre_semaine($d);
+            if (!$s) {
+                // pas de menu qui commence cette semaine : on prend celui affiché sur le site (ou la semaine suivante préparée)
+                foreach (['semaine', 'semaine_suivante'] as $k) if (!$s && jours_visibles($d[$k]['jours']) && !$d[$k]['conges']['actif'] && $d[$k]['au'] >= date('Y-m-d')) $s = $d[$k];
+            }
+            if (!$s) repondre(400, ['erreur' => 'Aucun menu de la semaine à envoyer : remplissez d’abord l’onglet « Menu de la semaine ».']);
+            if ($api === 'lettre-test') {
+                $ok = mail_envoyer($moi['email'], '[Essai] ' . lettre_sujet($s), lettre_html($s, $moi['nom'], adresse_site() . '/lettre'), lettre_texte($s, $moi['nom'], adresse_site() . '/lettre'));
+                if (!$ok) repondre(500, ['erreur' => 'L’e-mail n’a pas pu partir : l’envoi d’e-mails est peut-être désactivé chez l’hébergeur.']);
+                lettre_noter(['du' => $s['du'], 'date' => date('Y-m-d H:i'), 'mode' => 'test', 'nb' => 1, 'ok' => 1, 'a' => $moi['email']]);
+                repondre(200, ['ok' => true, 'a' => $moi['email']] + $listeClients());
+            }
+            [$n, $e] = lettre_envoyer($s, $qui);
+            if (!$n && $e) repondre(500, ['erreur' => $e]);
+            repondre(200, ['ok' => true, 'n' => $n, 'avert' => $e] + $listeClients());
+        }
+    }
     repondre(404, ['erreur' => 'Action inconnue.']);
 }
 
@@ -223,10 +367,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $etat = null;
 if ($logged) {
+    lettre_auto(site_load());
     $photos = [];
     foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
-             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES];
+             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant']];
 }
 ?>
 <!doctype html>
@@ -241,7 +386,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=12" rel="stylesheet">
+<link href="admin.css?v=13" rel="stylesheet">
 </head>
 <body>
 
@@ -278,6 +423,8 @@ if ($logged) {
   <a class="logo" href="<?= ESPACE ?>/"><img src="favicon.svg" alt="" width="34" height="34"><span>Gestion du site</span></a>
   <nav class="onglets" role="tablist" aria-label="Rubriques">
     <button role="tab" data-onglet="stats" aria-selected="true"><svg class="ico"><use href="#i-stats"/></svg>Tableau de bord</button>
+    <button role="tab" data-onglet="resas" aria-selected="false"><svg class="ico"><use href="#i-resa"/></svg>Réservations</button>
+    <button role="tab" data-onglet="clients" aria-selected="false"><svg class="ico"><use href="#i-clients"/></svg>Clients</button>
     <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
     <button role="tab" data-onglet="semaine" aria-selected="false"><svg class="ico"><use href="#i-cal"/></svg>Menu de la semaine</button>
     <button role="tab" data-onglet="menus" aria-selected="false"><svg class="ico"><use href="#i-livre"/></svg>Cartes traiteur</button>
@@ -303,7 +450,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=12"></script>
+<script src="admin.js?v=13"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -328,6 +475,14 @@ if ($logged) {
     <symbol id="i-coller" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></g></symbol>
     <symbol id="i-copie" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></g></symbol>
     <symbol id="i-crayon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></g></symbol>
+    <symbol id="i-resa" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></g></symbol>
+    <symbol id="i-clients" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></g></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></g></symbol>
+    <symbol id="i-tel" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></g></symbol>
+    <symbol id="i-envoyer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></g></symbol>
+    <symbol id="i-telecharger" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></g></symbol>
   </defs>
 </svg>
 </body>
