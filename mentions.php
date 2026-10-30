@@ -1,15 +1,19 @@
 <?php require __DIR__ . '/lib.php';
-// Informations légales : complétez les valeurs entre crochets (Kbis / avis de situation INSEE).
+// Informations légales (source : avis de situation INSEE et extrait RNE). Les valeurs vides ne sont pas affichées.
 $editeur = [
     'nom'       => 'Au Jardin Parmentier',
-    'forme'     => '[Forme juridique et capital, ex. SARL au capital de 5 000 €]',
+    'societe'   => 'SARL GARDIN',
+    'forme'     => 'Société à responsabilité limitée',
+    'capital'   => '',            // à compléter, ex. '5 000 €' (indiqué sur le Kbis ou les statuts)
     'adresse'   => '9, place Parmentier – 80500 Montdidier',
     'tel'       => '09 50 17 39 62',
     'email'     => 'info@lejardinparmentier.fr',
-    'siret'     => '[N° SIRET]',
-    'rcs'       => '[RCS Amiens + numéro]',
-    'tva'       => '[N° de TVA intracommunautaire]',
-    'directeur' => '[Prénom Nom du directeur de la publication]',
+    'siren'     => '813 853 561',
+    'siret'     => '813 853 561 00013',
+    'rne'       => 'Immatriculée au Registre national des entreprises (RNE) le 2 octobre 2015',
+    'tva'       => 'FR79 813 853 561',
+    'naf'       => '47.11C – Supérettes',
+    'directeur' => '',            // à compléter : prénom et nom du gérant
 ];
 $realisation = 'G’agency';
 ?>
@@ -48,15 +52,17 @@ $realisation = 'G’agency';
 
   <section>
     <h2>Éditeur du site</h2>
-    <p><strong><?= h($editeur['nom']) ?></strong><br>
-      <?= h($editeur['forme']) ?><br>
-      <?= h($editeur['adresse']) ?><br>
+    <p>Le site <strong><?= h($editeur['nom']) ?></strong> est édité par :</p>
+    <p><strong><?= h($editeur['societe']) ?></strong><br>
+      <?= h($editeur['forme']) ?><?= $editeur['capital'] !== '' ? ' au capital de ' . h($editeur['capital']) : '' ?><br>
+      Siège social : <?= h($editeur['adresse']) ?><br>
       Téléphone : <a href="tel:+33950173962"><?= h($editeur['tel']) ?></a><br>
       E-mail : <a href="mailto:<?= h($editeur['email']) ?>"><?= h($editeur['email']) ?></a></p>
-    <p>SIRET : <?= h($editeur['siret']) ?><br>
-      <?= h($editeur['rcs']) ?><br>
-      TVA intracommunautaire : <?= h($editeur['tva']) ?></p>
-    <p>Directeur de la publication : <?= h($editeur['directeur']) ?></p>
+    <p>SIREN : <?= h($editeur['siren']) ?> · SIRET : <?= h($editeur['siret']) ?><br>
+      <?= h($editeur['rne']) ?><br>
+      N° de TVA intracommunautaire : <?= h($editeur['tva']) ?><br>
+      Code NAF/APE : <?= h($editeur['naf']) ?></p>
+    <p>Directeur de la publication : <?= h($editeur['directeur'] !== '' ? $editeur['directeur'] . ', gérant' : 'le gérant de la ' . $editeur['societe']) ?></p>
   </section>
 
   <section>
