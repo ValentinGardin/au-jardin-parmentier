@@ -1,0 +1,10 @@
+# Données modifiées en ligne par le back-office : jamais dans Git,
+# sinon chaque mise à jour du site écraserait les menus, le mot de passe et les statistiques.
+data/site.json
+data/config.json
+data/tentatives.json
+data/stats/
+data/sauvegardes/
+*.tmp
+.DS_Store
+Thumbs.db

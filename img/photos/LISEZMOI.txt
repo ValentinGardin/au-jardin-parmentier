@@ -1,0 +1,15 @@
+Photos du site (format .webp ou .jpg). Le nom du fichier décide de l'emplacement :
+
+  hero          grande photo du haut de page (portrait)
+  legumes       petite photo ronde du haut + carte « Fruits et légumes »
+  charcuterie   petite photo du haut + carte « Charcuterie »
+  equipe        Angel & Fab (portrait)
+  traiteur, fromagerie, epicerie, vins      cartes de « La boutique »
+
+Les autres photos (ex. carte-plats, carte-buffets…) peuvent être choisies
+comme photo d'une carte traiteur dans le back-office.
+
+Pour remplacer une photo : déposez un fichier du même nom.
+Tant qu'une photo manque (ex. epicerie, vins), un visuel aux couleurs du logo s'affiche.
+
+Dossier img/galerie/ : toutes les images déposées défilent dans le bandeau photos.

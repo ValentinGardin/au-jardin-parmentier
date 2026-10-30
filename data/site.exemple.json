@@ -1,0 +1,979 @@
+{
+    "evenements": [
+        {
+            "actif": true,
+            "titre": "Beaujolais nouveau",
+            "date": "2026-11-19",
+            "accroche": "Le troisième jeudi de novembre, on fête l’arrivée du Beaujolais nouveau ! Réservez vos plateaux à partager.",
+            "items": [
+                {
+                    "nom": "Plateau de charcuterie et fromage pour deux",
+                    "prix": "17.00 €"
+                },
+                {
+                    "nom": "Traditionnel saucisson cuit au Beaujolais nouveau",
+                    "prix": "10.00 €"
+                }
+            ],
+            "lignes": [
+                "« Sans oublier nos huîtres de Normandie »"
+            ],
+            "cta": "N’oubliez pas de réserver !",
+            "reservation": {
+                "active": false,
+                "date": "2026-11-17"
+            },
+            "theme": "vin",
+            "photo": "plateau-charcuterie",
+            "masquer_apres": true
+        }
+    ],
+    "semaine": {
+        "titre": "Inspirations de la semaine",
+        "du": "2026-10-27",
+        "au": "2026-10-31",
+        "jours": [
+            {
+                "jour": "Mardi",
+                "nom": "Araignée de porc aux pommes flambées au Calvados",
+                "desc": "flan de patates douces et pommes de terre",
+                "prix": "9.50 €"
+            },
+            {
+                "jour": "Mercredi",
+                "nom": "Waterzooï de volaille",
+                "desc": "légumes et riz pilaf",
+                "prix": "9.50 €"
+            },
+            {
+                "jour": "Jeudi",
+                "nom": "Paleron de bœuf, étuvée d’échalotes",
+                "desc": "purée et petits pois",
+                "prix": "10.00 €"
+            },
+            {
+                "jour": "Vendredi",
+                "nom": "Dos de saumon, sauce au citron jaune",
+                "desc": "julienne de légumes et pommes de terre",
+                "prix": "10.50 €"
+            },
+            {
+                "jour": "Samedi",
+                "nom": "Sauté de canard aux épices",
+                "desc": "flan de céleri et gratin de pommes de terre",
+                "prix": "10.50 €"
+            }
+        ],
+        "special": {
+            "titre": "Vendredi et samedi",
+            "nom": "Plateau apéritif « Halloween »",
+            "prix": "19.00 €",
+            "lignes": [
+                "Tapenade aux olives noires et ses gressins",
+                "Brochette de tomate cerise et billes de mozzarella",
+                "Blinis rillettes de thon et son araignée",
+                "Verrine crème de potimarron, chorizo frit"
+            ]
+        },
+        "note": ""
+    },
+    "menus": [
+        {
+            "titre": "Plats cuisinés",
+            "photo": "carte-plats",
+            "intro": "Des plats mijotés, prêts à réchauffer, pour vos repas de famille et vos événements.",
+            "prix": "",
+            "cats": [
+                {
+                    "titre": "Bœuf",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Carbonnade de bœuf à la bière",
+                            "desc": "pommes de terre vapeur et chou rouge à la flamande",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Estouffade de bœuf aux épices",
+                            "desc": "purée de pommes de terre au Cantal, jardinière de légumes",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Joue de bœuf confite au vin rouge",
+                            "desc": "pommes fondantes et jardinière de légumes",
+                            "prix": "8.50 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Porc",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Curry de porc",
+                            "desc": "riz madras et patates douces",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Noix de jambon marinée au citron puis rôtie",
+                            "desc": "gratin de pommes de terre et petits pois à la française",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Paleron de porc à la moutarde",
+                            "desc": "purée de pommes de terre, petits pois à la française",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Filet mignon de porc roulé au lard paysan",
+                            "desc": "gratin de pommes de terre savoyard et chou-fleur",
+                            "prix": "9.50 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Veau",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Estouffade de veau à la provençale",
+                            "desc": "linguinis à la concassée de tomate",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Blanquette de veau",
+                            "desc": "petits légumes et riz pilaf",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Paleron de veau, crème de foie gras et morilles",
+                            "desc": "flan de céleri et gratin de pommes de terre",
+                            "prix": "10.50 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Poisson",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Filet de saumon en tournedos",
+                            "desc": "poêlée de courgettes et pommes de terre vapeur, sauce au pesto",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Filet de lieu jaune en viennoise de parmesan",
+                            "desc": "riz basmati aux fèves",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Pavé de cabillaud, sauce dieppoise",
+                            "desc": "pommes fondantes, étuvée de poireau et champignon",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Filet de flétan, sauce au bacon fumé",
+                            "desc": "riz pilaf tomaté et julienne de légumes",
+                            "prix": "9.50 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Volaille",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Sauté de dinde au lard et champignons",
+                            "desc": "gratin de penne au parmesan",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Suprême de pintade aux fruits secs",
+                            "desc": "gratin de patates douces et jardinière de légumes",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Suprême de poulet à l’estragon",
+                            "desc": "terrine de pommes de terre et gratin de légumes",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Cuisse de lapin à la moutarde",
+                            "desc": "purée de pommes de terre et carottes Vichy",
+                            "prix": "8.50 €"
+                        },
+                        {
+                            "nom": "Cuisse de canard à l’orange",
+                            "desc": "gratin de pommes de terre et petits pois à la française",
+                            "prix": "9.00 €"
+                        },
+                        {
+                            "nom": "Ballotin de volaille farci aux champignons sauvages",
+                            "desc": "poêlée de légumes et pommes de terre",
+                            "prix": "9.00 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Agneau",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Épaule d’agneau confite aux épices",
+                            "desc": "poêlée de légumes orientale et semoule aux raisins secs",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Tajine d’agneau aux fruits secs",
+                            "desc": "semoule aux raisins secs",
+                            "prix": "9.50 €"
+                        },
+                        {
+                            "nom": "Navarin d’agneau à la tomate",
+                            "desc": "petits légumes, pommes fondantes",
+                            "prix": "9.50 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Plats conviviaux",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Couscous",
+                            "desc": "agneau, poulet, merguez",
+                            "prix": "10.50 €"
+                        },
+                        {
+                            "nom": "Choucroute alsacienne",
+                            "desc": "palette, poitrine de porc, saucisse de Francfort et saucisse fumée",
+                            "prix": "10.50 €"
+                        },
+                        {
+                            "nom": "Choucroute de la mer",
+                            "desc": "sauce au vin blanc",
+                            "prix": "10.50 €"
+                        },
+                        {
+                            "nom": "Cassoulet de Castelnaudary",
+                            "desc": "",
+                            "prix": "10.50 €"
+                        }
+                    ]
+                }
+            ],
+            "note": "Commande de 10 personnes minimum à 50 personnes maximum. Prix par personne.",
+            "encart": [
+                "Location de chafing-dish : 10.00 €",
+                "Prêt de caisson possible (chèque de caution de 150 €)"
+            ]
+        },
+        {
+            "titre": "Plateaux repas",
+            "photo": "carte-plateaux",
+            "intro": "1 entrée + 1 plat + 1 accompagnement + 1 fromage + 1 dessert",
+            "prix": "17.90 € par personne",
+            "cats": [
+                {
+                    "titre": "Entrées",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Taboulé à la menthe aux baies de goji",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Wrap au jambon sec et fromage frais",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Terrine de poisson, crème safranée",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Wrap au saumon fumé et coleslaw",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Plats",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Ballotin de poulet au thym, sauce au curry",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Longe de porc à la moutarde, crème aux fines herbes",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Médaillon de saumon, crème à l’aneth",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Pavé de cabillaud, crème tomatée",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Accompagnements",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Nouilles chinoises, poêlée wok",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salade de riz, quinoa, poivrons, tomate",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salade de pommes de terre, haricots verts, cornichons, fines herbes",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salade de légumes",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Desserts",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Tartelette aux fruits de saison",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Clafoutis aux pommes",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salade de fruits à la menthe fraîche",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Fromage blanc, coulis de fruits rouges",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                }
+            ],
+            "note": "",
+            "encart": [
+                "Inclus : couverts, serviette, pain et beurre"
+            ]
+        },
+        {
+            "titre": "Buffets",
+            "photo": "carte-buffets",
+            "intro": "Présentation sur plateaux, avec sauces d’accompagnement. Formules complètes ou buffet à composer selon vos envies.",
+            "prix": "",
+            "cats": [
+                {
+                    "titre": "Formule « Terre »",
+                    "desc": "",
+                    "prix": "20.90 € / pers.",
+                    "plats": [
+                        {
+                            "nom": "Crudités",
+                            "desc": "3 crudités au choix",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salades",
+                            "desc": "2 salades au choix",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Charcuterie",
+                            "desc": "jambon blanc, jambon sec, saucisson à l’ail, rosette, rillettes",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Viandes froides",
+                            "desc": "rôti de porc moutardé, filet de poulet rôti au basilic",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Fromages",
+                            "desc": "Brie de Meaux, Tomme de Savoie, Pavé du Nord ½ vieux",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Formule « Terre et Mer »",
+                    "desc": "",
+                    "prix": "20.90 € / pers.",
+                    "plats": [
+                        {
+                            "nom": "Crudités",
+                            "desc": "3 crudités au choix",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salades",
+                            "desc": "2 salades au choix",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Viandes froides",
+                            "desc": "rôti de porc moutardé, filet de poulet rôti au basilic",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Poisson",
+                            "desc": "terrine de poisson aux noix de pétoncles",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Fromages",
+                            "desc": "Brie de Meaux, Tomme de Savoie, Pavé du Nord ½ vieux",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Formule « Prestige »",
+                    "desc": "",
+                    "prix": "30.90 € / pers.",
+                    "plats": [
+                        {
+                            "nom": "Plateau apéritif",
+                            "desc": "2 verrines, 2 minis composés, 2 canapés",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crudités",
+                            "desc": "3 crudités au choix",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salades",
+                            "desc": "2 salades au choix",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Viandes froides",
+                            "desc": "rôti de porc moutardé, filet de poulet rôti au basilic",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Poisson",
+                            "desc": "terrine de poisson aux noix de pétoncles",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Fromages",
+                            "desc": "plateau de fromages",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "À composer · Crudités",
+                    "desc": "12.50 € le kg",
+                    "prix": "2.50 € les 200 g",
+                    "plats": [
+                        {
+                            "nom": "Betteraves rouges aux échalotes",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Concombre à la menthe fraîche",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Carottes au cerfeuil",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Céleri rémoulade",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Tomates au basilic",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Coleslaw aux pommes",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "À composer · Salades",
+                    "desc": "15.60 € le kg",
+                    "prix": "3.90 € les 250 g",
+                    "plats": [
+                        {
+                            "nom": "Taboulé à la menthe fraîche aux graines",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Nouilles chinoises, poêlée wok et blanc de poulet",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Salade piémontaise au jambon de Villers-Tournelle",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Haricots verts, émietté de thon, vinaigrette à la graine de moutarde",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Riz, quinoa, agrumes, crevettes roses",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini penne, poêlée de légumes provençaux, basilic",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Pommes de terre, dés de volaille, crème de curry",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "À composer · Viandes froides",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Rôti de porc à la moutarde",
+                            "desc": "",
+                            "prix": "29.50 € le kg"
+                        },
+                        {
+                            "nom": "Rôti de bœuf aux aromates",
+                            "desc": "",
+                            "prix": "47.90 € le kg"
+                        },
+                        {
+                            "nom": "Filet de poulet rôti au basilic",
+                            "desc": "",
+                            "prix": "25.00 € le kg"
+                        }
+                    ]
+                },
+                {
+                    "titre": "À composer · Poissons froids",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Terrine de poisson aux herbes",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Terrine de poisson aux noix de pétoncles",
+                            "desc": "",
+                            "prix": "30.50 € le kg"
+                        }
+                    ]
+                }
+            ],
+            "note": "Commande de 15 personnes minimum à 50 personnes maximum.",
+            "encart": [
+                "Comptez environ 150 à 200 g de viande ou de poisson",
+                "et 200 à 300 g de salades et crudités par convive."
+            ]
+        },
+        {
+            "titre": "Apéritif",
+            "photo": "carte-aperitif",
+            "intro": "Canapés, verrines, minis composés, planches et pains surprises pour tous vos moments à partager.",
+            "prix": "",
+            "cats": [
+                {
+                    "titre": "Formules apéritives",
+                    "desc": "Commande de 10 à 50 personnes",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Formule canapés",
+                            "desc": "3 canapés chauds + 3 canapés froids au choix",
+                            "prix": "6.90 € / pers."
+                        },
+                        {
+                            "nom": "Formule minis composés",
+                            "desc": "4 minis composés au choix",
+                            "prix": "6.60 € / pers."
+                        },
+                        {
+                            "nom": "Formule verrines",
+                            "desc": "5 verrines au choix",
+                            "prix": "9.75 € / pers."
+                        },
+                        {
+                            "nom": "Formule plateau",
+                            "desc": "2 canapés, 2 minis composés, 2 verrines",
+                            "prix": "9.50 € / pers."
+                        }
+                    ]
+                },
+                {
+                    "titre": "Pains surprises",
+                    "desc": "Environ 50 sandwiches",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Mer",
+                            "desc": "assortiment de rillettes de poissons",
+                            "prix": "42 €"
+                        },
+                        {
+                            "nom": "Terre",
+                            "desc": "charcuterie, fromage",
+                            "prix": "42 €"
+                        },
+                        {
+                            "nom": "Mer et Terre",
+                            "desc": "charcuterie, fromage, rillettes de poissons",
+                            "prix": "42 €"
+                        }
+                    ]
+                },
+                {
+                    "titre": "Planches",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Charcuterie et fromage",
+                            "desc": "bâtonnets de fromages, sélection de charcuterie",
+                            "prix": "8.50 € / pers."
+                        },
+                        {
+                            "nom": "Charcuterie, fromage et crudités",
+                            "desc": "bâtonnets de fromages, sélection de charcuterie, bâtonnets de crudités",
+                            "prix": "10.50 € / pers."
+                        }
+                    ]
+                },
+                {
+                    "titre": "Entre amis",
+                    "desc": "Pour 6 personnes",
+                    "prix": "36 €",
+                    "plats": [
+                        {
+                            "nom": "Olives",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Tapenade, thoïnade, croûtons aillés",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Bâtonnets de crudités et sauces",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Sur le pouce",
+                    "desc": "Pour 6 personnes",
+                    "prix": "18 €",
+                    "plats": [
+                        {
+                            "nom": "Bâtonnets de crudités et sauces",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Canapés froids",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Confit d’oie, confiture d’oignons rouges",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Jambon blanc, crème de roquefort",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Magret fumé, tomate confite",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Wrap jambon sec, fromage de chèvre frais",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Confiture, brie, lomo",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Saumon fumé, beurre de citron",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Rillettes de poisson à l’aneth",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Wrap coleslaw, saumon fumé",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crème de courgette, crabe",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crevettes en persillade",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Canapés chauds",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Quiche aux poireaux",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Quiche au Maroilles",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Feuilleté à la saucisse de Francfort façon hot-dog",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini croque-monsieur jambon, emmental",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Pizza tomate, champignons, jambon",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Quiche julienne de légumes, crabe",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Quiche épinards, saumon frais",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Chausson cabillaud, aneth",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini croque saumon fumé, oignons",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Pizza tomate, anchois",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Verrines",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Tartare de tomate, magret fumé, comté",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Poivrons confits, chorizo grillé",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crème de foie gras, brisure de pain d’épices",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mousse de chèvre frais aux herbes, effiloché de lomo",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crème brûlée parmesan, effiloché de jambon sec, tomate confite",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crème d’avocat, crabe",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Tartare de saumon, herbes fraîches, dés de tomates",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crevettes, crème à l’aneth, salade",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Rillettes de poisson au curcuma, herbes fraîches",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Crème de carottes au cumin, pétoncles",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                },
+                {
+                    "titre": "Minis composés",
+                    "desc": "",
+                    "prix": "",
+                    "plats": [
+                        {
+                            "nom": "Brochette fromages, aromates",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini club jambon blanc, salade, œuf dur",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini burger foie gras, confiture d’oignons rouges",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Navette chèvre frais aux herbes, bresaola",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Sandwich pesto, jambon sec",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini club thon, carottes aux herbes",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Mini burger rillettes de poisson, aneth",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Navette au saumon fumé, zestes de citron jaune",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Brochette crevettes, chorizo",
+                            "desc": "",
+                            "prix": ""
+                        },
+                        {
+                            "nom": "Briochette gravlax, raifort",
+                            "desc": "",
+                            "prix": ""
+                        }
+                    ]
+                }
+            ],
+            "note": "Formules apéritives : commande de 10 personnes minimum à 50 personnes maximum.",
+            "encart": []
+        }
+    ],
+    "mots": [
+        "épicerie fine",
+        "traiteur",
+        "charcuterie",
+        "fromagerie",
+        "fruits et légumes",
+        "vins et champagnes",
+        "huîtres de Normandie"
+    ],
+    "avis": []
+}
