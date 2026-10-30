@@ -62,7 +62,7 @@ button{font:inherit;color:inherit}
 .onglets button.modifie::after{content:"";position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:#e8590c}
 .haut-actions{display:flex;align-items:center;gap:.25rem}
 .haut-actions form{margin:0}
-@media (max-width:980px){
+@media (max-width:1180px){
   .barre-haut{flex-wrap:wrap;height:auto;padding:.6rem 1rem 0;gap:.5rem}
   .logo span{display:none}
   .haut-actions{margin-left:auto}
@@ -316,3 +316,40 @@ input.prix{text-align:right;font-variant-numeric:tabular-nums}
 .infobulle-flottante span{color:#d8d0d5}
 .stats-pied{color:var(--gris-clair);font-size:.82rem;max-width:60rem;margin:1rem 0 0}
 .enreg[hidden],.toast[hidden]{display:none}
+
+/* Envoi de photo */
+.photo-opt.envoyer input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.photo-opt.envoyer .sans{flex-direction:column;gap:.2rem;border:1.5px dashed var(--violet);color:var(--violet);background:var(--violet-pale);font-size:.72rem;line-height:1.1;padding:.2rem}
+.photo-opt.envoyer:hover .sans{background:#efd9e7}
+.photo-opt.envoi .sans{opacity:.6}
+.photo-opt.envoyer input:focus-visible + .sans{outline:3px solid rgba(112,9,84,.35);outline-offset:2px}
+
+/* Couleurs des événements */
+button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;font-weight:500;color:var(--encre)}
+.pastille-couleur span{border:1px solid rgba(0,0,0,.1)}
+.pastille-couleur.choisie{border-color:var(--encre);box-shadow:0 0 0 2px var(--encre) inset}
+.pastille-couleur.perso{position:relative}
+.pastille-couleur.perso input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.pastille-couleur .arc{background:conic-gradient(#e63946,#f4a261,#e9c46a,#2a9d8f,#457b9d,#9d4edd,#e63946)}
+
+/* Utilisateurs */
+.qui{display:flex;align-items:center;gap:.5rem;margin-right:.4rem;font-weight:600;font-size:.88rem}
+.avatar{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--violet-pale);color:var(--violet);font:700 .9rem var(--titre);flex-shrink:0}
+.avatar.grand{width:42px;height:42px;font-size:1.15rem}
+@media (max-width:1560px){.qui-nom{display:none}.logo span{display:none}}
+@media (max-width:1380px) and (min-width:1181px){.onglets button .ico{display:none}.onglets button{padding:.55rem .7rem}.haut-actions .btn span{display:none}}
+.comptes-liste{display:grid;gap:.5rem}
+.compte-ligne{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:1rem;align-items:center;padding:.75rem;border-radius:12px;background:var(--fond)}
+.compte-txt strong{display:block}
+.compte-txt em{font-style:normal;color:var(--gris-clair);font-weight:500}
+.compte-txt small,.compte-der{color:var(--gris);font-size:.82rem}
+.compte-actions{display:flex;align-items:center;gap:.25rem}
+.statut-violet{background:var(--violet-pale);color:var(--violet)}
+@media (max-width:760px){.compte-ligne{grid-template-columns:auto minmax(0,1fr) auto}.compte-der{grid-column:2/-1}.compte-actions{grid-column:1/-1;justify-content:flex-end}}
+.mdp-zone{position:relative;display:block}
+.mdp-zone input{padding-right:5.5rem}
+.voir-mdp{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);border:0;background:var(--fond);color:var(--gris);font-size:.8rem;font-weight:600;padding:.4rem .6rem;border-radius:7px;cursor:pointer}
+.voir-mdp:hover{color:var(--encre)}
+.petit-aide{font-size:.82rem;margin-top:1rem}
+.modale .alerte{margin:.5rem 0 0}
+.mon-mdp .grille-3 .champ{margin-bottom:.5rem}

@@ -81,10 +81,11 @@ $realisation = 'G’agency';
     <p>Conformément au Règlement général sur la protection des données (RGPD), vous pouvez demander l’accès, la rectification ou la suppression de vos données en écrivant à <a href="mailto:<?= h($editeur['email']) ?>"><?= h($editeur['email']) ?></a>.</p>
   </section>
 
-  <section>
+  <section id="cookies">
     <h2>Cookies et services tiers</h2>
     <p>Le site ne dépose aucun cookie. Pour connaître sa fréquentation, il utilise une mesure d’audience interne et anonyme : aucune adresse IP n’est conservée, seule une empreinte temporaire (renouvelée chaque jour) permet de compter les visiteurs. Ces statistiques restent sur notre hébergement, ne sont partagées avec personne et sont effacées au bout de 13 mois.</p>
-    <p>Il utilise des services externes qui peuvent recevoir votre adresse IP lors de l’affichage de la page : Google Fonts (polices de caractères) et Google Maps (plan d’accès). Ces services sont soumis à la politique de confidentialité de Google.</p>
+    <p>Le plan d’accès est fourni par Google Maps, qui peut déposer des cookies : il n’est affiché qu’après votre accord, donné dans le bandeau « cookies ». Vous pouvez changer d’avis à tout moment avec le lien « Gérer les cookies » en bas de la page d’accueil ; votre choix est conservé 6 mois sur votre appareil.</p>
+    <p>Le site utilise aussi des services externes qui peuvent recevoir votre adresse IP lors de l’affichage de la page : Google Fonts (polices de caractères) et, si vous l’acceptez, Google Maps (plan d’accès). Ces services sont soumis à la politique de confidentialité de Google.</p>
   </section>
 
   <section>

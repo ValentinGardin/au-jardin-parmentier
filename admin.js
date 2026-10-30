@@ -64,7 +64,7 @@
     carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
     item: function () { return { nom: '', prix: '' }; },
-    evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, theme: 'violet', photo: '', masquer_apres: true }; }
+    evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
   };
 
   // ---------- Champs ----------
@@ -85,6 +85,15 @@
       '<button type="button" class="ib" data-act="up" data-p="' + p + '" data-i="' + i + '"' + (i === 0 ? ' disabled' : '') + ' title="Monter" aria-label="Monter">' + ico('haut') + '</button>' +
       '<button type="button" class="ib" data-act="down" data-p="' + p + '" data-i="' + i + '"' + (i === n - 1 ? ' disabled' : '') + ' title="Descendre" aria-label="Descendre">' + ico('bas') + '</button>' +
       '<button type="button" class="ib ib-suppr" data-act="del" data-p="' + p + '" data-i="' + i + '"' + (o.quoi ? ' data-quoi="' + esc(o.quoi) + '"' : '') + ' title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div>';
+  }
+  // Choix d'une photo existante, ou envoi d'une nouvelle photo depuis l'ordinateur ou le téléphone
+  function photosChoix(p, nom, val, petites) {
+    return '<div class="photos-choix' + (petites ? ' petites' : '') + '" role="radiogroup" aria-label="Photo">' +
+      '<label class="photo-opt envoyer"><input type="file" accept="image/jpeg,image/png,image/webp" data-envoi="' + p + '"><span class="sans">' + ico('upload') + 'Ajouter une photo</span></label>' +
+      '<label class="photo-opt"><input type="radio" name="' + nom + '" data-p="' + p + '" value=""' + (val ? '' : ' checked') + '><span class="sans">Sans photo</span></label>' +
+      E.photos.map(function (ph) {
+        return '<label class="photo-opt"><input type="radio" name="' + nom + '" data-p="' + p + '" value="' + esc(ph.nom) + '"' + (val === ph.nom ? ' checked' : '') + '><img src="' + esc(ph.url) + '" alt="' + esc(ph.nom) + '" loading="lazy"></label>';
+      }).join('') + '</div>';
   }
   function tete(titre, aide, actions) {
     return '<div class="tete"><div><h1>' + titre + '</h1>' + (aide ? '<p class="aide">' + aide + '</p>' : '') + '</div>' + (actions ? '<div class="tete-actions">' + actions + '</div>' : '') + '</div>';
@@ -157,11 +166,7 @@
   }
   function vueCarte(ci) {
     var c = site.menus[ci], base = 'menus.' + ci, nk = c.cats.length;
-    var photos = '<div class="photos-choix" role="radiogroup" aria-label="Photo de la carte">' +
-      '<label class="photo-opt"><input type="radio" name="photo" data-p="' + base + '.photo" value=""' + (c.photo ? '' : ' checked') + '><span class="sans">Sans photo</span></label>' +
-      E.photos.map(function (ph) {
-        return '<label class="photo-opt"><input type="radio" name="photo" data-p="' + base + '.photo" value="' + esc(ph.nom) + '"' + (c.photo === ph.nom ? ' checked' : '') + '><img src="' + esc(ph.url) + '" alt="' + esc(ph.nom) + '" loading="lazy"></label>';
-      }).join('') + '</div>';
+    var photos = photosChoix(base + '.photo', 'photo', c.photo);
     var cats = c.cats.map(function (k, i) {
       var p = base + '.cats.' + i, cle = ci + '-' + i, np = k.plats.length;
       var plats = k.plats.map(function (pl, j) {
@@ -226,7 +231,7 @@
 
 
   // =============== Événements ===============
-  var THEMES = [['violet', 'Violet', '#700954'], ['vin', 'Bordeaux', '#5e1426'], ['sapin', 'Sapin', '#1c4634'], ['printemps', 'Printemps', '#4f7a2b'], ['or', 'Noir et or', '#2a2118']];
+  var THEMES = [['Violet', '#700954'], ['Bordeaux', '#5e1426'], ['Sapin (Noël)', '#1c4634'], ['Printemps (Pâques)', '#4f7a2b'], ['Noir et or', '#2a2118'], ['Rouge', '#b3261e'], ['Bleu nuit', '#1d3557'], ['Orange', '#c2571a'], ['Rose', '#f4c6d4'], ['Crème', '#f2e6d3']];
   function statutEvt(e) {
     var t = E.aujourdhui;
     if (!e.actif) return ['gris', 'Masqué sur le site'];
@@ -243,13 +248,10 @@
           boutonsOrdre(p + '.items', j, ni) + '</div>';
       }).join('');
       var themes = THEMES.map(function (t) {
-        return '<label class="pastille-couleur" title="' + t[1] + '"><input type="radio" name="theme-' + i + '" data-p="' + p + '.theme" value="' + t[0] + '"' + (e.theme === t[0] ? ' checked' : '') + '><span style="background:' + t[2] + '"></span>' + t[1] + '</label>';
-      }).join('');
-      var photos = '<div class="photos-choix petites"><label class="photo-opt"><input type="radio" name="photo-' + i + '" data-p="' + p + '.photo" value=""' + (e.photo ? '' : ' checked') + '><span class="sans">Sans photo</span></label>' +
-        E.photos.map(function (ph) {
-          return '<label class="photo-opt"><input type="radio" name="photo-' + i + '" data-p="' + p + '.photo" value="' + esc(ph.nom) + '"' + (e.photo === ph.nom ? ' checked' : '') + '><img src="' + esc(ph.url) + '" alt="' + esc(ph.nom) + '" loading="lazy"></label>';
-        }).join('') + '</div>';
-      return '<section class="bloc evt-bloc evt-' + esc(e.theme) + '">' +
+        return '<button type="button" class="pastille-couleur' + (e.couleur === t[1] ? ' choisie' : '') + '" data-act="couleur" data-p="' + p + '.couleur" data-c="' + t[1] + '" aria-pressed="' + (e.couleur === t[1]) + '"><span style="background:' + t[1] + '"></span>' + t[0] + '</button>';
+      }).join('') + '<label class="pastille-couleur perso' + (THEMES.some(function (t) { return t[1] === e.couleur; }) ? '' : ' choisie') + '" title="Choisir n’importe quelle couleur"><input type="color" data-p="' + p + '.couleur" value="' + esc(e.couleur) + '"><span class="arc"></span>Autre couleur…</label>';
+      var photos = photosChoix(p + '.photo', 'photo-' + i, e.photo, true);
+      return '<section class="bloc evt-bloc" style="border-top-color:' + esc(e.couleur) + '">' +
         '<div class="evt-bloc-tete"><label class="interrupteur grand"><input type="checkbox" data-p="' + p + '.actif"' + (e.actif ? ' checked' : '') + '><span></span><b>' + (e.actif ? 'Activé' : 'Désactivé') + '</b></label>' +
           '<span class="statut statut-' + st[0] + '">' + st[1] + '</span>' +
           '<div class="evt-bloc-actions"><button type="button" class="ib" data-act="dup-evt" data-i="' + i + '" title="Dupliquer (ex. pour l’an prochain)" aria-label="Dupliquer">' + ico('copie') + '</button>' +
@@ -262,8 +264,9 @@
         champ('Phrase au-dessus du bouton Réserver', p + '.cta', { opt: true, ph: 'N’oubliez pas de réserver !' }) +
         '<div class="resa-bloc"><label class="interrupteur"><input type="checkbox" data-p="' + p + '.reservation.active"' + (e.reservation.active ? ' checked' : '') + '><span></span>Date limite de réservation</label>' +
           (e.reservation.active ? champ('Réservations acceptées jusqu’au (inclus)', p + '.reservation.date', { type: 'date', aide: 'Après cette date, le bouton Réserver est remplacé par « Réservations closes ».' }) : '<p class="aide">Désactivée : le bouton « Réserver » reste affiché jusqu’à l’événement.</p>') + '</div>' +
-        '<div class="champ"><span>Couleur</span><div class="couleurs">' + themes + '</div></div>' +
+        '<div class="champ"><span>Couleur du bandeau</span><div class="couleurs">' + themes + '</div><small>Choisissez une suggestion ou « Autre couleur… ». Le texte passe automatiquement en blanc ou en noir pour rester lisible.</small></div>' +
         '<div class="champ"><span>Photo <em>facultatif</em></span>' + photos + '</div>' +
+        '<label class="case"><input type="checkbox" data-p="' + p + '.popup"' + (e.popup ? ' checked' : '') + '> Afficher en fenêtre (pop-up) à l’arrivée des visiteurs sur le site</label>' +
         '<label class="case"><input type="checkbox" data-p="' + p + '.masquer_apres"' + (e.masquer_apres ? ' checked' : '') + '> Retirer automatiquement du site le lendemain de l’événement</label>' +
         '</section>';
     }).join('');
@@ -385,8 +388,82 @@
   });
   app.addEventListener('mouseleave', function () { document.querySelectorAll('.infobulle-flottante').forEach(function (x) { x.remove(); }); }, true);
 
+  function envoyerPhoto(input) {
+    var f = input.files[0]; if (!f) return;
+    var lab = input.closest('.envoyer'); lab.classList.add('envoi');
+    lab.querySelector('.sans').textContent = 'Envoi…';
+    var fd = new FormData(); fd.append('photo', f);
+    fetch('admin.php?api=photo', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF': E.csrf }, body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) throw new Error(j.erreur || 'Envoi impossible.');
+        E.photos.unshift({ nom: j.nom, url: j.url });
+        set(input.dataset.envoi, j.nom); render(true);
+        toast('Photo ajoutée. Pensez à enregistrer.');
+      })
+      .catch(function (e) { toast(e.message, true); render(true); });
+  }
+
+  // =============== Utilisateurs / Mon compte ===============
+  function api(action, data) {
+    return fetch('admin.php?api=' + action, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': E.csrf }, body: JSON.stringify(data) })
+      .then(function (r) { return r.json().catch(function () { return { erreur: 'Réponse inattendue du serveur.' }; }); })
+      .then(function (j) { if (!j.ok) throw new Error(j.erreur || 'Erreur.'); return j; });
+  }
+  function dateHeure(s) { if (!s) return 'jamais'; var d = s.slice(0, 10); return dateFr(d) + ' ' + d.slice(0, 4) + (s.length > 10 ? ' à ' + s.slice(11, 16).replace(':', 'h') : ''); }
+  function vueComptes() {
+    var admin = E.moi.role === 'admin';
+    var liste = admin ? '<section class="bloc"><div class="bloc-tete"><h2>Utilisateurs</h2><span class="compte">' + pluriel(E.comptes.length, 'compte') + '</span></div><div class="comptes-liste">' +
+      E.comptes.map(function (u) {
+        return '<div class="compte-ligne"><span class="avatar grand">' + esc((u.nom || u.identifiant).charAt(0).toUpperCase()) + '</span>' +
+          '<div class="compte-txt"><strong>' + esc(u.nom || u.identifiant) + (u.id === E.moi.id ? ' <em>(vous)</em>' : '') + '</strong><small>' + esc(u.identifiant) + ' · ' + esc(u.email) + '</small></div>' +
+          '<span class="statut statut-' + (u.role === 'admin' ? 'violet' : 'gris') + '">' + esc(E.roles[u.role]) + '</span>' +
+          '<small class="compte-der">Dernière connexion : ' + dateHeure(u.derniere) + '</small>' +
+          '<div class="compte-actions"><button type="button" class="btn btn-discret" data-act="compte-modif" data-id="' + u.id + '">' + ico('crayon') + 'Modifier</button>' +
+          (u.id !== E.moi.id ? '<button type="button" class="ib ib-suppr" data-act="compte-suppr" data-id="' + u.id + '" title="Supprimer" aria-label="Supprimer ' + esc(u.identifiant) + '">' + ico('suppr') + '</button>' : '') + '</div></div>';
+      }).join('') + '</div></section>' : '';
+    return tete(admin ? 'Utilisateurs' : 'Mon compte', admin ? 'Les personnes qui peuvent se connecter au back-office, avec leur identifiant ou leur adresse e-mail. Les éditeurs gèrent le contenu ; seuls les administrateurs gèrent les comptes.' : 'Votre compte et votre mot de passe.',
+        admin ? '<button type="button" class="btn btn-violet" data-act="compte-modif">' + ico('plus') + 'Nouvel utilisateur</button>' : '') + liste +
+      '<section class="bloc mon-mdp"><div class="bloc-tete"><h2>Changer mon mot de passe</h2><span class="compte">' + esc(E.moi.identifiant) + ' · ' + esc(E.moi.email) + '</span></div>' +
+        '<div class="grille-3"><label class="champ"><span>Mot de passe actuel</span><input type="password" id="mdp-actuel" autocomplete="current-password"></label>' +
+        '<label class="champ"><span>Nouveau mot de passe</span><input type="password" id="mdp-nouveau" autocomplete="new-password" minlength="10"></label>' +
+        '<label class="champ"><span>Confirmation</span><input type="password" id="mdp-conf" autocomplete="new-password"></label></div>' +
+        '<p class="aide petit">10 caractères minimum, avec au moins une lettre et un chiffre.</p>' +
+        '<button type="button" class="btn btn-violet" data-act="mdp">Changer le mot de passe</button></section>';
+  }
+  function formCompte(u) {
+    var nouveau = !u; u = u || { identifiant: '', email: '', nom: '', role: 'editeur' };
+    var d = document.createElement('div');
+    d.className = 'modale-fond';
+    d.innerHTML = '<form class="modale" role="dialog" aria-modal="true" aria-labelledby="ft"><h2 id="ft">' + (nouveau ? 'Nouvel utilisateur' : 'Modifier ' + esc(u.nom || u.identifiant)) + '</h2>' +
+      '<div class="grille-2"><label class="champ"><span>Prénom ou nom</span><input name="nom" value="' + esc(u.nom) + '" placeholder="ex. Angel"></label>' +
+      '<label class="champ"><span>Identifiant</span><input name="identifiant" required value="' + esc(u.identifiant) + '" placeholder="ex. angel" autocomplete="off"></label></div>' +
+      '<label class="champ"><span>Adresse e-mail</span><input type="email" name="email" required value="' + esc(u.email) + '" autocomplete="off"></label>' +
+      '<label class="champ"><span>Rôle</span><select name="role"' + (u.id === E.moi.id ? ' disabled' : '') + '>' + Object.keys(E.roles).map(function (r) { return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + E.roles[r] + (r === 'admin' ? ' : tout, y compris les comptes' : ' : contenu du site uniquement') + '</option>'; }).join('') + '</select></label>' +
+      '<label class="champ"><span>' + (nouveau ? 'Mot de passe' : 'Nouveau mot de passe <em>laisser vide pour ne pas changer</em>') + '</span><span class="mdp-zone"><input name="mdp" type="text" autocomplete="new-password"' + (nouveau ? ' required' : '') + '><button type="button" class="voir-mdp" data-gen>Générer</button></span><small>10 caractères minimum, avec au moins une lettre et un chiffre. Communiquez-le à la personne, elle pourra le changer dans « Mon compte ».</small></label>' +
+      '<p class="alerte" hidden></p><div class="modale-actions"><button type="button" class="btn btn-discret" data-r="0">Annuler</button><button class="btn btn-violet">' + (nouveau ? 'Créer le compte' : 'Enregistrer') + '</button></div></form>';
+    document.body.appendChild(d);
+    var f = d.querySelector('form'), al = d.querySelector('.alerte');
+    f.querySelector('input').focus();
+    function fin() { d.remove(); }
+    d.addEventListener('click', function (e) {
+      if (e.target === d || e.target.closest('[data-r="0"]')) return fin();
+      if (e.target.closest('[data-gen]')) {
+        var a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ', n = '23456789', s = '', r = new Uint32Array(12); crypto.getRandomValues(r);
+        for (var i = 0; i < 12; i++) s += (i % 4 === 3 ? n : a).charAt(r[i] % (i % 4 === 3 ? n : a).length);
+        f.mdp.value = s;
+      }
+    });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      api('compte', { id: u.id || '', nom: f.nom.value, identifiant: f.identifiant.value, email: f.email.value, role: f.role.disabled ? u.role : f.role.value, mdp: f.mdp.value })
+        .then(function (j) { E.comptes = j.comptes; fin(); render(true); toast(nouveau ? 'Compte créé.' : 'Compte modifié.'); })
+        .catch(function (er) { al.textContent = er.message; al.hidden = false; });
+    });
+  }
+
   // =============== Affichage ===============
-  var VUES = { stats: vueStats, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
+  var VUES = { comptes: vueComptes, stats: vueStats, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
   function render(garderScroll) {
     var y = window.scrollY;
     document.querySelectorAll('.onglets [data-onglet]').forEach(function (b) {
@@ -543,7 +620,7 @@
 
   app.addEventListener('input', function (e) {
     var t = e.target, p = t.dataset.p;
-    if (!p || t.type === 'radio') return;
+    if (!p || t.type === 'radio' || t.type === 'color' || t.type === 'checkbox') return;
     var v = t.value;
     if ('lignes' in t.dataset) v = v.split('\n');
     else if ('nombre' in t.dataset) v = +v;
@@ -561,6 +638,8 @@
     var t = e.target;
     if (t.type === 'radio' && t.dataset.p) { set(t.dataset.p, t.value); apresSaisie(); render(true); return; }
     if (t.type === 'checkbox' && t.dataset.p) { set(t.dataset.p, t.checked); render(true); return; }
+    if (t.type === 'color' && t.dataset.p) { set(t.dataset.p, t.value); render(true); return; }
+    if (t.type === 'file' && t.dataset.envoi) { envoyerPhoto(t); return; }
     if ('prix' in t.dataset && t.dataset.p) { var f = formatPrix(t.value); if (f !== t.value) { t.value = f; set(t.dataset.p, f); apresSaisie(); } }
     if (t.dataset.p && /^semaine\.(du|au)$/.test(t.dataset.p)) {
       var st = statutSemaine(site.semaine), el = document.getElementById('statut-sem');
@@ -635,6 +714,19 @@
       specialOuvert = b.checked;
       if (!specialOuvert) site.semaine.special = { titre: '', nom: '', prix: '', lignes: [] };
       render(true);
+    } else if (a === 'compte-modif') {
+      formCompte(E.comptes.filter(function (u) { return u.id === b.dataset.id; })[0]);
+    } else if (a === 'compte-suppr') {
+      var cu = E.comptes.filter(function (u) { return u.id === b.dataset.id; })[0];
+      demander('Supprimer ce compte ?', esc(cu.nom || cu.identifiant) + ' ne pourra plus se connecter au back-office.', [{ txt: 'Garder', val: false }, { txt: 'Supprimer', val: true, cls: 'btn-danger' }])
+        .then(function (r) { if (r) api('compte-suppr', { id: cu.id }).then(function (j) { E.comptes = j.comptes; render(true); toast('Compte supprimé.'); }).catch(function (er) { toast(er.message, true); }); });
+    } else if (a === 'mdp') {
+      var n1 = document.getElementById('mdp-nouveau').value;
+      if (n1 !== document.getElementById('mdp-conf').value) return toast('Les deux nouveaux mots de passe ne sont pas identiques.', true);
+      api('mdp', { actuel: document.getElementById('mdp-actuel').value, nouveau: n1 })
+        .then(function () { render(true); toast('Mot de passe changé.'); }).catch(function (er) { toast(er.message, true); });
+    } else if (a === 'couleur') {
+      set(p, b.dataset.c); render(true);
     } else if (a === 'periode') {
       periode = i; ecrire('periode', String(i)); render(true);
     } else if (a === 'dup-evt') {

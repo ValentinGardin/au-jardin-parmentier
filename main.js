@@ -66,6 +66,62 @@
   });
   tabs.forEach(function (t) { t.addEventListener('click', function () { suivre('carte', t.textContent.trim()); }); });
 
+  // Cookies : la carte Google Maps n'est chargée qu'avec l'accord du visiteur (choix gardé 6 mois)
+  function lireChoix() {
+    try { var v = JSON.parse(localStorage.getItem('jp-cookies') || 'null'); return v && Date.now() - v.t < 182 * 864e5 ? v.c : null; } catch (err) { return null; }
+  }
+  var bandeau = document.getElementById('cookies');
+  function appliquer(c) {
+    document.querySelectorAll('iframe[data-src]').forEach(function (f) {
+      var attente = f.parentNode.querySelector('.plan-attente');
+      if (c === 'oui') { if (!f.src) f.src = f.dataset.src; f.hidden = false; if (attente) attente.hidden = true; }
+      else { f.removeAttribute('src'); f.hidden = true; if (attente) attente.hidden = false; }
+    });
+  }
+  function choisir_(c) {
+    try { localStorage.setItem('jp-cookies', JSON.stringify({ c: c, t: Date.now() })); } catch (err) {}
+    bandeau.hidden = true; document.body.classList.remove('avec-cookies'); appliquer(c);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cookies]'); if (!b) return;
+    var a = b.dataset.cookies;
+    if (a === 'gerer') { bandeau.hidden = false; document.body.classList.add('avec-cookies'); bandeau.querySelector('.btn-violet').focus(); }
+    else choisir_(a === 'accepter' ? 'oui' : 'non');
+  });
+  var choix = lireChoix();
+  appliquer(choix);
+  if (!choix && bandeau) { bandeau.hidden = false; document.body.classList.add('avec-cookies'); }
+
+  // Fenêtre d'accueil de l'événement : une fois tous les 3 jours par visiteur
+  var pop = document.getElementById('pop');
+  if (pop) {
+    var cle = 'jp-pop-' + pop.dataset.cle, vu = 0, avant = null;
+    try { vu = +localStorage.getItem(cle) || 0; } catch (err) {}
+    var ouvrirPop = function () {
+      avant = document.activeElement;
+      pop.hidden = false; document.body.classList.add('pop-ouvert');
+      requestAnimationFrame(function () { pop.classList.add('visible'); });
+      pop.querySelector('.pop-fermer').focus();
+      try { localStorage.setItem(cle, String(Date.now())); } catch (err) {}
+    };
+    var fermerPop = function () {
+      pop.classList.remove('visible'); document.body.classList.remove('pop-ouvert');
+      setTimeout(function () { pop.hidden = true; }, 250);
+      if (avant && avant.focus) avant.focus();
+    };
+    pop.addEventListener('click', function (e) { if (e.target === pop || e.target.closest('[data-pop-fermer]')) fermerPop(); });
+    document.addEventListener('keydown', function (e) {
+      if (pop.hidden) return;
+      if (e.key === 'Escape') fermerPop();
+      if (e.key === 'Tab') {   // garde le focus dans la fenêtre
+        var f = pop.querySelectorAll('a[href],button'), p = f[0], d = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === p) { e.preventDefault(); d.focus(); }
+        else if (!e.shiftKey && document.activeElement === d) { e.preventDefault(); p.focus(); }
+      }
+    });
+    if (Date.now() - vu > 3 * 864e5 && location.hash === '') setTimeout(ouvrirPop, 1400);
+  }
+
   if (!('IntersectionObserver' in window)) {
     document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('vu'); });
     return;

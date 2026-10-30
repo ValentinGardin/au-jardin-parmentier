@@ -38,7 +38,7 @@ $galerie = photos_galerie();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="style.css?v=4" rel="stylesheet">
+<link href="style.css?v=5" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -121,8 +121,9 @@ $galerie = photos_galerie();
     $dans = $e['date'] ? (int)round((strtotime($e['date']) - strtotime(date('Y-m-d'))) / 86400) : null;
     $quand = $dans === null ? '' : ($dans < 0 ? '' : ($dans === 0 ? 'C’est aujourd’hui !' : ($dans === 1 ? 'C’est demain !' : 'Dans ' . $dans . ' jours')));
     $ph = photo($e['photo']); ?>
-    <article class="evt evt-<?= h($e['theme']) ?><?= $ph ? ' avec-photo' : '' ?> reveal">
-      <img class="evt-sym" src="img/logo/symbole-blanc.svg" alt="">
+    <?php $cl = couleurs_evt($e['couleur']); ?>
+    <article class="evt<?= $cl['clair'] ? ' evt-clair' : '' ?><?= $ph ? ' avec-photo' : '' ?> reveal" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
+      <img class="evt-sym" src="img/logo/symbole-<?= $cl['clair'] ? 'violet' : 'blanc' ?>.svg" alt="">
 <?php if ($ph): ?>      <img class="evt-photo" src="<?= h($ph) ?>" alt="" loading="lazy" width="1000" height="750">
 <?php endif; ?>
       <div class="evt-tete">
@@ -348,7 +349,14 @@ $galerie = photos_galerie();
       </div>
     </div>
     <div class="plan reveal">
-      <iframe title="Plan d’accès : 9 place Parmentier, Montdidier" src="https://www.google.com/maps?q=9+place+Parmentier+80500+Montdidier&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <!-- La carte Google n'est chargée qu'après accord pour les cookies -->
+      <iframe title="Plan d’accès : 9 place Parmentier, Montdidier" data-src="https://www.google.com/maps?q=9+place+Parmentier+80500+Montdidier&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" hidden></iframe>
+      <div class="plan-attente">
+        <svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>
+        <p>La carte est fournie par Google Maps, qui peut déposer des cookies.</p>
+        <button type="button" class="btn btn-violet btn-sm" data-cookies="accepter">Accepter et afficher la carte</button>
+        <a href="<?= h($maps) ?>" target="_blank" rel="noopener">Ouvrir dans Google Maps</a>
+      </div>
     </div>
   </div>
 </section>
@@ -359,7 +367,7 @@ $galerie = photos_galerie();
   <div class="wrap pied-in">
     <img src="img/logo/logo-blanc.svg" alt="Au Jardin Parmentier" width="150" height="95">
     <p>Épicerie fine · Traiteur<br>9, place Parmentier – 80500 Montdidier<br><a href="<?= $telHref ?>"><?= $tel ?></a></p>
-    <p class="pied-liens"><a href="mentions.php">Mentions légales</a> · Réalisation G’agency</p>
+    <p class="pied-liens"><a href="mentions.php">Mentions légales</a> · <button type="button" class="lien-cookies" data-cookies="gerer">Gérer les cookies</button> · Réalisation G’agency</p>
   </div>
 </footer>
 
@@ -368,12 +376,47 @@ $galerie = photos_galerie();
   <a class="btn btn-ligne" href="<?= h($maps) ?>" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Itinéraire</a>
 </div>
 
+
+<?php $pop = null; foreach ($evts as $e) if ($e['popup']) { $pop = $e; break; }
+if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
+<!-- Fenêtre d'accueil pour l'événement du moment (option « pop-up » dans admin.php) -->
+<div class="pop" id="pop" hidden data-cle="<?= h(substr(md5($pop['titre'] . $pop['date']), 0, 10)) ?>">
+  <div class="pop-carte<?= $cl['clair'] ? ' evt-clair' : '' ?>" role="dialog" aria-modal="true" aria-labelledby="pop-titre" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
+    <button type="button" class="pop-fermer" data-pop-fermer aria-label="Fermer">×</button>
+<?php if ($ph): ?>    <img class="pop-img" src="<?= h($ph) ?>" alt="" width="1000" height="750">
+<?php endif; ?>
+    <div class="pop-corps">
+<?php if ($pop['date']): ?>      <p class="evt-date"><span><?= h(ucfirst(date_fr($pop['date'], true))) ?></span></p>
+<?php endif; ?>      <h2 id="pop-titre"><?= h($pop['titre']) ?></h2>
+<?php if ($pop['accroche'] !== ''): ?>      <p class="pop-accroche"><?= h($pop['accroche']) ?></p>
+<?php endif; if ($pop['items']): ?>      <ul class="evt-items">
+<?php foreach (array_slice($pop['items'], 0, 4) as $it): ?>        <li><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+<?php endforeach; ?>      </ul>
+<?php endif; ?>
+      <div class="pop-actions">
+<?php if (reservation_ouverte($pop)): ?>        <a class="btn btn-blanc" href="<?= $telHref ?>" data-evt="<?= h($pop['titre']) ?>">Réserver au <?= $tel ?></a>
+<?php endif; ?>        <a class="btn pop-detail" href="#evenements" data-pop-fermer>Voir le détail</a>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<!-- Bandeau cookies : seule la carte Google Maps en dépose ; les statistiques du site sont anonymes et sans cookie -->
+<div class="cookies" id="cookies" hidden role="region" aria-label="Cookies">
+  <p><strong>Les cookies, en bref.</strong> Nos statistiques de visite sont anonymes et sans cookie. Seule la carte Google Maps peut en déposer : acceptez-vous de l’afficher ? <a href="mentions.php#cookies">En savoir plus</a></p>
+  <div class="cookies-actions">
+    <button type="button" class="btn btn-ligne btn-sm" data-cookies="refuser">Refuser</button>
+    <button type="button" class="btn btn-violet btn-sm" data-cookies="accepter">Accepter</button>
+  </div>
+</div>
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-tel" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></g></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></g></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=4" defer></script>
+<script src="main.js?v=5" defer></script>
 </body>
 </html>

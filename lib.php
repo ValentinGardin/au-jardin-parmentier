@@ -56,7 +56,18 @@ function semaine_clean($s) {
         'note' => txt($s['note'] ?? '', 200),
     ];
 }
-const THEMES = ['violet', 'vin', 'sapin', 'printemps', 'or'];
+// Couleurs suggérées pour les événements (toute autre couleur peut être choisie dans le back-office)
+const THEMES = ['violet' => '#700954', 'vin' => '#5e1426', 'sapin' => '#1c4634', 'printemps' => '#4f7a2b', 'or' => '#2a2118'];
+function hex_ok($v) { $v = strtolower(trim((string)$v)); return preg_match('/^#[0-9a-f]{6}$/', $v) ? $v : ''; }
+// Couleurs dérivées : texte lisible (blanc ou encre) et accent pour les prix, selon la clarté du fond
+function couleurs_evt($hex) {
+    $r = hexdec(substr($hex, 1, 2)); $g = hexdec(substr($hex, 3, 2)); $b = hexdec(substr($hex, 5, 2));
+    $lin = function ($c) { $c /= 255; return $c <= .03928 ? $c / 12.92 : pow(($c + .055) / 1.055, 2.4); };
+    $L = .2126 * $lin($r) + .7152 * $lin($g) + .0722 * $lin($b);
+    $clair = $L > .35;
+    $m = function ($t) use ($r, $g, $b) { return sprintf('#%02x%02x%02x', $r + ($t - $r) * .72, $g + ($t - $g) * .72, $b + ($t - $b) * .72); };
+    return ['fond' => $hex, 'texte' => $clair ? '#1d171b' : '#ffffff', 'accent' => $clair ? $m(0) : $m(255), 'clair' => $clair];
+}
 function evenement_clean($e) {
     $items = [];
     foreach (liste($e['items'] ?? []) as $p) {
@@ -73,7 +84,8 @@ function evenement_clean($e) {
         'lignes' => liste_txt($e['lignes'] ?? [], 160),
         'cta' => txt($e['cta'] ?? '', 80),
         'reservation' => ['active' => !empty($r['active']), 'date' => date_ok($r['date'] ?? '')],
-        'theme' => in_array($e['theme'] ?? '', THEMES, true) ? $e['theme'] : 'violet',
+        'couleur' => hex_ok($e['couleur'] ?? '') ?: (THEMES[$e['theme'] ?? ''] ?? THEMES['violet']),
+        'popup' => !empty($e['popup']),
         'photo' => preg_replace('/[^a-z0-9-]/', '', (string)($e['photo'] ?? '')),
         'masquer_apres' => !array_key_exists('masquer_apres', $e) || !empty($e['masquer_apres']),
     ];
