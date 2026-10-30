@@ -7,7 +7,7 @@ RewriteEngine On
 
 # Fichiers techniques jamais accessibles depuis le navigateur (Git, réglages, bibliothèques PHP)
 RewriteRule (^|/)\.(?!well-known/) - [R=404,L]
-RewriteRule ^(lib|stats|comptes|google|clients)\.php$ - [R=404,L]
+RewriteRule ^(lib|stats|comptes|google|clients|sms)\.php$ - [R=404,L]
 
 # Anciennes adresses en .php : redirection définitive vers l'adresse propre
 RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.php[\s?] [NC]
@@ -25,6 +25,7 @@ RewriteRule ^mentions-legales$ mentions.php [L]
 RewriteRule ^affiche$ affiche.php [L]
 RewriteRule ^carte-traiteur$ carte.php [L]
 RewriteRule ^lettre$ lettre.php [L]
+RewriteRule ^rappels$ rappels.php [L]
 </IfModule>
 
 # Site de test (test.lejardinparmentier.fr) : jamais référencé par Google

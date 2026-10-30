@@ -633,3 +633,30 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .plus-liste button[aria-selected="true"]{background:var(--violet-pale);color:var(--violet)}
 .plus-liste button[aria-selected="true"] .ico{color:var(--violet)}
 @media (max-width:1180px){.onglets .plus-btn.actif{background:transparent;box-shadow:inset 0 -2px 0 var(--violet)}}
+
+/* Messages aux clients : e-mail et SMS côte à côte */
+.messages-clients{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;margin-bottom:1rem}
+.messages-clients .bloc{margin:0}
+@media (max-width:1100px){.messages-clients{grid-template-columns:1fr}}
+.etapes{margin:0;padding:0;list-style:none;counter-reset:e;display:grid;gap:1rem}
+.etapes li{position:relative;padding-left:2.4rem;counter-increment:e}
+.etapes li::before{content:counter(e);position:absolute;left:0;top:0;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--violet-pale);color:var(--violet);font:700 .9rem/1.7rem var(--titre);text-align:center}
+.etapes li > span{display:block;color:var(--gris);font-size:.9rem;margin-top:.15rem}
+.sms-cles{margin-top:.7rem}
+.sms-auto{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.sms-auto .sms-heure{width:auto;flex:none;padding:.45rem .6rem;border:1px solid var(--trait);border-radius:9px;font:600 .95rem var(--texte)}
+.sms-bloc .seg{display:flex}
+.sms-bloc .seg label{flex:1}
+.sms-bloc .seg label span{text-align:center}
+.sms-unicode{color:var(--orange)}
+.sms-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.sms-essai{display:flex;gap:.4rem;flex:1;min-width:280px}
+.sms-essai input{flex:1;min-width:0;padding:.6rem .8rem;border:1px solid var(--trait);border-radius:10px;font:inherit}
+.sms-avance{margin-top:1rem;border-top:1px solid var(--trait);padding-top:.8rem}
+.sms-avance summary{cursor:pointer;font-weight:600;color:var(--gris)}
+.sms-cron code{display:inline-block;max-width:100%;overflow-wrap:anywhere;padding:.3rem .5rem;border-radius:6px;background:var(--fond);font-size:.8rem}
+.txt-rouge{color:var(--rouge)}
+.r-sms-ok{display:inline-flex;align-items:center;gap:.25rem;color:var(--vert)!important;font-weight:600}
+.r-sms-ok .ico{width:12px;height:12px}
+.r-sms-info{display:flex;align-items:center;gap:.4rem;font-size:.88rem;margin-top:.35rem!important}
+.r-sms-info .ico{width:15px;height:15px;color:var(--violet)}

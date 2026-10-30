@@ -687,7 +687,8 @@
       '<label class="r-cal" title="Aller à une date">' + ico('cal') + '<input type="date" id="r-cal" value="' + R.date + '" aria-label="Aller à une date"></label></div></div>';
     var m = menuDu(R.date);
     var titre = '<div class="r-titre"><h2>' + (R.date === E.aujourdhui ? 'Aujourd’hui · ' : '') + esc(dateLongue(R.date)) + '</h2><p>' +
-      (m.plat ? 'Plat du jour : <b>' + esc(m.plat.nom) + '</b>' + (m.plat.prix ? ' · ' + esc(m.plat.prix) : '') : 'Pas de plat du jour prévu dans le menu de la semaine.') + '</p></div>';
+      (m.plat ? 'Plat du jour : <b>' + esc(m.plat.nom) + '</b>' + (m.plat.prix ? ' · ' + esc(m.plat.prix) : '') : 'Pas de plat du jour prévu dans le menu de la semaine.') + '</p>' +
+      (R.data && R.data.sms && R.data.sms.auto && R.date === E.aujourdhui ? '<p class="r-sms-info">' + ico('note') + 'Rappel SMS automatique à ' + R.data.sms.heure.replace(':', 'h') + ' pour les commandes pas encore récupérées.</p>' : '') + '</div>';
     var jour = resasDuJour();
     if (!jour) return semaine + titre + '<p class="chargement">Chargement…</p>';
     var prep = {}, total = 0, encaisse = 0, nbP = 0, nbR = 0, nbPlats = 0;
@@ -731,7 +732,8 @@
     return '<article class="r-ligne' + (r.recupere ? ' fait' : '') + '">' +
       '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + '</strong>' +
         (c.tel ? '<a href="tel:' + esc(c.tel.replace(/[^\d+]/g, '')) + '">' + ico('tel') + esc(c.tel) + '</a>' : '') +
-        '<small>Prise par ' + esc(r.par) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small></div>' +
+        '<small>Prise par ' + esc(r.par) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small>' +
+        (r.rappel ? '<small class="r-sms-ok" title="SMS de rappel envoyé ' + esc(quand(r.rappel)) + '">' + ico('ok') + 'SMS envoyé à ' + heure(r.rappel) + '</small>' : '') + '</div>' +
       '<div class="r-cmd"><ul>' + r.lignes.map(function (x) { return '<li><b>' + x.qte + ' ×</b> ' + esc(x.nom) + '</li>'; }).join('') + '</ul>' +
         (r.note ? '<p class="r-note">' + ico('note') + esc(r.note) + '</p>' : '') + '</div>' +
       '<div class="r-total">' + (t ? euros(t) : '') + '</div>' +
@@ -739,7 +741,8 @@
         '<button type="button" class="r-etat r-paye' + (r.paye ? ' on' : '') + '" data-act="r-etat" data-champ="paye" data-id="' + r.id + '" aria-pressed="' + r.paye + '" title="' + esc(r.paye ? 'Payé ' + quand(r.paye_le) + ' · cliquer pour annuler' : 'Cliquer quand le client a payé') + '">' + (r.paye ? ico('ok') + 'Payé' : 'Non payé') + '</button>' +
         '<button type="button" class="r-etat r-recup' + (r.recupere ? ' on' : '') + '" data-act="r-etat" data-champ="recupere" data-id="' + r.id + '" aria-pressed="' + r.recupere + '" title="' + esc(r.recupere ? 'Récupéré ' + quand(r.recupere_le) + ' · cliquer pour annuler' : 'Cliquer quand le client est passé') + '">' + (r.recupere ? ico('ok') + 'Récupéré' : 'À récupérer') + '</button>' +
       '</div>' +
-      '<div class="r-actions"><button type="button" class="ib" data-act="resa-modif" data-id="' + r.id + '" title="Modifier" aria-label="Modifier">' + ico('crayon') + '</button>' +
+      '<div class="r-actions">' + (R.data.sms && R.data.sms.pret && !r.recupere && /^0[67]/.test(c.tel.replace(/\D/g, '')) && (c.sms || {}).statut !== 'non' ? '<button type="button" class="ib" data-act="r-sms" data-id="' + r.id + '" title="Envoyer un SMS de rappel" aria-label="Envoyer un SMS de rappel">' + ico('note') + '</button>' : '') +
+        '<button type="button" class="ib" data-act="resa-modif" data-id="' + r.id + '" title="Modifier" aria-label="Modifier">' + ico('crayon') + '</button>' +
         '<button type="button" class="ib ib-suppr" data-act="resa-suppr" data-id="' + r.id + '" title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div>' +
       '</article>';
   }
@@ -935,12 +938,17 @@
   }
 
   // =============== Clients ===============
-  function majClients() { var z = document.getElementById('clients'); if (z) z.innerHTML = clientsContenu(); }
+  function majClients() {
+    var z = document.getElementById('clients'); if (z) z.innerHTML = clientsContenu();
+    var l = document.getElementById('lettre-zone'); if (l && LETTRE) l.innerHTML = blocLettre();
+  }
   function vueClients() {
     if (CL === null) chargerClients();
+    if (SMS === null || SMS.erreurChargement) chargerSms();
     return tete('Clients', 'Toutes les personnes qui ont réservé ou qui reçoivent le menu par e-mail. Un client est reconnu automatiquement par son téléphone ou son e-mail.',
       (VISITE ? '' : '<a class="btn btn-ligne" href="' + E.api + '?api=clients-csv" download>' + ico('telecharger') + 'Exporter (Excel)</a>') +
       '<button type="button" class="btn btn-violet" data-act="client-fiche">' + ico('plus') + 'Nouveau client</button>') +
+      '<div class="messages-clients"><div id="lettre-zone">' + (LETTRE ? blocLettre() : '') + '</div><div id="sms">' + blocSms() + '</div></div>' +
       '<div id="clients">' + clientsContenu() + '</div>';
   }
   // Pastilles « E-mail » et « SMS » : vert = accepte, barré orange = refuse, gris = pas encore demandé
@@ -988,8 +996,7 @@
       return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
     });
     var f = [['tout', 'Tous'], ['oui', 'Menu par e-mail'], ['sms', 'SMS'], ['non', 'Ont refusé'], ['', 'À demander']];
-    return blocLettre() +
-      '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
+    return '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
         return '<button type="button" data-act="cl-filtre" data-f="' + x[0] + '" aria-pressed="' + (clFiltre === x[0]) + '">' + x[1] + ' <span>' + nb[x[0]] + '</span></button>';
       }).join('') + '</div><input type="search" id="cl-q" class="r-q" value="' + esc(clQ) + '" placeholder="Rechercher un nom, un téléphone, un e-mail…" aria-label="Rechercher"></div>' +
       '<div id="cl-liste">' + clientsListe(l) + '</div>';
@@ -1087,6 +1094,98 @@
         b.disabled = true; b.textContent = 'Envoi en cours…';
         api('lettre-envoyer', {}).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast('Menu envoyé à ' + pluriel(j.n, 'personne') + '.' + (j.avert ? ' ' + j.avert : '')); })
           .catch(function (e) { toast(e.message, true); majClients(); });
+      });
+  }
+
+  // =============== SMS (rappel « votre commande vous attend ») ===============
+  var SMS = null;
+  function chargerSms() {
+    return getJSON('sms').then(function (j) { SMS = j; if (onglet === 'clients') majSms(); return j; })
+      .catch(function (e) { SMS = { erreurChargement: e.message }; if (onglet === 'clients') majSms(); });
+  }
+  function majSms() { var z = document.getElementById('sms'); if (z) z.innerHTML = blocSms(); }
+  var GSM = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-.\/0-9:;<=>?¡A-ZÄÖÑÜ§¿a-zäöñüà^{}\\\[~\]|€]*$/;
+  function compteSms(modele) {
+    var t = modele.replace(/\{prenom\}/g, 'Marie').replace(/\{nom\}/g, 'Dupont').replace(/\{plats\}/g, '2 Blanquette de veau').trim();
+    var gsm = GSM.test(t), n = t.length + (gsm ? (t.match(/[\^{}\\\[~\]|€]/g) || []).length : 0);
+    var nb = gsm ? (n <= 160 ? 1 : Math.ceil(n / 153)) : (n <= 70 ? 1 : Math.ceil(n / 67));
+    return n + ' caractères avec un exemple · <b>' + pluriel(nb, 'SMS') + '</b> par envoi' + (gsm ? '' : ' <span class="sms-unicode">(un caractère spécial comme « ’ », « À » ou « ê » réduit un SMS à 70 caractères)</span>');
+  }
+  function blocSms() {
+    var S = SMS, admin = E.moi.role === 'admin';
+    var tete_ = '<div class="bloc-tete"><div><h2>Rappel par SMS</h2><p class="aide">Un SMS « votre commande vous attend » aux clients qui ne sont pas encore passés récupérer leur commande du jour, à l’heure de votre choix.</p></div>' +
+      (S && S.pret && S.credits != null ? '<span class="lettre-nb"><b>' + S.credits + '</b> crédit' + (S.credits > 1 ? 's' : '') + ' SMS</span>' : '') + '</div>';
+    if (!S) return '<section class="bloc">' + tete_ + '<p class="chargement">Chargement…</p></section>';
+    if (S.erreurChargement) return '<section class="bloc">' + tete_ + '<p class="vide">' + esc(S.erreurChargement) + '</p></section>';
+    if (!S.pret) {
+      if (!admin) return '<section class="bloc">' + tete_ + '<p class="vide">Le service SMS n’est pas encore connecté : demandez à un administrateur.</p></section>';
+      return '<section class="bloc sms-bloc">' + tete_ + '<ol class="etapes">' +
+        '<li><b>Commandez des crédits SMS chez OVH</b><span>Dans votre espace client OVH : Télécom → SMS → Commander des crédits (quelques centimes par SMS). Une centaine de crédits suffit pour commencer.</span></li>' +
+        '<li><b>Créez les clés d’accès du site</b><span>Ouvrez <a href="https://eu.api.ovh.com/createToken/?GET=/sms&GET=/sms/*&POST=/sms/*" target="_blank" rel="noopener">cette page OVH</a>, connectez-vous avec votre compte OVH, donnez un nom (ex. « Site Jardin Parmentier »), choisissez « Unlimited » pour la durée, puis validez.</span></li>' +
+        '<li><b>Copiez ici les 3 clés affichées par OVH</b><div class="grille-3 sms-cles"><label class="champ"><span>Application Key</span><input id="sms-ak" autocomplete="off" spellcheck="false"></label><label class="champ"><span>Application Secret</span><input id="sms-as" type="password" autocomplete="off"></label><label class="champ"><span>Consumer Key</span><input id="sms-ck" type="password" autocomplete="off"></label></div>' +
+        '<button type="button" class="btn btn-violet" data-act="sms-cles">Connecter le service SMS</button></li></ol>' +
+        (S.erreur ? '<p class="alerte">' + esc(S.erreur) + '</p>' : '') + '</section>';
+    }
+    var etat;
+    if (!S.auto) etat = 'Envoi automatique désactivé : utilisez « Envoyer maintenant », ou le bouton SMS sur une réservation.';
+    else if (S.fait && !S.parti) etat = 'Activé après ' + S.heure.replace(':', 'h') + ' : les rappels partiront automatiquement à partir de demain.' + (S.a_rappeler ? ' Pour aujourd’hui, utilisez « Envoyer maintenant ».' : '');
+    else if (S.fait) etat = ico('ok') + 'Les rappels d’aujourd’hui sont partis.' + (S.a_rappeler ? ' ' + pluriel(S.a_rappeler, 'commande') + ' non récupérée' + (S.a_rappeler > 1 ? 's' : '') + ' n’en ont pas encore reçu (ajoutée' + (S.a_rappeler > 1 ? 's' : '') + ' après l’envoi).' : '') ;
+    else etat = 'Aujourd’hui à ' + S.heure.replace(':', 'h') + ', ' + (S.a_rappeler ? '<b>' + pluriel(S.a_rappeler, 'client') + '</b> recevr' + (S.a_rappeler > 1 ? 'ont' : 'a') + ' un SMS (commandes pas encore récupérées).' : 'les clients qui n’auront pas récupéré leur commande recevront un SMS. Pour l’instant, personne.');
+    var dernier = S.envois.filter(function (e) { return e.mode.indexOf('essai') !== 0; })[0];
+    var lect = VISITE || !admin ? ' disabled' : '';
+    return '<section class="bloc sms-bloc">' + tete_ +
+      '<div class="sms-auto"><label class="interrupteur"><input type="checkbox" data-sms="auto"' + (S.auto ? ' checked' : '') + lect + '><span></span>Envoi automatique chaque jour à</label>' +
+      '<input type="time" class="sms-heure" data-sms="heure" value="' + esc(S.heure) + '" aria-label="Heure d’envoi"' + lect + '></div>' +
+      '<p class="lettre-etat">' + etat + '</p>' +
+      '<div class="champ"><span>À qui ?</span><div class="seg" role="radiogroup" aria-label="À qui ?">' +
+        [['tous', 'Tous les clients, sauf ceux qui refusent les SMS'], ['accord', 'Seulement ceux qui ont accepté les SMS']].map(function (x) {
+          return '<label><input type="radio" name="sms-cible" data-sms="cible" value="' + x[0] + '"' + (S.cible === x[0] ? ' checked' : '') + lect + '><span>' + x[1] + '</span></label>';
+        }).join('') + '</div></div>' +
+      '<label class="champ"><span>Message</span><textarea rows="3" data-sms="message" maxlength="600"' + lect + '>' + esc(S.message) + '</textarea>' +
+        '<small>{prenom} et {plats} sont remplacés par le prénom du client et sa commande. <span id="sms-compte">' + compteSms(S.message) + '</span>' +
+        (S.message !== S.defaut && !lect ? ' · <button type="button" class="lien" data-act="sms-defaut">Message d’origine</button>' : '') + '</small></label>' +
+      '<div class="sms-actions"><div class="sms-essai"><input type="tel" id="sms-tel" value="' + esc(S.tel_essai) + '" placeholder="Votre portable : 06…" aria-label="Numéro pour l’essai"><button type="button" class="btn btn-ligne" data-act="sms-test">' + ico('note') + 'M’envoyer un SMS d’essai</button></div>' +
+        '<button type="button" class="btn btn-ligne" data-act="sms-rappels"' + (S.a_rappeler ? '' : ' disabled') + '>' + ico('envoyer') + 'Envoyer maintenant' + (S.a_rappeler ? ' (' + S.a_rappeler + ')' : '') + '</button></div>' +
+      (dernier ? '<p class="aide petit">Dernier envoi : ' + quand(dernier.date) + ' · ' + pluriel(dernier.ok, 'SMS') + (dernier.mode === 'automatique' ? ' (automatique)' : '') + (dernier.erreur ? ' · <span class="txt-rouge">' + esc(dernier.erreur) + '</span>' : '') + '</p>' : '') +
+      (S.erreur ? '<p class="alerte">' + esc(S.erreur) + '</p>' : '') +
+      (admin && !VISITE ? '<details class="sms-avance"><summary>Réglages avancés</summary>' +
+        '<p class="aide">L’envoi automatique part dès qu’une page du site ou du back-office est ouverte après ' + S.heure.replace(':', 'h') + ' (l’onglet Réservations ouvert à la boutique suffit). Pour qu’il parte pile à l’heure même quand tout est fermé, faites appeler cette adresse à ' + S.heure.replace(':', 'h') + ' par une tâche planifiée (OVH → Hébergement → Tâches planifiées, ou un service comme cron-job.org) :</p>' +
+        '<p class="sms-cron"><code>' + esc(S.cron) + '</code> <button type="button" class="lien" data-act="sms-copier">Copier</button></p>' +
+        '<label class="champ"><span>Nom d’expéditeur <em>facultatif</em></span><input data-sms="expediteur" value="' + esc(S.expediteur) + '" maxlength="11" placeholder="ex. JPARMENTIER"><small>11 lettres maximum, à faire valider d’abord chez OVH (Télécom → SMS → Expéditeurs). Vide : le SMS part d’un numéro OVH.</small></label>' +
+        '<button type="button" class="btn btn-discret fc-suppr" data-act="sms-oublier">Déconnecter le service SMS</button></details>' : '') +
+      '</section>';
+  }
+  function actionSms(a, b) {
+    function ok(j) { SMS = j; majSms(); }
+    function ko(e) { toast(e.message, true); }
+    if (a === 'sms-copier') { navigator.clipboard.writeText(SMS.cron).then(function () { toast('Adresse copiée.'); }); return; }
+    if (VISITE) return toast('Mode visite : aucun SMS n’est envoyé.');
+    if (a === 'sms-cles') {
+      b.disabled = true; b.textContent = 'Connexion…';
+      api('sms-cles', { app_key: document.getElementById('sms-ak').value, app_secret: document.getElementById('sms-as').value, consumer_key: document.getElementById('sms-ck').value })
+        .then(function (j) { ok(j); toast('Service SMS connecté.'); }).catch(function (e) { ko(e); b.disabled = false; b.textContent = 'Connecter le service SMS'; });
+    } else if (a === 'sms-test') {
+      b.disabled = true;
+      api('sms-test', { tel: document.getElementById('sms-tel').value }).then(function (j) { ok(j); toast('SMS d’essai envoyé : il arrive en général en quelques secondes.'); })
+        .catch(ko).then(function () { b.disabled = false; });
+    } else if (a === 'sms-rappels') {
+      demander('Envoyer les rappels maintenant ?', pluriel(SMS.a_rappeler, 'client') + ' qui n’' + (SMS.a_rappeler > 1 ? 'ont' : 'a') + ' pas encore récupéré sa commande d’aujourd’hui ' + (SMS.a_rappeler > 1 ? 'vont' : 'va') + ' recevoir le SMS.', [{ txt: 'Annuler', val: false }, { txt: 'Envoyer', val: true, cls: 'btn-violet' }])
+        .then(function (r) { if (r) api('sms-rappels', {}).then(function (j) { ok(j); R.charge = ''; toast(pluriel(j.n, 'SMS') + ' envoyé' + (j.n > 1 ? 's' : '') + '.' + (j.avert ? ' ' + j.avert : '')); }).catch(ko); });
+    } else if (a === 'sms-defaut') {
+      api('sms-options', { message: SMS.defaut }).then(ok).catch(ko);
+    } else if (a === 'sms-oublier') {
+      demander('Déconnecter le service SMS ?', 'Plus aucun SMS ne partira. Vous pourrez le reconnecter avec de nouvelles clés.', [{ txt: 'Annuler', val: false }, { txt: 'Déconnecter', val: true, cls: 'btn-danger' }])
+        .then(function (r) { if (r) api('sms-oublier', {}).then(ok).catch(ko); });
+    }
+  }
+  // Bouton SMS sur une réservation
+  function smsUne(r) {
+    var c = r.c;
+    demander('Envoyer un SMS de rappel ?', esc(nomClient(c) || 'Le client') + ' (' + esc(c.tel) + ') va recevoir : « ' + esc((SMS && SMS.message || '{prenom}, votre commande vous attend').replace(/\{prenom\}/g, c.prenom || c.nom).replace(/\{nom\}/g, c.nom).replace(/\{plats\}/g, r.lignes.map(function (l) { return (l.qte > 1 ? l.qte + ' ' : '') + l.nom; }).join(', '))) + ' »', [{ txt: 'Annuler', val: false }, { txt: 'Envoyer le SMS', val: true, cls: 'btn-violet' }])
+      .then(function (ok) {
+        if (!ok) return;
+        if (VISITE) return toast('Mode visite : aucun SMS n’est envoyé.');
+        api('sms-une', { id: r.id }).then(function (j) { remplacerResa(j.resa); toast('SMS envoyé à ' + (nomClient(c) || c.tel) + '.'); }).catch(function (e) { toast(e.message, true); });
       });
   }
 
@@ -1281,7 +1380,7 @@
     var b = e.target.closest('[data-onglet]'); if (!b) return;
     onglet = b.dataset.onglet; ecrire('onglet', onglet);
     if (onglet === 'resas') R.charge = '';   // on recharge : quelqu'un d'autre a pu prendre des réservations
-    if (onglet === 'clients') CL = null;
+    if (onglet === 'clients') { CL = null; SMS = null; }
     if (onglet !== 'menus') carteOuverte = null;
     render();
   });
@@ -1290,6 +1389,7 @@
     var t = e.target, p = t.dataset.p;
     if (t.id === 'r-q') { R.q = t.value; majListe(); return; }
     if (t.id === 'cl-q') { clQ = t.value; majClientsListe(); return; }
+    if (t.dataset.sms === 'message') { var sc = document.getElementById('sms-compte'); if (sc) sc.innerHTML = compteSms(t.value); return; }
     if (!p || t.type === 'radio' || t.type === 'color' || t.type === 'checkbox') return;
     var v = t.value;
     if ('lignes' in t.dataset) v = v.split('\n');
@@ -1307,6 +1407,12 @@
   app.addEventListener('change', function (e) {
     var t = e.target;
     if (t.id === 'r-cal') { if (t.value) { R.date = t.value; render(true); } return; }
+    if (t.dataset.sms) {
+      var o = {}; o[t.dataset.sms] = t.type === 'checkbox' ? t.checked : t.value;
+      api('sms-options', o).then(function (j) { SMS = j; majSms(); R.charge = ''; toast(t.dataset.sms === 'auto' ? (t.checked ? 'Rappel automatique activé : chaque jour à ' + j.heure.replace(':', 'h') + '.' : 'Rappel automatique désactivé.') : 'Réglage enregistré.'); })
+        .catch(function (er) { toast(er.message, true); });
+      return;
+    }
     if ('lettreAuto' in t.dataset) {
       api('lettre-auto', { auto: t.checked }).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast(t.checked ? 'Envoi automatique activé : le menu partira chaque lundi matin.' : 'Envoi automatique désactivé.'); })
         .catch(function (er) { t.checked = !t.checked; toast(er.message, true); });
@@ -1470,6 +1576,11 @@
       clFiltre = b.dataset.f; majClients();
     } else if (a === 'client-fiche') {
       ficheClient(b.dataset.id ? CL.filter(function (c) { return c.id === b.dataset.id; })[0] : null);
+    } else if (a.indexOf('sms-') === 0) {
+      actionSms(a, b);
+    } else if (a === 'r-sms') {
+      if (SMS === null) chargerSms();
+      smsUne(resaParId(b.dataset.id));
     } else if (a === 'lettre-test' || a === 'lettre-envoyer') {
       actionLettre(a, b);
     } else if (a === 'aller') {

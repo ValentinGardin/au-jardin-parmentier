@@ -7,6 +7,7 @@ require dirname(__DIR__) . '/stats.php';
 require dirname(__DIR__) . '/comptes.php';
 require dirname(__DIR__) . '/google.php';
 require dirname(__DIR__) . '/clients.php';
+require dirname(__DIR__) . '/sms.php';
 session_name('jp_admin');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
@@ -224,7 +225,9 @@ if ($api !== '') {
             $clients = clients_charger(); $out = [];
             foreach (resas_charger() as $r) if ($cl !== '' ? $r['client'] === $cl : $r['date'] >= $du && $r['date'] <= $au) $out[] = $resaPublique($r, $clients);
             usort($out, function ($a, $b) { return strcmp($a['date'] . $a['cree'], $b['date'] . $b['cree']); });
-            repondre(200, ['ok' => true, 'du' => $du, 'au' => $au, 'resas' => $out]);
+            $sc = sms_config();
+            if ($cl === '') sms_auto();   // l'onglet Réservations se met à jour chaque minute : l'envoi de 17 h 30 part à l'heure
+            repondre(200, ['ok' => true, 'du' => $du, 'au' => $au, 'resas' => $out, 'sms' => ['pret' => sms_pret($sc), 'auto' => $sc['auto'], 'heure' => $sc['heure']]]);
         }
         if ($api === 'clients') repondre(200, $listeClients());
         if ($api === 'clients-csv') {
@@ -340,6 +343,84 @@ if ($api !== '') {
             repondre(200, ['ok' => true, 'n' => $n, 'avert' => $e] + $listeClients());
         }
     }
+    // ---- SMS (service SMS d'OVH) ----
+    if (strpos($api, 'sms') === 0) {
+        if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
+        $etatSms = function () {
+            $c = sms_config(); $pret = sms_pret($c); $credits = null; $err = '';
+            if ($pret) { [$j, $e] = ovh_appel('GET', '/sms/' . rawurlencode($c['service']), null, $c); if ($e) $err = $e; else $credits = $j['creditsLeft'] ?? null; }
+            return ['ok' => true, 'pret' => $pret, 'cles' => $c['app_key'] !== '', 'service' => $c['service'], 'expediteur' => $c['expediteur'], 'credits' => $credits, 'erreur' => $err,
+                    'auto' => $c['auto'], 'heure' => $c['heure'], 'cible' => $c['cible'], 'message' => $c['message'], 'defaut' => SMS_MESSAGE, 'tel_essai' => $c['tel_essai'],
+                    'envois' => array_reverse($c['envois']), 'fait' => $c['fait'] === date('Y-m-d'),
+                    'parti' => (bool)array_filter($c['envois'], function ($e) { return $e['mode'] === 'automatique' && substr($e['date'], 0, 10) === date('Y-m-d'); }), 'a_rappeler' => count(sms_a_rappeler($c)),
+                    'cron' => $pret ? adresse_site() . '/rappels?cle=' . sms_cle_cron() : ''];
+        };
+        if ($api === 'sms') repondre(200, $etatSms());
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') repondre(405, ['erreur' => 'Méthode non autorisée.']);
+        $in = entree();
+        $qui = $moi['nom'] ?: $moi['identifiant'];
+        if ($api === 'sms-test') {
+            api_garde();
+            $tel = (string)($in['tel'] ?? '');
+            if (tel_international($tel) === '') repondre(400, ['erreur' => 'Indiquez un numéro de portable (06 ou 07) pour l’essai.']);
+            sms_modifier(['tel_essai' => tel_fr($tel)]);
+            $c = sms_config();
+            $exemple = ['lignes' => [['qte' => 2, 'nom' => 'Blanquette de veau']]];
+            [, $e] = sms_envoyer($tel, sms_texte($c['message'], $exemple, ['prenom' => $moi['nom'] ?: 'Valentin', 'nom' => '']), $c);
+            if ($e) repondre(400, ['erreur' => $e]);
+            sms_noter(['date' => date('Y-m-d H:i'), 'mode' => 'essai · ' . $qui, 'ok' => 1, 'erreur' => '']);
+            repondre(200, $etatSms());
+        }
+        if ($api === 'sms-rappels') {
+            api_garde();
+            [$n, $e] = sms_rappels($qui);
+            if (!$n && $e) repondre(400, ['erreur' => $e]);
+            repondre(200, ['n' => $n, 'avert' => $e] + $etatSms());
+        }
+        if ($api === 'sms-une') {
+            api_garde();
+            $l = resas_charger(); $r = null;
+            foreach ($l as $x) if ($x['id'] === ($in['id'] ?? '')) $r = $x;
+            if (!$r) repondre(400, ['erreur' => 'Cette réservation n’existe plus.']);
+            $clients = clients_charger(); $i = client_par_id($clients, $r['client']);
+            if ($i === null || tel_international($clients[$i]['tel']) === '') repondre(400, ['erreur' => 'Pas de numéro de portable pour ce client.']);
+            if (($clients[$i]['sms']['statut'] ?? '') === 'non') repondre(400, ['erreur' => 'Ce client a refusé les SMS.']);
+            $c = sms_config();
+            [, $e] = sms_envoyer($clients[$i]['tel'], sms_texte($c['message'], $r, $clients[$i]), $c);
+            if ($e) repondre(400, ['erreur' => $e]);
+            verrou(function () use ($r, $qui) { $l = resas_charger(); foreach ($l as &$x) if ($x['id'] === $r['id']) $x['rappel'] = date('Y-m-d H:i') . ' · ' . $qui; unset($x); resas_enregistrer($l); });
+            sms_noter(['date' => date('Y-m-d H:i'), 'mode' => $qui, 'ok' => 1, 'erreur' => '']);
+            foreach (resas_charger() as $x) if ($x['id'] === $r['id']) $r = $x;
+            $ri = $clients[$i]; unset($ri['jeton']); $r['c'] = $ri;
+            repondre(200, ['ok' => true, 'resa' => $r]);
+        }
+        api_garde(true);   // réglages : administrateurs seulement
+        if ($api === 'sms-cles') {
+            $k = ['app_key' => trim((string)($in['app_key'] ?? '')), 'app_secret' => trim((string)($in['app_secret'] ?? '')), 'consumer_key' => trim((string)($in['consumer_key'] ?? ''))];
+            foreach ($k as $v) if (!preg_match('/^[A-Za-z0-9]{8,64}$/', $v)) repondre(400, ['erreur' => 'Les trois clés doivent être copiées en entier (lettres et chiffres, sans espace).']);
+            [$j, $e] = ovh_appel('GET', '/sms', null, $k + sms_config());
+            if ($e) repondre(400, ['erreur' => $e]);
+            if (!is_array($j) || !$j) repondre(400, ['erreur' => 'Les clés fonctionnent, mais aucun compte SMS n’est ouvert chez OVH : commandez d’abord des crédits SMS (Télécom → SMS).']);
+            if (!sms_modifier($k + ['service' => (string)$j[0]])) repondre(500, ['erreur' => 'Impossible d’enregistrer : le dossier data/ n’est pas modifiable.']);
+            repondre(200, $etatSms());
+        }
+        if ($api === 'sms-options') {
+            $m = [];
+            if (array_key_exists('auto', $in)) $m['auto'] = !empty($in['auto']);
+            if (isset($in['heure']) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)$in['heure'])) {
+                $m['heure'] = $in['heure'];
+                if ($in['heure'] > date('H:i') && sms_config()['fait'] === date('Y-m-d')) $m['fait'] = '';   // heure repoussée : l'envoi du jour reste à faire
+            }
+            if (isset($in['cible'])) $m['cible'] = $in['cible'] === 'accord' ? 'accord' : 'tous';
+            if (isset($in['message'])) $m['message'] = cut(trim((string)$in['message']), 600);
+            if (isset($in['expediteur'])) $m['expediteur'] = preg_replace('/[^A-Za-z0-9 ]/', '', cut((string)$in['expediteur'], 11));
+            // activation dans la journée après l'heure : on ne renvoie pas pour aujourd'hui sans le vouloir
+            if (!empty($m['auto']) && !sms_config()['auto'] && date('H:i') >= ($m['heure'] ?? sms_config()['heure'])) $m['fait'] = date('Y-m-d');
+            sms_modifier($m);
+            repondre(200, $etatSms());
+        }
+        if ($api === 'sms-oublier') { @unlink(SMS_CONFIG); repondre(200, $etatSms()); }
+    }
     repondre(404, ['erreur' => 'Action inconnue.']);
 }
 
@@ -374,6 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $etat = null;
 if ($logged) {
     lettre_auto(site_load());
+    sms_auto();
     $photos = [];
     foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
@@ -392,7 +474,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=15" rel="stylesheet">
+<link href="admin.css?v=16" rel="stylesheet">
 </head>
 <body>
 
@@ -461,7 +543,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=15"></script>
+<script src="admin.js?v=16"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

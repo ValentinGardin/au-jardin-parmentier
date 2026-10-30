@@ -104,6 +104,7 @@ function resa_clean($in, $ancien, $qui) {
         'recupere' => $ancien['recupere'] ?? false, 'recupere_le' => $ancien['recupere_le'] ?? '',
         'par' => $ancien['par'] ?? $qui, 'cree' => $ancien['cree'] ?? date('Y-m-d H:i'),
         'modifie' => $ancien ? date('Y-m-d H:i') . ' · ' . $qui : '',
+        'rappel' => $ancien['rappel'] ?? '',   // SMS « votre commande vous attend » déjà envoyé (date · par qui)
     ];
     if (array_key_exists('paye', $in)) resa_etat($r, 'paye', !empty($in['paye']), $qui);
     return $r;

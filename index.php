@@ -1,5 +1,6 @@
-<?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; require __DIR__ . '/google.php'; require __DIR__ . '/clients.php'; $s = site_load();
+<?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; require __DIR__ . '/google.php'; require __DIR__ . '/clients.php'; require __DIR__ . '/sms.php'; $s = site_load();
 lettre_auto($s);   // envoi du menu aux inscrits le lundi (si activé dans le back-office)
+sms_auto();        // rappel SMS des commandes non récupérées (si activé)
 stats_vue();
 $evts = evenements_visibles($s['evenements']);
 $tel = '09 50 17 39 62'; $telHref = 'tel:+33950173962';
