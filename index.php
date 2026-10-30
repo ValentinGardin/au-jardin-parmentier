@@ -60,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=16" rel="stylesheet">
+<link href="style.css?v=17" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>

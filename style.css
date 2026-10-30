@@ -585,3 +585,59 @@ body.rs-ouvert{overflow:hidden}
 .rs-plat.rs-epuise{opacity:.6;background:var(--fond)}
 .rs-tag-epuise{color:#b42318}
 .rs-plus-dispo{font-size:.82rem;font-weight:600;color:#b42318}
+
+/* ===== Affinage : plus fin, plus élégant ===== */
+:root{--r:16px;--ombre:0 1px 2px rgba(29,23,27,.04),0 10px 28px -14px rgba(29,23,27,.12)}
+h1,h2,h3,h4{font-weight:600;letter-spacing:-.022em;line-height:1.08}
+h2{font-size:clamp(1.75rem,3vw,2.45rem)}
+.section{padding:clamp(3.2rem,6.5vw,5.2rem) 0}
+.eyebrow{font-size:.72rem;letter-spacing:.2em;font-weight:600}
+.eyebrow::before{width:18px;height:1px}
+.btn{font-size:.88rem;font-weight:600;padding:.72rem 1.2rem;border-width:1px}
+.btn-lg{padding:.85rem 1.4rem;font-size:.92rem}
+.btn-sm{padding:.55rem .95rem;font-size:.84rem}
+/* Accueil */
+.hero h1{font-size:clamp(2.3rem,4.6vw,3.75rem);line-height:1.02;margin-bottom:1.1rem}
+.lead{font-size:clamp(.98rem,1.2vw,1.08rem);margin-bottom:1.6rem}
+.du-jour{margin-top:1.6rem;padding:.65rem .9rem .65rem .65rem;border-radius:14px}
+.du-jour-tag{font-size:.66rem;padding:.35rem .55rem;border-radius:8px;letter-spacing:.1em}
+.du-jour-nom{font-size:.9rem}
+.du-jour-px{font:600 .95rem var(--texte)}
+/* Événements */
+.evt{padding:clamp(1.6rem,4vw,2.8rem);box-shadow:0 24px 50px -32px rgba(0,0,0,.45)}
+.evt h2{font-size:clamp(2rem,3.6vw,2.8rem);line-height:1}
+.evt-date{font-size:.85rem}
+.evt-items li{padding:.7rem 0;font-weight:500;font-size:.95rem}
+.evt-items i{border-bottom-width:1px}
+.evt-items b{font:600 1rem var(--texte)}
+.evt-sym{height:240px}
+/* Menu de la semaine */
+.jour{grid-template-columns:8rem 1fr auto;padding:1.05rem .75rem;gap:.3rem 1.3rem}
+.jour-nom{font:600 .76rem/1 var(--texte);letter-spacing:.18em;text-transform:uppercase;color:var(--violet)}
+.jour-nom em{font-size:.64rem;letter-spacing:.12em;margin-top:.35rem}
+.jour-plat strong{font-size:.98rem;font-weight:600}
+.jour-plat span{font-size:.88rem}
+.jour-px{font:600 .95rem var(--texte)}
+.special{padding:1.6rem 1.5rem 1.5rem}
+.special h3{font-size:1.45rem}
+.special-px{font:600 1.05rem var(--texte)}
+.conges h3{font-size:clamp(1.7rem,3.6vw,2.4rem)}
+.choix-semaine button{font-size:.88rem;padding:.5rem .9rem}
+.resa-bandeau{padding:.8rem .8rem .8rem .9rem}
+.resa-bandeau-ico{width:40px;height:40px;border-radius:12px}
+.resa-bandeau p{font-size:.95rem}
+/* Cartes traiteur */
+.carte{box-shadow:var(--ombre)}
+.carte-info h3{font-size:clamp(1.65rem,2.8vw,2.15rem)}
+.carte-info .carte-px{font:600 1.05rem var(--texte);padding:.3rem .75rem;border-radius:10px}
+.cat h4{font-size:1.12rem}
+.cat-tete{border-bottom-width:1px}
+.cat-px{font:600 .95rem var(--texte)}
+/* Boutique, maison, avis, lettre */
+.rayon h3{font-size:1.3rem}
+.rayon-txt{padding:1.2rem}
+.atouts strong{font-size:1.05rem}
+.ng-note{font-size:2.2rem}
+.lettre h2{font-size:clamp(1.3rem,2.2vw,1.6rem)}
+@media (max-width:620px){.jour{grid-template-columns:1fr auto;padding:.95rem .5rem}}
+.evt-ligne{font-size:1.05rem}
