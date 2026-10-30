@@ -277,7 +277,7 @@
   }
 
   // =============== Tableau de bord ===============
-  var periode = +(lire('periode') || 30), cache = {};
+  var periodeStats = +(lire('periodeStats') || 30), cache = {};
   var PERIODES = [[7, '7 jours'], [30, '30 jours'], [90, '3 mois'], [365, '12 mois']];
   var SOURCES = { recherche: 'Recherche Google, Bing…', direct: 'Accès direct (adresse, favori)', facebook: 'Facebook, Instagram', maps: 'Google Maps', autre: 'Autres sites' };
   var APPAREILS = { mobile: 'Téléphone', ordinateur: 'Ordinateur', tablette: 'Tablette' };
@@ -289,9 +289,9 @@
     return '<span class="evol ' + (v > 0 ? 'hausse' : v < 0 ? 'baisse' : 'neutre') + '" title="par rapport à la période précédente">' + (v > 0 ? '↑ +' : v < 0 ? '↓ ' : '') + v + ' %</span>';
   }
   function vueStats() {
-    var chips = PERIODES.map(function (p) { return '<button type="button" data-act="periode" data-i="' + p[0] + '" aria-pressed="' + (p[0] === periode) + '">' + p[1] + '</button>'; }).join('');
-    var d = cache[periode];
-    if (!d) charger(periode);
+    var chips = PERIODES.map(function (p) { return '<button type="button" data-act="periodeStats" data-i="' + p[0] + '" aria-pressed="' + (p[0] === periodeStats) + '">' + p[1] + '</button>'; }).join('');
+    var d = cache[periodeStats];
+    if (!d) charger(periodeStats);
     return tete('Tableau de bord', 'La fréquentation de votre site et ce que font vos visiteurs. Mesure anonyme, sans cookie.', '<div class="periodes" role="group" aria-label="Période">' + chips + '</div>') +
       '<div id="stats">' + (d ? stats(d) : '<p class="chargement">Chargement des statistiques…</p>') + '</div>';
   }
@@ -299,7 +299,7 @@
     fetch('admin.php?api=stats&jours=' + n, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
       if (j.erreur) throw new Error(j.erreur);
       cache[n] = j;
-      if (onglet === 'stats' && periode === n) { var z = document.getElementById('stats'); if (z) z.innerHTML = stats(j); }
+      if (onglet === 'stats' && periodeStats === n) { var z = document.getElementById('stats'); if (z) z.innerHTML = stats(j); }
     }).catch(function (e) { var z = document.getElementById('stats'); if (z) z.innerHTML = '<p class="vide">' + esc(e.message) + '</p>'; });
   }
   function stats(d) {
@@ -313,7 +313,7 @@
       ['E-mails', T.mail, A.mail, 'clics sur l’adresse e-mail']
     ].map(function (t) { return '<div class="tuile"><p>' + t[0] + '</p><strong>' + nf(t[1]) + '</strong><small>' + evol(t[1], t[2]) + ' ' + t[3] + '</small></div>'; }).join('');
     return '<div class="tuiles">' + tuiles + '</div>' +
-      '<div class="bloc"><div class="bloc-tete"><h2>Visiteurs ' + (periode <= 30 ? 'par jour' : periode <= 90 ? 'par semaine' : 'par mois') + '</h2><span class="compte">Survolez une barre pour le détail</span></div>' + histo(d.jours) + '</div>' +
+      '<div class="bloc"><div class="bloc-tete"><h2>Visiteurs ' + (periodeStats <= 30 ? 'par jour' : periodeStats <= 90 ? 'par semaine' : 'par mois') + '</h2><span class="compte">Survolez une barre pour le détail</span></div>' + histo(d.jours) + '</div>' +
       '<div class="a-retenir bloc"><h2>À retenir</h2><ul>' + conseils(d).map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul></div>' +
       '<div class="stats-grille">' +
         barres('D’où viennent vos visiteurs', d.sources, SOURCES) +
@@ -343,7 +343,7 @@
   }
   // Histogramme vertical en SVG (une seule série, regroupée par semaine ou par mois sur les longues périodes)
   function histo(jours) {
-    var g = [], cle = periode <= 30 ? function (x) { return x.d; } : periode <= 90 ? function (x) { var t = parse(x.d), l = (t.getDay() + 6) % 7; t.setDate(t.getDate() - l); return iso(t); } : function (x) { return x.d.slice(0, 7); };
+    var g = [], cle = periodeStats <= 30 ? function (x) { return x.d; } : periodeStats <= 90 ? function (x) { var t = parse(x.d), l = (t.getDay() + 6) % 7; t.setDate(t.getDate() - l); return iso(t); } : function (x) { return x.d.slice(0, 7); };
     jours.forEach(function (x) { var k = cle(x), last = g[g.length - 1]; if (!last || last.k !== k) g.push(last = { k: k, v: 0, a: 0, d: x.d }); last.v += x.visiteurs; last.a += x.actions; });
     var W = 800, H = 220, pg = 34, pb = 26, max = Math.max(4, Math.max.apply(null, g.map(function (x) { return x.v; })));
     var pas = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / pas) * pas; if (top / pas > 5) { pas *= 2; top = Math.ceil(max / pas) * pas; }
@@ -352,11 +352,11 @@
     var lbl = Math.ceil(g.length / 10);
     g.forEach(function (x, i) {
       var h = (x.v / top) * (H - pb - 10), bx = pg + i * bw + 1, w = Math.max(2, bw - 2), by = H - pb - h, r = Math.min(4, w / 2, h);
-      var nom = periode <= 30 ? dateFr(x.k) : periode <= 90 ? 'semaine du ' + dateFr(x.k) : MOIS[+x.k.slice(5) - 1] + ' ' + x.k.slice(0, 4);
+      var nom = periodeStats <= 30 ? dateFr(x.k) : periodeStats <= 90 ? 'semaine du ' + dateFr(x.k) : MOIS[+x.k.slice(5) - 1] + ' ' + x.k.slice(0, 4);
       var tip = esc(nom) + '|' + x.v + ' visiteur' + (x.v > 1 ? 's' : '') + '|' + x.a + ' action' + (x.a > 1 ? 's' : '') + ' (appel, itinéraire, e-mail)';
       out += '<g class="b" data-tip="' + tip + '"><rect class="hit" x="' + (pg + i * bw) + '" y="0" width="' + bw + '" height="' + (H - pb) + '"/>' +
         (h > 0 ? '<path class="barre" d="M' + bx + ',' + (H - pb) + 'V' + (by + r) + 'q0,-' + r + ' ' + r + ',-' + r + 'h' + (w - 2 * r) + 'q' + r + ',0 ' + r + ',' + r + 'V' + (H - pb) + 'z"/>' : '') + '</g>';
-      if (i % lbl === 0) out += '<text x="' + (pg + i * bw + bw / 2) + '" y="' + (H - 6) + '" class="axe" text-anchor="middle">' + (periode <= 90 ? (parse(x.k).getDate() + '/' + (parse(x.k).getMonth() + 1)) : MOIS[+x.k.slice(5) - 1].slice(0, 4) + '.') + '</text>';
+      if (i % lbl === 0) out += '<text x="' + (pg + i * bw + bw / 2) + '" y="' + (H - 6) + '" class="axe" text-anchor="middle">' + (periodeStats <= 90 ? (parse(x.k).getDate() + '/' + (parse(x.k).getMonth() + 1)) : MOIS[+x.k.slice(5) - 1].slice(0, 4) + '.') + '</text>';
     });
     out += '<line x1="' + pg + '" x2="' + W + '" y1="' + (H - pb) + '" y2="' + (H - pb) + '" class="base"/>';
     return '<div class="graph"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Visiteurs sur la période">' + out + '</svg><div class="infobulle" hidden></div></div>';
@@ -727,8 +727,8 @@
         .then(function () { render(true); toast('Mot de passe changé.'); }).catch(function (er) { toast(er.message, true); });
     } else if (a === 'couleur') {
       set(p, b.dataset.c); render(true);
-    } else if (a === 'periode') {
-      periode = i; ecrire('periode', String(i)); render(true);
+    } else if (a === 'periodeStats') {
+      periodeStats = i; ecrire('periodeStats', String(i)); render(true);
     } else if (a === 'dup-evt') {
       var ce = clone(site.evenements[i]); ce.titre += ' (copie)'; ce.actif = false;
       site.evenements.splice(i + 1, 0, ce); render(true);

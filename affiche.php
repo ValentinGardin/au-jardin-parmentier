@@ -3,6 +3,7 @@
 require __DIR__ . '/lib.php';
 header('X-Robots-Tag: noindex');
 $sem = site_load()['semaine'];
+$sem['jours'] = array_values(array_filter($sem['jours'], function ($j) { return $j['nom'] !== ''; }));
 $sp = $sem['special'];
 $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
 ?>

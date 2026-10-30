@@ -4,6 +4,8 @@ $evts = evenements_visibles($s['evenements']);
 $tel = '09 50 17 39 62'; $telHref = 'tel:+33950173962';
 $maps = 'https://www.google.com/maps/search/?api=1&query=9+place+Parmentier+80500+Montdidier';
 $sem = $s['semaine'];
+// Seuls les jours avec un plat sont affichés ; sans aucun plat, la section est masquée
+$sem['jours'] = array_values(array_filter($sem['jours'], function ($j) { return $j['nom'] !== ''; }));
 $aSemaine = (bool)$sem['jours'];
 $enCours = semaine_en_cours($sem);
 $auj = jour_actuel();
