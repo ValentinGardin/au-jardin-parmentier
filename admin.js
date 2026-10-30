@@ -691,25 +691,43 @@
       (R.data && R.data.sms && R.data.sms.auto && R.date === E.aujourdhui ? '<p class="r-sms-info">' + ico('note') + 'Rappel SMS automatique à ' + R.data.sms.heure.replace(':', 'h') + ' pour les commandes pas encore récupérées.</p>' : '') + '</div>';
     var jour = resasDuJour();
     if (!jour) return semaine + titre + '<p class="chargement">Chargement…</p>';
-    var prep = {}, total = 0, encaisse = 0, nbP = 0, nbR = 0, nbPlats = 0;
+    var total = 0, encaisse = 0, nbP = 0, nbR = 0, nbPlats = 0;
     jour.forEach(function (r) {
       var t = totalResa(r); total += t;
       if (r.paye) { nbP++; encaisse += t; }
       if (r.recupere) nbR++;
-      r.lignes.forEach(function (l) { prep[l.nom] = (prep[l.nom] || 0) + l.qte; nbPlats += l.qte; });
+      r.lignes.forEach(function (l) { nbPlats += l.qte; });
     });
     var n = jour.length;
-    var prepHtml = Object.keys(prep).sort(function (a, b) { return prep[b] - prep[a]; }).map(function (k) { return '<li><b>' + prep[k] + '</b> ' + esc(k) + '</li>'; }).join('');
     var resume = n ? '<div class="r-resume">' +
       '<div class="tuile"><p>Commandes</p><strong>' + n + '</strong><small>' + pluriel(nbPlats, 'plat') + (total ? ' · ' + euros(total) : '') + '</small></div>' +
-      '<div class="tuile r-prep"><p>À préparer</p><ul>' + prepHtml + '</ul></div>' +
       '<div class="tuile"><p>Payées</p><strong>' + nbP + '<em>/' + n + '</em></strong><small>' + (total ? euros(encaisse) + ' encaissés sur ' + euros(total) : (n - nbP ? (n - nbP) + ' à encaisser' : 'tout est réglé')) + '</small></div>' +
       '<div class="tuile"><p>Récupérées</p><strong>' + nbR + '<em>/' + n + '</em></strong><small>' + (n - nbR ? (n - nbR) + ' encore à venir' : 'tout le monde est passé') + '</small></div></div>' : '';
     var f = [['tout', 'Toutes', n], ['attente', 'À récupérer', n - nbR], ['impaye', 'Non payées', n - nbP], ['fait', 'Récupérées', nbR]];
     var outils = n ? '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
       return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
     }).join('') + '</div><input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone…" aria-label="Rechercher"></div>' : '';
-    return semaine + titre + resume + outils + '<div id="r-liste">' + resasListe() + '</div>';
+    return semaine + titre + resume + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
+  }
+  // Récapitulatif du jour : un plat par ligne, quantité totale, prix, montant, puis le total de la journée
+  function recapJour(jour) {
+    if (!jour.length) return '';
+    var lignes = {}, ordre = [], qte = 0, total = 0, encaisse = 0;
+    jour.forEach(function (r) {
+      r.lignes.forEach(function (l) {
+        var nom = l.nom.trim() || 'Autre', k = nom + '|' + l.prix;
+        if (!lignes[k]) { lignes[k] = { nom: nom, prix: prixNum(l.prix), qte: 0, recup: 0 }; ordre.push(k); }
+        lignes[k].qte += l.qte; if (r.recupere) lignes[k].recup += l.qte;
+        qte += l.qte; total += prixNum(l.prix) * l.qte; if (r.paye) encaisse += prixNum(l.prix) * l.qte;
+      });
+    });
+    ordre.sort(function (a, b) { return lignes[b].qte - lignes[a].qte; });
+    return '<section class="bloc r-recap"><h2>Récapitulatif du jour</h2><div class="r-recap-tab"><table><thead><tr><th>Plat</th><th class="n">Quantité</th><th class="n">Déjà récupérés</th><th class="n">Prix</th><th class="n">Montant</th></tr></thead><tbody>' +
+      ordre.map(function (k) { var x = lignes[k];
+        return '<tr><td>' + esc(x.nom) + '</td><td class="n"><b>' + x.qte + '</b></td><td class="n">' + x.recup + ' / ' + x.qte + '</td><td class="n">' + (x.prix ? euros(x.prix) : '–') + '</td><td class="n">' + (x.prix ? euros(x.prix * x.qte) : '–') + '</td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td class="n">' + qte + '</td><td></td><td></td><td class="n">' + euros(total) + '</td></tr></tfoot></table></div>' +
+      '<p class="r-recap-pied"><span>Encaissé <b>' + euros(encaisse) + '</b></span><span>Reste à encaisser <b>' + euros(total - encaisse) + '</b></span></p></section>';
   }
   function resasListe() {
     var jour = resasDuJour() || [];
