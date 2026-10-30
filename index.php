@@ -100,7 +100,7 @@ $galerie = photos_galerie();
   </div>
 </section>
 
-<!-- Défilé de mots : les mots se changent dans admin.php -->
+<!-- Défilé de mots : les mots se changent dans le back-office -->
 <section class="defile" aria-label="Nos spécialités">
   <ul class="sr-only"><?php foreach ($s['mots'] as $w): ?><li><?= h($w) ?></li><?php endforeach; ?></ul>
   <div class="defile-piste" aria-hidden="true">
@@ -115,7 +115,7 @@ $galerie = photos_galerie();
 </section>
 
 <?php if ($evts): ?>
-<!-- ============ Événements et menus spéciaux (gérés dans admin.php) ============ -->
+<!-- ============ Événements et menus spéciaux (gérés dans le back-office) ============ -->
 <section id="evenements" class="section evts" aria-label="Événements">
   <div class="wrap evts-in">
 <?php foreach ($evts as $e):
@@ -156,7 +156,7 @@ $galerie = photos_galerie();
 <?php endif; ?>
 
 <?php if ($aSemaine): ?>
-<!-- ============ Menu de la semaine (géré dans admin.php) ============ -->
+<!-- ============ Menu de la semaine (géré dans le back-office) ============ -->
 <section id="semaine" class="section semaine">
   <div class="wrap">
     <div class="tete reveal">
@@ -195,7 +195,7 @@ $galerie = photos_galerie();
 </section>
 <?php endif; ?>
 
-<!-- ============ Cartes traiteur (gérées dans admin.php) ============ -->
+<!-- ============ Cartes traiteur (gérées dans le back-office) ============ -->
 <section id="traiteur" class="section traiteur">
   <div class="wrap">
     <div class="tete reveal">
@@ -381,7 +381,7 @@ $galerie = photos_galerie();
 
 <?php $pop = null; foreach ($evts as $e) if ($e['popup']) { $pop = $e; break; }
 if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
-<!-- Fenêtre d'accueil pour l'événement du moment (option « pop-up » dans admin.php) -->
+<!-- Fenêtre d'accueil pour l'événement du moment (option « pop-up » dans le back-office) -->
 <div class="pop" id="pop" hidden data-cle="<?= h(substr(md5($pop['titre'] . $pop['date']), 0, 10)) ?>">
   <div class="pop-carte<?= $cl['clair'] ? ' evt-clair' : '' ?>" role="dialog" aria-modal="true" aria-labelledby="pop-titre" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
     <button type="button" class="pop-fermer" data-pop-fermer aria-label="Fermer">×</button>

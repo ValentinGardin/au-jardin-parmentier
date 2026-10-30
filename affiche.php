@@ -52,7 +52,7 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
 </style>
 </head>
 <body>
-<div class="outils"><a href="admin.php">← Retour</a><button type="button" onclick="window.print()">Imprimer ou enregistrer en PDF</button></div>
+<div class="outils"><a href="<?= ESPACE ?>/">← Retour</a><button type="button" onclick="window.print()">Imprimer ou enregistrer en PDF</button></div>
 <main class="page">
   <header>
     <img src="img/logo/symbole-violet.svg" alt="">

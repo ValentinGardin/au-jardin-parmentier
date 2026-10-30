@@ -354,3 +354,4 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .modale .alerte{margin:.5rem 0 0}
 .mon-mdp .grille-3 .champ{margin-bottom:.5rem}
 .version{margin:1rem 0 0;font-size:.75rem;color:var(--gris-clair)}
+.piege{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}

@@ -296,7 +296,7 @@
       '<div id="stats">' + (d ? stats(d) : '<p class="chargement">Chargement des statistiques…</p>') + '</div>';
   }
   function charger(n) {
-    fetch('admin.php?api=stats&jours=' + n, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+    fetch(E.api + '?api=stats&jours=' + n, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
       if (j.erreur) throw new Error(j.erreur);
       cache[n] = j;
       if (onglet === 'stats' && periodeStats === n) { var z = document.getElementById('stats'); if (z) z.innerHTML = stats(j); }
@@ -393,7 +393,7 @@
     var lab = input.closest('.envoyer'); lab.classList.add('envoi');
     lab.querySelector('.sans').textContent = 'Envoi…';
     var fd = new FormData(); fd.append('photo', f);
-    fetch('admin.php?api=photo', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF': E.csrf }, body: fd })
+    fetch(E.api + '?api=photo', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF': E.csrf }, body: fd })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok) throw new Error(j.erreur || 'Envoi impossible.');
@@ -406,7 +406,7 @@
 
   // =============== Utilisateurs / Mon compte ===============
   function api(action, data) {
-    return fetch('admin.php?api=' + action, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': E.csrf }, body: JSON.stringify(data) })
+    return fetch(E.api + '?api=' + action, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': E.csrf }, body: JSON.stringify(data) })
       .then(function (r) { return r.json().catch(function () { return { erreur: 'Réponse inattendue du serveur.' }; }); })
       .then(function (j) { if (!j.ok) throw new Error(j.erreur || 'Erreur.'); return j; });
   }
@@ -574,7 +574,7 @@
     enCours = true;
     var btn = document.getElementById('enregistrer');
     btn.disabled = true; btn.textContent = 'Enregistrement…';
-    return fetch('admin.php?api=save', {
+    return fetch(E.api + '?api=save', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF': E.csrf },
       body: JSON.stringify({ part: part, data: site[part] })

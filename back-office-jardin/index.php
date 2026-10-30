@@ -1,8 +1,10 @@
 <?php
 if (version_compare(PHP_VERSION, '7.3.0', '<')) { exit('PHP 7.3 ou plus récent est nécessaire (version actuelle : ' . PHP_VERSION . ').'); }
-require __DIR__ . '/lib.php';
-require __DIR__ . '/stats.php';
-require __DIR__ . '/comptes.php';
+// Back-office : volontairement à une adresse non standard (pas de /admin.php) pour échapper aux robots.
+// Les liens de la page sont relatifs à la racine du site grâce à <base href="../">.
+require dirname(__DIR__) . '/lib.php';
+require dirname(__DIR__) . '/stats.php';
+require dirname(__DIR__) . '/comptes.php';
 session_name('jp_admin');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
@@ -10,6 +12,7 @@ header('X-Frame-Options: DENY');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 header('Cache-Control: no-store');
+header('X-Robots-Tag: noindex, nofollow');
 
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(16));
 $comptes = comptes_charger();
@@ -55,7 +58,7 @@ function photo_recue($f) {
     $info = @getimagesize($f['tmp_name']);
     if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) return [null, 'Format non reconnu : envoyez une photo JPG, PNG ou WebP.'];
     $nom = 'envoi-' . date('Ymd-His') . '-' . bin2hex(random_bytes(2));
-    $dir = __DIR__ . '/img/photos';
+    $dir = dirname(__DIR__) . '/img/photos';
     if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
         $src = @imagecreatefromstring((string)file_get_contents($f['tmp_name']));
         if ($src) {
@@ -145,18 +148,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         [$u, $err] = compte_valider(['identifiant' => $_POST['identifiant'] ?? '', 'email' => $_POST['email'] ?? '', 'nom' => $_POST['nom'] ?? '', 'role' => 'admin', 'mdp' => $_POST['pwd'] ?? ''], null, []);
         if (!$err && (string)($_POST['pwd'] ?? '') !== (string)($_POST['pwd2'] ?? '')) $err = 'Les deux mots de passe ne sont pas identiques.';
         if (!$err && !comptes_enregistrer([$u])) $err = 'Impossible d’écrire dans le dossier data/ : vérifiez ses droits d’écriture.';
-        if (!$err) { ouvrir_session($u); header('Location: admin.php'); exit; }
+        if (!$err) { ouvrir_session($u); header('Location: ./'); exit; }
     } elseif ($action === 'login' && $comptes) {
-        if (tentatives() >= 5) {
+        // Pièges à robots : un champ invisible que seuls les robots remplissent, et un envoi trop rapide (moins de 2 s)
+        $robot = ($_POST['site_web'] ?? '') !== '' || time() - (int)($_SESSION['form_t'] ?? 0) < 2;
+        if ($robot) { tentatives(true); usleep(700000); $err = 'Identifiant, e-mail ou mot de passe incorrect.'; }
+        elseif (tentatives() >= 5) {
             $err = 'Trop de tentatives. Réessayez dans 15 minutes.';
         } else {
             $u = compte_par_login($_POST['login'] ?? '');
-            if ($u && password_verify((string)($_POST['pwd'] ?? ''), $u['hash'])) { tentatives(false); ouvrir_session($u); header('Location: admin.php'); exit; }
+            if ($u && password_verify((string)($_POST['pwd'] ?? ''), $u['hash'])) { tentatives(false); ouvrir_session($u); header('Location: ./'); exit; }
             usleep(700000); tentatives(true);
             $err = 'Identifiant, e-mail ou mot de passe incorrect.';
         }
     } elseif ($action === 'logout') {
-        $_SESSION = []; session_destroy(); header('Location: admin.php'); exit;
+        $_SESSION = []; session_destroy(); header('Location: ./'); exit;
     }
 }
 
@@ -165,7 +171,7 @@ if ($logged) {
     $photos = [];
     foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
-             'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES];
+             'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES];
 }
 ?>
 <!doctype html>
@@ -174,6 +180,7 @@ if ($logged) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<base href="../">
 <title>Gestion du site · Au Jardin Parmentier</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -183,7 +190,7 @@ if ($logged) {
 </head>
 <body>
 
-<?php if (!$logged): $setup = !$comptes; ?>
+<?php if (!$logged): $setup = !$comptes; $_SESSION['form_t'] = time(); ?>
 <main class="auth">
   <form method="post" class="auth-carte">
     <img src="favicon.svg" alt="" width="56" height="56">
@@ -193,6 +200,7 @@ if ($logged) {
 <?php endif; ?>
     <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
     <input type="hidden" name="action" value="<?= $setup ? 'setup' : 'login' ?>">
+    <div class="piege" aria-hidden="true"><label>Site web <input name="site_web" tabindex="-1" autocomplete="off"></label></div>
 <?php if ($setup): ?>
     <label class="champ"><span>Identifiant</span><input name="identifiant" required pattern="[A-Za-z0-9._\-]{3,30}" autocomplete="username" value="<?= h($_POST['identifiant'] ?? '') ?>"></label>
     <label class="champ"><span>Adresse e-mail</span><input type="email" name="email" required autocomplete="email" value="<?= h($_POST['email'] ?? '') ?>"></label>
@@ -212,7 +220,7 @@ if ($logged) {
 
 <?php else: ?>
 <header class="barre-haut">
-  <a class="logo" href="admin.php"><img src="favicon.svg" alt="" width="34" height="34"><span>Gestion du site</span></a>
+  <a class="logo" href="<?= ESPACE ?>/"><img src="favicon.svg" alt="" width="34" height="34"><span>Gestion du site</span></a>
   <nav class="onglets" role="tablist" aria-label="Rubriques">
     <button role="tab" data-onglet="stats" aria-selected="true"><svg class="ico"><use href="#i-stats"/></svg>Tableau de bord</button>
     <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
