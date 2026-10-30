@@ -1,5 +1,5 @@
 <?php require __DIR__ . '/lib.php';
-// Informations légales (source : avis de situation INSEE et extrait RNE). Les valeurs vides ne sont pas affichées.
+// Informations légales (source : avis de situation INSEE et extrait RNE).
 $editeur = [
     'nom'       => 'Au Jardin Parmentier',
     'societe'   => 'SARL GARDIN',
@@ -13,7 +13,7 @@ $editeur = [
     'rne'       => 'Immatriculée au Registre national des entreprises (RNE) le 2 octobre 2015',
     'tva'       => 'FR79 813 853 561',
     'naf'       => '47.11C – Supérettes',
-    'directeur' => '',            // à compléter : prénom et nom du gérant
+    'directeur' => 'Fabrice Gardin et Angélique Gardin, cogérants',
 ];
 $realisation = 'G’agency';
 ?>
@@ -62,7 +62,7 @@ $realisation = 'G’agency';
       <?= h($editeur['rne']) ?><br>
       N° de TVA intracommunautaire : <?= h($editeur['tva']) ?><br>
       Code NAF/APE : <?= h($editeur['naf']) ?></p>
-    <p>Directeur de la publication : <?= h($editeur['directeur'] !== '' ? $editeur['directeur'] . ', gérant' : 'le gérant de la ' . $editeur['societe']) ?></p>
+    <p>Directeur de la publication : <?= h($editeur['directeur'] !== '' ? $editeur['directeur'] : 'le gérant de la ' . $editeur['societe']) ?></p>
   </section>
 
   <section>
