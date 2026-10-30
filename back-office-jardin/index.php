@@ -186,7 +186,7 @@ if ($logged) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="admin.css?v=5" rel="stylesheet">
+<link href="admin.css?v=6" rel="stylesheet">
 </head>
 <body>
 
@@ -200,7 +200,7 @@ if ($logged) {
 <?php endif; ?>
     <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
     <input type="hidden" name="action" value="<?= $setup ? 'setup' : 'login' ?>">
-    <div class="piege" aria-hidden="true"><label>Site web <input name="site_web" tabindex="-1" autocomplete="off"></label></div>
+    <div class="piege" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Site web <input name="site_web" tabindex="-1" autocomplete="off"></label></div>
 <?php if ($setup): ?>
     <label class="champ"><span>Identifiant</span><input name="identifiant" required pattern="[A-Za-z0-9._\-]{3,30}" autocomplete="username" value="<?= h($_POST['identifiant'] ?? '') ?>"></label>
     <label class="champ"><span>Adresse e-mail</span><input type="email" name="email" required autocomplete="email" value="<?= h($_POST['email'] ?? '') ?>"></label>
@@ -247,7 +247,7 @@ if ($logged) {
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
-<script src="admin.js?v=5"></script>
+<script src="admin.js?v=6"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
