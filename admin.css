@@ -198,9 +198,17 @@ input.prix{text-align:right;font-variant-numeric:tabular-nums}
 }
 
 /* Mots et avis */
-.mots-apercu{display:flex;flex-wrap:wrap;gap:.4rem;padding:1rem;border-radius:12px;background:var(--violet)}
-.mots-apercu span{color:#fff;font:700 1.15rem var(--titre);padding:.1rem .5rem}
-.mots-apercu span:nth-child(even){color:transparent;-webkit-text-stroke:1px #fff}
+.mots-apercu{overflow:hidden;padding:.85rem 0;background:#fff;border-block:1px solid var(--trait);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.mots-apercu > .aide{margin:0;padding:0 1rem}
+.ma-piste{display:flex;width:max-content;animation:ma-defile 45s linear infinite}
+.mots-apercu:hover .ma-piste{animation-play-state:paused}
+.ma-groupe{display:flex;align-items:center;flex-shrink:0}
+.ma-mot{font:500 .8rem/1 var(--texte);letter-spacing:.24em;text-transform:uppercase;white-space:nowrap;color:var(--encre);padding-inline:1.8rem}
+.ma-mot:nth-of-type(even){color:var(--violet)}
+.ma-sep{height:.9rem;width:auto;opacity:.55}
+@keyframes ma-defile{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ma-piste{animation:none}}
 .avis-ligne{padding:1rem;border-radius:12px;background:var(--fond);margin-bottom:.6rem}
 .avis-ligne .champ{margin-bottom:.6rem}
 .avis-ligne .champ:last-child{margin-bottom:0}
@@ -806,3 +814,4 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .faq-conseils summary{cursor:pointer;font:700 1rem var(--titre);color:var(--violet)}
 .faq-conseils[open] summary{margin-bottom:.4rem}
 @media (max-width:1100px){.faq-cote{position:static}}
+.mots-apercu + .aide{margin-top:.7rem}

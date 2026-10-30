@@ -26,7 +26,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ico(n) { return '<svg class="ico" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
   function get(p) { return p.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, site); }
-  function set(p, v) { var k = p.split('.'), last = k.pop(); get(k.join('.'))[last] = v; }
+  function set(p, v) { var k = p.split('.'), last = k.pop(); (k.length ? get(k.join('.')) : site)[last] = v; }
   function sale(part) { return JSON.stringify(site[part]) !== JSON.stringify(saved[part]); }
   function pluriel(n, s) { return n + ' ' + s + (n > 1 ? 's' : ''); }
 
@@ -284,11 +284,18 @@
 
   // =============== Mots défilants ===============
   function vueMots() {
-    return tete('Mots défilants', 'Les mots qui défilent dans le bandeau violet, juste sous le haut de la page.') +
+    return tete('Mots défilants', 'Les mots qui défilent dans le fin bandeau juste sous le haut de la page d’accueil.') +
       '<section class="bloc">' + champ('Un mot ou une expression par ligne', 'mots', { lignes: true, rows: 9, ph: 'épicerie fine\ntraiteur\nfromagerie' }) +
-      '<p class="apercu-titre">Aperçu</p><div class="mots-apercu" id="mots-apercu">' + motsApercu() + '</div></section>';
+      '<p class="apercu-titre">Aperçu sur le site</p><div class="mots-apercu" id="mots-apercu">' + motsApercu() + '</div>' +
+      '<p class="aide petit">Le bandeau défile en continu sur le site (il se met en pause au survol). Un mot sur deux s’affiche en violet.</p></section>';
   }
-  function motsApercu() { return site.mots.filter(function (m) { return m.trim(); }).map(function (m) { return '<span>' + esc(m) + '</span>'; }).join(''); }
+  // Même rendu que le bandeau du site : petites capitales espacées, un mot sur deux en violet, symbole entre les mots
+  function motsApercu() {
+    var l = site.mots.filter(function (m) { return m.trim(); });
+    if (!l.length) return '<p class="aide">Aucun mot : les mots par défaut seront affichés.</p>';
+    var groupe = '<div class="ma-groupe">' + l.concat(l).map(function (m) { return '<span class="ma-mot">' + esc(m) + '</span><img class="ma-sep" src="img/logo/symbole-violet.svg" alt="">'; }).join('') + '</div>';
+    return '<div class="ma-piste">' + groupe + groupe + '</div>';
+  }
 
   // =============== Avis ===============
   function vueAvis() {
