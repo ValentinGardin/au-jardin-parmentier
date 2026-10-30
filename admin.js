@@ -121,7 +121,7 @@
       : '';
     return tete('Menu de la semaine', 'Les plats du jour affichés en haut du site. Le plat du jour est mis en avant automatiquement.',
         '<button type="button" class="btn btn-discret" data-act="semaine-suivante">' + ico('suivant') + 'Préparer la semaine suivante</button>' +
-        '<a class="btn btn-ligne" href="#visuels">' + ico('imprim') + 'Visuels et affiche</a>') +
+        '<button type="button" class="btn btn-ligne" data-act="aller" data-cible="visuels">' + ico('imprim') + 'Visuels et affiche</button>') +
       '<div class="deux-cols"><div class="col-form">' +
         '<section class="bloc"><div class="bloc-tete"><h2>1. La semaine</h2><span class="statut statut-' + st[0] + '" id="statut-sem">' + st[1] + '</span></div>' +
           '<div class="grille-3">' + champ('Du', 'semaine.du', { type: 'date' }) + champ('Au', 'semaine.au', { type: 'date' }) + champ('Titre', 'semaine.titre', { ph: 'Inspirations de la semaine' }) + '</div></section>' +
@@ -185,10 +185,12 @@
           (ph ? '<img src="' + esc(ph.url) + '" alt="">' : '<span class="carte-vignette">' + esc((c.titre || '?').charAt(0)) + '</span>') +
           '<span class="carte-item-txt"><strong>' + esc(c.titre) + '</strong><small>' + pluriel(c.cats.length, 'catégorie') + ' · ' + pluriel(nb, 'plat') + (c.prix ? ' · ' + esc(c.prix) : '') + '</small></span>' +
           '<span class="carte-modifier">' + ico('crayon') + 'Modifier</span></button>' +
-        '<div class="carte-item-actions"><button type="button" class="ib" data-act="dup" data-i="' + i + '" title="Dupliquer" aria-label="Dupliquer">' + ico('copie') + '</button>' +
+        '<div class="carte-item-actions"><button type="button" class="ib" data-act="imprimer-carte" data-i="' + i + '" title="Imprimer ou télécharger en PDF" aria-label="Imprimer la carte ' + esc(c.titre) + '">' + ico('imprim') + '</button>' +
+        '<button type="button" class="ib" data-act="dup" data-i="' + i + '" title="Dupliquer" aria-label="Dupliquer">' + ico('copie') + '</button>' +
         boutonsOrdre('menus', i, n, { quoi: 'la carte « ' + c.titre + ' » et tous ses plats' }) + '</div></article>';
     }).join('');
     return tete('Cartes traiteur', 'Chaque carte devient un onglet sur le site, dans cet ordre. Cliquez sur une carte pour modifier ses plats.',
+        '<button type="button" class="btn btn-ligne" data-act="imprimer-carte" data-i="tout">' + ico('imprim') + 'Imprimer toutes les cartes</button>' +
         '<button type="button" class="btn btn-violet" data-act="add" data-p="menus" data-tpl="carte">' + ico('plus') + 'Nouvelle carte</button>') +
       '<div class="cartes-liste">' + (liste || '<p class="vide">Aucune carte pour le moment.</p>') + '</div>';
   }
@@ -220,7 +222,8 @@
         '</div></details>';
     }).join('');
     return '<button type="button" class="retour" data-act="retour">' + ico('retour') + 'Toutes les cartes</button>' +
-      tete(esc(c.titre || 'Carte sans nom'), 'Les modifications apparaissent sur le site après « Enregistrer ».', '') +
+      tete(esc(c.titre || 'Carte sans nom'), 'Les modifications apparaissent sur le site après « Enregistrer ».',
+        '<button type="button" class="btn btn-ligne" data-act="imprimer-carte" data-i="' + ci + '">' + ico('imprim') + 'Imprimer / PDF</button>') +
       '<section class="bloc"><div class="bloc-tete"><h2>Présentation</h2></div>' +
         '<div class="grille-2">' + champ('Nom de la carte', base + '.titre', { ph: 'ex. Plats cuisinés' }) + champ('Prix unique', base + '.prix', { opt: true, ph: 'ex. 17.90 € par personne' }) + '</div>' +
         champ('Phrase d’introduction', base + '.intro', { zone: true, rows: 2, opt: true, ph: 'ex. Présentation sur plateaux, avec sauces d’accompagnement.' }) +
@@ -783,14 +786,23 @@
     } else if (a === 'semaine-suivante') {
       semaineSuivante();
     } else if (a === 'imprimer') {
-      var w = window.open('about:blank', '_blank');
-      (sale('semaine') ? enregistrer('semaine') : Promise.resolve(true)).then(function (ok) {
-        if (!w) return toast('Autorisez les fenêtres pop-up pour imprimer l’affiche.', true);
-        if (ok) w.location.href = 'affiche'; else w.close();
-      });
+      ouvrirApres('semaine', 'affiche');
+    } else if (a === 'imprimer-carte') {
+      ouvrirApres('menus', 'carte-traiteur?c=' + b.dataset.i);
+    } else if (a === 'aller') {
+      var cible = document.getElementById(b.dataset.cible);
+      if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   });
 
+  // Ouvre une page à imprimer, après avoir enregistré les modifications en cours (elle lit les données enregistrées)
+  function ouvrirApres(part, url) {
+    var w = window.open('about:blank', '_blank');
+    (sale(part) ? enregistrer(part) : Promise.resolve(true)).then(function (ok) {
+      if (!w) return toast('Autorisez les fenêtres pop-up pour imprimer.', true);
+      if (ok) w.location.href = url; else w.close();
+    });
+  }
   function semaineSuivante() {
     var s = site.semaine;
     var du = s.du ? plus(s.du, 7) : '', au = s.au ? plus(s.au, 7) : (du ? plus(du, 4) : '');

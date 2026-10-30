@@ -186,7 +186,7 @@ if ($logged) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="admin.css?v=7" rel="stylesheet">
+<link href="admin.css?v=8" rel="stylesheet">
 </head>
 <body>
 
@@ -248,7 +248,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=1"></script>
-<script src="admin.js?v=7"></script>
+<script src="admin.js?v=8"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

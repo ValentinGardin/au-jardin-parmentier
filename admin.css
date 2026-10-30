@@ -370,3 +370,4 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .visuel-actions .btn-violet{flex:1}
 .visuel.en-cours .visuel-cadre{outline:3px solid var(--violet);outline-offset:-3px}
 #visuels .aide.petit{margin:1rem 0 0}
+#visuels{scroll-margin-top:90px}

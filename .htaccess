@@ -1,4 +1,4 @@
-# Adresses propres : https://www.lejardinparmentier.fr/ (sans index.php), /mentions-legales, /affiche
+# Adresses propres : https://www.lejardinparmentier.fr/ (sans index.php), /mentions-legales, /affiche, /carte-traiteur
 Options -Indexes
 DirectoryIndex index.php
 
@@ -16,9 +16,12 @@ RewriteCond %{THE_REQUEST} \s/+mentions\.php[\s?] [NC]
 RewriteRule ^ /mentions-legales [R=301,L]
 RewriteCond %{THE_REQUEST} \s/+affiche\.php[\s?] [NC]
 RewriteRule ^ /affiche [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+carte\.php[\s?] [NC]
+RewriteRule ^ /carte-traiteur [R=301,L]
 
 # Adresses propres servies par les fichiers PHP
-RewriteRule ^(mentions-legales|affiche)/$ /$1 [R=301,L]
+RewriteRule ^(mentions-legales|affiche|carte-traiteur)/$ /$1 [R=301,L]
 RewriteRule ^mentions-legales$ mentions.php [L]
 RewriteRule ^affiche$ affiche.php [L]
+RewriteRule ^carte-traiteur$ carte.php [L]
 </IfModule>
