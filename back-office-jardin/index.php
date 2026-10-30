@@ -5,6 +5,7 @@ if (version_compare(PHP_VERSION, '7.3.0', '<')) { exit('PHP 7.3 ou plus récent 
 require dirname(__DIR__) . '/lib.php';
 require dirname(__DIR__) . '/stats.php';
 require dirname(__DIR__) . '/comptes.php';
+require dirname(__DIR__) . '/google.php';
 session_name('jp_admin');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
@@ -135,6 +136,58 @@ if ($api !== '') {
         comptes_enregistrer($l);
         repondre(200, ['ok' => true]);
     }
+    // ---- Avis Google ----
+    if (strpos($api, 'google') === 0) {
+        if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
+        $etatGoogle = function () {
+            $c = google_config(); $d = google_cache();
+            return ['ok' => true, 'cle' => $c['cle'] !== '' ? '••••••••' . substr($c['cle'], -4) : '', 'place_id' => $c['place_id'], 'nom' => $c['nom'], 'adresse' => $c['adresse'],
+                    'afficher_note' => $c['afficher_note'], 'afficher_avis' => $c['afficher_avis'], 'note_min' => $c['note_min'],
+                    'note' => $d['note'] ?? null, 'nombre' => $d['nombre'] ?? 0, 'nb_avis' => count($d['avis'] ?? []), 'maj' => !empty($d['maj']) ? date('d/m/Y à H\hi', $d['maj']) : '', 'erreur' => $d['erreur'] ?? ''];
+        };
+        $enregistrer = function ($modifs) {
+            $c = is_file(GOOGLE_CONFIG) ? (json_decode((string)file_get_contents(GOOGLE_CONFIG), true) ?: []) : [];
+            if (!json_save(GOOGLE_CONFIG, array_merge($c, $modifs))) repondre(500, ['erreur' => 'Impossible d’enregistrer : le dossier data/ n’est pas modifiable.']);
+        };
+        if ($api === 'google') repondre(200, $etatGoogle());
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') repondre(405, ['erreur' => 'Méthode non autorisée.']);
+        $in = entree();
+        if ($api === 'google-actualiser') {
+            api_garde();
+            [, $e] = google_actualiser();
+            if ($e) repondre(400, ['erreur' => $e]);
+            repondre(200, $etatGoogle());
+        }
+        api_garde(true);   // le reste est réservé aux administrateurs
+        if ($api === 'google-cle') {
+            $cle = trim((string)($in['cle'] ?? ''));
+            if (!preg_match('/^[A-Za-z0-9_\-]{20,60}$/', $cle)) repondre(400, ['erreur' => 'Cette clé ne ressemble pas à une clé Google (elle commence en général par « AIza » et fait 39 caractères).']);
+            $enregistrer(['cle' => $cle]);
+            repondre(200, $etatGoogle());
+        }
+        if ($api === 'google-recherche') {
+            [$r, $e] = google_recherche(txt($in['q'] ?? '', 120));
+            if ($e) repondre(400, ['erreur' => $e]);
+            repondre(200, ['ok' => true, 'resultats' => $r]);
+        }
+        if ($api === 'google-choisir') {
+            $id = (string)($in['id'] ?? '');
+            if (!preg_match('/^[A-Za-z0-9_\-]{10,300}$/', $id)) repondre(400, ['erreur' => 'Commerce invalide.']);
+            $enregistrer(['place_id' => $id, 'nom' => txt($in['nom'] ?? '', 120), 'adresse' => txt($in['adresse'] ?? '', 200)]);
+            @unlink(GOOGLE_CACHE);
+            [, $e] = google_actualiser();
+            if ($e) repondre(400, ['erreur' => $e]);
+            repondre(200, $etatGoogle());
+        }
+        if ($api === 'google-options') {
+            $enregistrer(['afficher_note' => !empty($in['afficher_note']), 'afficher_avis' => !empty($in['afficher_avis']), 'note_min' => max(1, min(5, (int)($in['note_min'] ?? 4)))]);
+            repondre(200, $etatGoogle());
+        }
+        if ($api === 'google-oublier') {
+            @unlink(GOOGLE_CONFIG); @unlink(GOOGLE_CACHE);
+            repondre(200, $etatGoogle());
+        }
+    }
     repondre(404, ['erreur' => 'Action inconnue.']);
 }
 
@@ -186,7 +239,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=9" rel="stylesheet">
+<link href="admin.css?v=10" rel="stylesheet">
 </head>
 <body>
 
@@ -248,7 +301,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=9"></script>
+<script src="admin.js?v=10"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

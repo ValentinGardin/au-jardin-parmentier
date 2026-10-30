@@ -10,3 +10,5 @@ data/sauvegardes/
 .DS_Store
 Thumbs.db
 img/photos/envoi-*
+data/google.json
+data/google-avis.json

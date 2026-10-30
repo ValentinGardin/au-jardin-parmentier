@@ -274,9 +274,80 @@
         }).join('') + '</select></label>' + boutonsOrdre('avis', i, n) + '</div>' +
         champ('Avis', p + '.texte', { zone: true, rows: 2, ph: 'Le texte de l’avis' }) + '</div>';
     }).join('');
-    return tete('Avis', 'Quelques avis choisis, affichés au-dessus du bouton Google. Copiez-les depuis Google ou Facebook.',
-        '<button type="button" class="btn btn-violet" data-act="add" data-p="avis" data-tpl="avis">' + ico('plus') + 'Ajouter un avis</button>') +
-      '<section class="bloc">' + (liste || '<p class="vide">Aucun avis : seul le bouton « Lire et laisser un avis Google » est affiché sur le site.</p>') + '</section>';
+    if (!G) chargerGoogle();
+    return tete('Avis', 'La note Google et vos avis clients, affichés dans la section « Avis » du site.') +
+      '<section class="bloc" id="google">' + (G ? blocGoogle() : '<p class="chargement">Chargement…</p>') + '</section>' +
+      '<section class="bloc"><div class="bloc-tete"><h2>Avis choisis à la main <em>facultatif</em></h2>' +
+        '<button type="button" class="btn btn-ligne" data-act="add" data-p="avis" data-tpl="avis">' + ico('plus') + 'Ajouter un avis</button></div>' +
+        '<p class="aide petit">Pour mettre en avant un avis précis (Google, Facebook, livre d’or…). Ils s’affichent après les avis Google.</p>' +
+        (liste || '<p class="vide">Aucun avis ajouté à la main.</p>') + '</section>';
+  }
+
+  // ---------- Avis Google ----------
+  var G = null, gResultats = null;
+  function chargerGoogle() {
+    fetch(E.api + '?api=google', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      .then(function (j) { G = j; majGoogle(); }).catch(function () {});
+  }
+  function majGoogle() { var z = document.getElementById('google'); if (z && onglet === 'avis') z.innerHTML = blocGoogle(); }
+  function etoiles(n) { var p = Math.round((n || 0) / 5 * 100); return '<span class="g-etoiles"><span>★★★★★</span><span style="width:' + p + '%">★★★★★</span></span>'; }
+  function blocGoogle() {
+    var admin = E.moi.role === 'admin', h = '<div class="bloc-tete"><h2>Avis Google</h2>';
+    if (!G.cle) {
+      if (!admin) return h + '</div><p class="aide">Pas encore configuré. Un administrateur peut le faire depuis cet onglet.</p>';
+      return h + '<span class="statut statut-gris">Non configuré</span></div>' +
+        '<p class="aide">Affichez automatiquement votre <b>note Google</b>, le <b>nombre d’avis</b> et vos meilleurs avis, mis à jour chaque jour.</p>' +
+        '<ol class="etapes"><li><b>Étape 1 :</b> créez votre clé d’accès Google (Claude vous guide pas à pas).</li><li><b>Étape 2 :</b> collez-la ci-dessous. Elle reste sur votre serveur, elle n’est jamais visible sur le site.</li><li><b>Étape 3 :</b> choisissez votre commerce dans la liste.</li></ol>' +
+        '<div class="g-ligne"><label class="champ"><span>Clé d’accès Google</span><input type="password" id="g-cle" placeholder="AIza…" autocomplete="off" spellcheck="false"></label>' +
+        '<button type="button" class="btn btn-violet" data-act="g-cle">Enregistrer la clé</button></div>';
+    }
+    if (!G.place_id) {
+      if (!admin) return h + '</div><p class="aide">Configuration en cours par un administrateur.</p>';
+      return h + '<span class="statut statut-bleu">Clé enregistrée ' + esc(G.cle) + '</span></div>' +
+        '<p class="aide">Dernière étape : retrouvez votre commerce sur Google.</p>' +
+        '<div class="g-ligne"><label class="champ"><span>Nom et ville du commerce</span><input id="g-q" value="Au Jardin Parmentier Montdidier"></label>' +
+        '<button type="button" class="btn btn-violet" data-act="g-recherche">Rechercher</button></div>' +
+        (gResultats ? (gResultats.length ? '<ul class="g-resultats">' + gResultats.map(function (r, i) {
+          return '<li><div><strong>' + esc(r.nom) + '</strong><small>' + esc(r.adresse) + '</small>' + (r.note ? '<small>' + etoiles(r.note) + ' ' + String(r.note).replace('.', ',') + ' · ' + r.nombre + ' avis</small>' : '') + '</div>' +
+            '<button type="button" class="btn btn-violet" data-act="g-choisir" data-i="' + i + '">C’est mon commerce</button></li>';
+        }).join('') + '</ul>' : '<p class="vide">Aucun résultat. Essayez avec l’adresse complète.</p>') : '') +
+        '<button type="button" class="lien" data-act="g-oublier">Changer de clé</button>';
+    }
+    return h + (G.erreur ? '<span class="statut statut-orange">Problème de mise à jour</span>' : '<span class="statut statut-vert">Connecté</span>') + '</div>' +
+      '<div class="g-resume"><div class="g-note">' + (G.note ? String(G.note).replace('.', ',') : '–') + '</div><div>' + etoiles(G.note) +
+        '<p><strong>' + (G.nombre || 0) + ' avis</strong> · ' + esc(G.nom) + '</p><small>' + esc(G.adresse) + '</small>' +
+        '<small>' + (G.maj ? 'Mis à jour le ' + esc(G.maj) + ' · ' + G.nb_avis + ' avis récupérés (Google en fournit 5 au maximum)' : 'Pas encore mis à jour') + '</small></div></div>' +
+      (G.erreur ? '<p class="alerte">' + esc(G.erreur) + '</p>' : '') +
+      (admin ? '<div class="g-options">' +
+        '<label class="interrupteur"><input type="checkbox" data-g="afficher_note"' + (G.afficher_note ? ' checked' : '') + '><span></span>Afficher la note et le nombre d’avis</label>' +
+        '<label class="interrupteur"><input type="checkbox" data-g="afficher_avis"' + (G.afficher_avis ? ' checked' : '') + '><span></span>Afficher les avis Google</label>' +
+        '<label class="champ g-min"><span>Seulement les avis de</span><select data-g="note_min"' + (G.afficher_avis ? '' : ' disabled') + '>' + [5, 4, 3, 1].map(function (v) {
+          return '<option value="' + v + '"' + (G.note_min === v ? ' selected' : '') + '>' + (v === 1 ? 'toutes les notes' : v + ' étoiles' + (v < 5 ? ' et plus' : '')) + '</option>'; }).join('') + '</select></label></div>' : '') +
+      '<div class="g-actions"><button type="button" class="btn btn-ligne" data-act="g-actualiser">Mettre à jour maintenant</button>' +
+        (admin ? '<button type="button" class="lien" data-act="g-changer">Changer de commerce</button><button type="button" class="lien" data-act="g-oublier">Déconnecter Google</button>' : '') + '</div>';
+  }
+  function actionGoogle(a, b) {
+    function ok(j) { G = j; gResultats = null; majGoogle(); }
+    function ko(e) { toast(e.message, true); majGoogle(); }
+    if (a === 'g-cle') {
+      var v = document.getElementById('g-cle').value.trim();
+      if (!v) return toast('Collez d’abord la clé.', true);
+      api('google-cle', { cle: v }).then(function (j) { ok(j); toast('Clé enregistrée.'); }).catch(ko);
+    } else if (a === 'g-recherche') {
+      b.disabled = true; b.textContent = 'Recherche…';
+      api('google-recherche', { q: document.getElementById('g-q').value }).then(function (j) { gResultats = j.resultats; majGoogle(); }).catch(ko);
+    } else if (a === 'g-choisir') {
+      var r = gResultats[+b.dataset.i]; b.disabled = true; b.textContent = 'Connexion…';
+      api('google-choisir', { id: r.id, nom: r.nom, adresse: r.adresse }).then(function (j) { ok(j); toast('C’est fait : la note Google est sur le site.'); }).catch(ko);
+    } else if (a === 'g-actualiser') {
+      b.disabled = true; b.textContent = 'Mise à jour…';
+      api('google-actualiser', {}).then(function (j) { ok(j); toast('Avis Google mis à jour.'); }).catch(ko);
+    } else if (a === 'g-changer') {
+      G.place_id = ''; gResultats = null; majGoogle();
+    } else if (a === 'g-oublier') {
+      demander('Déconnecter Google ?', 'La note et les avis Google ne seront plus affichés sur le site. Vous pourrez reconnecter Google plus tard.', [{ txt: 'Annuler', val: false }, { txt: 'Déconnecter', val: true, cls: 'btn-danger' }])
+        .then(function (o) { if (o) api('google-oublier', {}).then(ok).catch(ko); });
+    }
   }
 
 
@@ -691,6 +762,12 @@
     if (t.type === 'radio' && t.dataset.p) { set(t.dataset.p, t.value); apresSaisie(); render(true); return; }
     if (t.type === 'checkbox' && t.dataset.p) { set(t.dataset.p, t.checked); render(true); return; }
     if (t.type === 'color' && t.dataset.p) { set(t.dataset.p, t.value); render(true); return; }
+    if ('g' in t.dataset) {
+      var o = { afficher_note: G.afficher_note, afficher_avis: G.afficher_avis, note_min: G.note_min };
+      o[t.dataset.g] = t.type === 'checkbox' ? t.checked : +t.value;
+      api('google-options', o).then(function (j) { G = j; majGoogle(); toast('Réglage enregistré.'); }).catch(function (e) { toast(e.message, true); });
+      return;
+    }
     if (t.type === 'file' && t.dataset.envoi) { envoyerPhoto(t); return; }
     if ('prix' in t.dataset && t.dataset.p) { var f = formatPrix(t.value); if (f !== t.value) { t.value = f; set(t.dataset.p, f); apresSaisie(); } }
     if (t.dataset.p && /^semaine\.(du|au)$/.test(t.dataset.p)) {
@@ -766,6 +843,8 @@
       specialOuvert = b.checked;
       if (!specialOuvert) site.semaine.special = { titre: '', nom: '', prix: '', lignes: [] };
       render(true);
+    } else if (a.indexOf('g-') === 0) {
+      actionGoogle(a, b);
     } else if (a === 'compte-modif') {
       formCompte(E.comptes.filter(function (u) { return u.id === b.dataset.id; })[0]);
     } else if (a === 'compte-suppr') {

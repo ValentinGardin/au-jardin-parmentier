@@ -1,4 +1,4 @@
-<?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; $s = site_load();
+<?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; require __DIR__ . '/google.php'; $s = site_load();
 stats_vue();
 $evts = evenements_visibles($s['evenements']);
 $tel = '09 50 17 39 62'; $telHref = 'tel:+33950173962';
@@ -41,7 +41,7 @@ $galerie = photos_galerie();
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=8" rel="stylesheet">
+<link href="style.css?v=9" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
@@ -336,8 +336,23 @@ $galerie = photos_galerie();
       </div>
       <a class="btn btn-ligne" href="https://share.google/8WpV5ZY07xXf0V1E9" target="_blank" rel="noopener">Lire et laisser un avis Google</a>
     </div>
-<?php if ($s['avis']): ?>
+<?php $g = google_avis_site(); if ($g && $g['afficher_note'] && $g['note']): $pc = round($g['note'] / 5 * 100); ?>
+    <a class="note-google reveal" href="<?= h($g['lien'] ?: 'https://share.google/8WpV5ZY07xXf0V1E9') ?>" target="_blank" rel="noopener">
+      <span class="ng-note"><?= h(number_format($g['note'], 1, ',', '')) ?></span>
+      <span class="ng-detail">
+        <span class="ng-etoiles" aria-label="<?= h(number_format($g['note'], 1, ',', '')) ?> sur 5"><span>★★★★★</span><span class="ng-plein" style="width:<?= $pc ?>%">★★★★★</span></span>
+        <span class="ng-nombre"><?= (int)$g['nombre'] ?> avis sur <b>Google</b></span>
+      </span>
+    </a>
+<?php endif; if (($g && $g['avis']) || $s['avis']): ?>
     <div class="avis-grille">
+<?php if ($g) foreach ($g['avis'] as $i => $a): ?>
+      <figure class="avis-carte avis-google reveal" style="--d:<?= $i % 3 ?>">
+        <div class="etoiles" aria-label="<?= $a['note'] ?> sur 5"><?= str_repeat('★', $a['note']) ?><span><?= str_repeat('★', 5 - $a['note']) ?></span></div>
+        <blockquote><?= h($a['texte']) ?></blockquote>
+        <figcaption><?php if ($a['lien'] !== ''): ?><a href="<?= h($a['lien']) ?>" target="_blank" rel="noopener nofollow"><?= h($a['auteur']) ?></a><?php else: ?><?= h($a['auteur']) ?><?php endif; ?><small><?= h($a['quand']) ?> · Google</small></figcaption>
+      </figure>
+<?php endforeach; ?>
 <?php foreach ($s['avis'] as $i => $a): $n = $a['note']; ?>
       <figure class="avis-carte reveal" style="--d:<?= $i % 3 ?>">
 <?php if ($n): ?>        <div class="etoiles" aria-label="<?= $n ?> sur 5"><?= str_repeat('★', $n) ?><span><?= str_repeat('★', 5 - $n) ?></span></div>
@@ -346,7 +361,8 @@ $galerie = photos_galerie();
 <?php endif; ?>      </figure>
 <?php endforeach; ?>
     </div>
-<?php endif; ?>
+<?php if ($g && $g['avis']): ?>    <p class="avis-source">Avis publiés sur Google, mis à jour chaque jour.</p>
+<?php endif; endif; ?>
   </div>
 </section>
 

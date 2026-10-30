@@ -389,3 +389,22 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .af-conges span{color:var(--gris)}
 .af-ferme span strong{color:var(--violet)}
 .af-ferme em{color:var(--gris)!important;font-size:.7rem;text-transform:uppercase}
+
+/* Avis Google */
+.etapes{margin:.8rem 0 1rem;padding-left:1.2rem;display:grid;gap:.3rem;color:var(--gris)}
+.g-ligne{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap}
+.g-ligne .champ{flex:1;min-width:240px;margin:0}
+.g-resultats{list-style:none;margin:1rem 0;padding:0;display:grid;gap:.5rem}
+.g-resultats li{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border:1px solid var(--trait);border-radius:12px;background:var(--fond)}
+.g-resultats small{display:block;color:var(--gris);font-size:.82rem}
+.g-etoiles{position:relative;display:inline-block;color:#ddd5cd;letter-spacing:1px;line-height:1}
+.g-etoiles span:last-child{position:absolute;inset:0 auto 0 0;overflow:hidden;white-space:nowrap;color:#f5a623}
+.g-resume{display:flex;gap:1.2rem;align-items:center;padding:1rem;border-radius:12px;background:var(--fond);margin-bottom:1rem}
+.g-note{font:800 3rem/1 var(--titre)}
+.g-resume p{margin:.2rem 0}
+.g-resume small{display:block;color:var(--gris);font-size:.82rem}
+.g-resume .g-etoiles{font-size:1.2rem}
+.g-options{display:flex;flex-wrap:wrap;gap:1rem 2rem;align-items:center;margin-bottom:1rem}
+.g-min{flex-direction:row;align-items:center;gap:.6rem;margin:0}
+.g-min select{width:auto}
+.g-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}

@@ -402,3 +402,18 @@ body.pop-ouvert{overflow:hidden}
 .conges-sym{height:70px;width:auto;margin:0 auto 1.2rem;animation:balance 4s ease-in-out infinite}
 .conges h3{font-size:clamp(2rem,5vw,3rem);color:var(--violet);margin-bottom:.8rem}
 .conges p{max-width:36rem;margin:0 auto;font-size:1.12rem;color:var(--gris)}
+
+/* Avis Google */
+.note-google{display:inline-flex;align-items:center;gap:1rem;margin-top:2rem;padding:1rem 1.4rem 1rem 1.2rem;background:var(--blanc);border:1px solid var(--trait);border-radius:var(--r);text-decoration:none;color:var(--encre);box-shadow:var(--ombre);transition:transform .3s var(--ease)}
+.note-google:hover{transform:translateY(-2px);color:var(--encre)}
+.ng-note{font:800 2.8rem/1 var(--titre);color:var(--encre)}
+.ng-detail{display:grid;gap:.15rem}
+.ng-etoiles{position:relative;display:inline-block;font-size:1.25rem;letter-spacing:2px;color:var(--trait);line-height:1}
+.ng-plein{position:absolute;inset:0 auto 0 0;overflow:hidden;white-space:nowrap;color:#f5a623}
+.ng-nombre{font-size:.92rem;color:var(--gris)}
+.ng-nombre b{color:var(--encre)}
+.avis-google .etoiles{color:#f5a623}
+.avis-google blockquote{display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+.avis-carte figcaption small{display:block;font-weight:400;font-size:.82rem;color:var(--gris-clair,#9c949a);margin-top:.15rem}
+.avis-carte figcaption a{color:var(--encre);text-decoration:none}
+.avis-source{margin:1rem 0 0;font-size:.85rem;color:var(--gris)}
