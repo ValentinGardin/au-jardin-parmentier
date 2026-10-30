@@ -21,3 +21,5 @@ data/sms.json
 data/numeros.json
 data/commande.json
 data/limites.json
+data/epuises.json
+data/smtp.json

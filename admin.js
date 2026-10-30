@@ -440,7 +440,7 @@
     var chips = PERIODES.map(function (p) { return '<button type="button" data-act="periodeStats" data-i="' + p[0] + '" aria-pressed="' + (p[0] === periodeStats) + '">' + p[1] + '</button>'; }).join('');
     var d = cache[periodeStats];
     if (!d) charger(periodeStats);
-    return tete('Statistiques', 'La fréquentation de votre site et ce que font vos visiteurs. Mesure anonyme, sans cookie.', '<div class="periodes" role="group" aria-label="Période">' + chips + '</div>') +
+    return tete('Statistiques', 'Vos ventes (réservations), vos plats qui marchent le mieux, vos clients et la fréquentation du site.', '<div class="periodes" role="group" aria-label="Période">' + chips + '</div>') +
       '<div id="stats">' + (d ? stats(d) : '<p class="chargement">Chargement des statistiques…</p>') + '</div>';
   }
   function charger(n) {
@@ -450,7 +450,63 @@
       if (onglet === 'stats' && periodeStats === n) { var z = document.getElementById('stats'); if (z) z.innerHTML = stats(j); }
     }).catch(function (e) { var z = document.getElementById('stats'); if (z) z.innerHTML = '<p class="vide">' + esc(e.message) + '</p>'; });
   }
+  function euro(n) { return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' €'; }
+  function pct(a, b) { return b ? Math.round(a / b * 100) + ' %' : '–'; }
   function stats(d) {
+    return ventesStats(d) + '<h2 class="stats-section">Site internet</h2>' + siteStats(d);
+  }
+  // ---------- Ventes : à partir des réservations ----------
+  function ventesStats(d) {
+    var V = d.ventes, T = V.total, A = V.avant;
+    var tete_ = '<h2 class="stats-section">Ventes <small>réservations retirées ' + (periodeStats === 7 ? 'ces 7 derniers jours' : periodeStats === 30 ? 'ces 30 derniers jours' : periodeStats === 90 ? 'ces 3 derniers mois' : 'ces 12 derniers mois') + '</small></h2>';
+    if (!V.premiere) return tete_ + '<div class="vide grand">Pas encore de réservation enregistrée.<br>Dès les premières commandes (au téléphone ou sur le site), vous verrez ici votre chiffre d’affaires, vos plats stars et vos clients fidèles.</div>';
+    var tuiles = [
+      ['Chiffre d’affaires', euro(T.ca), evol(T.ca, A.ca) + ' sur les plats réservés'],
+      ['Commandes', nf(T.commandes), evol(T.commandes, A.commandes) + ' ' + (T.en_ligne ? T.en_ligne + ' en ligne' : 'réservations')],
+      ['Parts vendues', nf(T.parts), evol(T.parts, A.parts) + ' plats et offres'],
+      ['Panier moyen', T.commandes ? euro(T.ca / T.commandes) : '–', evol(T.commandes ? T.ca / T.commandes : 0, A.commandes ? A.ca / A.commandes : 0) + ' par commande']
+    ].map(function (t) { return '<div class="tuile"><p>' + t[0] + '</p><strong>' + t[1] + '</strong><small>' + t[2] + '</small></div>'; }).join('');
+    var max = V.plats.length ? V.plats[0].parts : 1;
+    var palmares = '<div class="bloc stats-large"><div class="bloc-tete"><h2>Vos plats stars</h2><span class="compte">classés par parts vendues</span></div>' +
+      (V.plats.length ? '<table class="palmares"><thead><tr><th>#</th><th>Plat</th><th class="n">Parts</th><th class="n">Chiffre d’affaires</th><th class="n">Servi</th><th></th></tr></thead><tbody>' + V.plats.map(function (p, i) {
+        return '<tr><td class="rang' + (i < 3 ? ' podium' : '') + '">' + (i + 1) + '</td><td><b>' + esc(p.nom) + '</b>' + (p.epuise ? ' <span class="r-badge-epuise">épuisé ' + (p.epuise > 1 ? p.epuise + ' fois' : '1 fois') + '</span>' : '') + (p.type === 'special' ? ' <span class="r-orig">offre</span>' : '') +
+          '<span class="pal-piste"><span style="width:' + (p.parts / max * 100) + '%"></span></span></td><td class="n"><b>' + p.parts + '</b></td><td class="n">' + euro(p.ca) + '</td><td class="n">' + (p.type === 'autre' ? '–' : pluriel(p.jours, 'jour')) + '</td><td class="n petit">' + (p.type !== 'autre' && p.jours ? (Math.round(p.parts / p.jours * 10) / 10).toString().replace('.', ',') + ' / jour' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="aide petit">Pas de réservation sur cette période.</p>') + '</div>';
+    var C = V.clients, L = V.lettre;
+    var clientsBloc = '<div class="bloc"><h2>Vos clients</h2><div class="mini-tuiles"><div><strong>' + C.uniques + '</strong><small>clients</small></div><div><strong>' + C.nouveaux + '</strong><small>nouveaux</small></div><div><strong>' + C.fideles + '</strong><small>déjà venus avant</small></div></div>' +
+      (C.top.length ? '<p class="aide petit">Les plus fidèles sur la période</p><ol class="top-clients">' + C.top.map(function (c) { return '<li><span>' + esc(c.nom) + '</span><b>' + pluriel(c.n, 'commande') + '</b><small>' + euro(c.ca) + '</small></li>'; }).join('') + '</ol>' : '') + '</div>';
+    var service = '<div class="bloc"><h2>Le service</h2><ul class="jauges">' +
+      jauge('Payées', T.payees, T.commandes, 'vert') +
+      jauge('Récupérées', T.recup, T.passees, 'violet', T.passees - T.recup ? (T.passees - T.recup) + ' non récupérée' + (T.passees - T.recup > 1 ? 's' : '') + ' (jours passés)' : 'aucun oubli') +
+      jauge('Réservées en ligne', T.en_ligne, T.commandes, 'bleu') + '</ul>' +
+      (V.avenir.commandes ? '<p class="a-venir">' + ico('cal') + '<span><b>' + pluriel(V.avenir.commandes, 'commande') + ' à venir</b> · ' + euro(V.avenir.ca) + ' déjà réservés</span></p>' : '') + '</div>';
+    var messages = '<div class="bloc"><h2>Vos messages</h2><div class="mini-tuiles"><div><strong>' + L.inscrits + '</strong><small>reçoivent le menu</small></div><div><strong>' + (L.nouveaux ? '+' + L.nouveaux : '0') + '</strong><small>nouveaux inscrits</small></div><div><strong>' + L.sms_ok + '</strong><small>SMS de rappel</small></div></div>' +
+      (L.desabo ? '<p class="aide petit">' + pluriel(L.desabo, 'désinscription') + ' sur la période.</p>' : '') + '<p class="aide petit">' + pluriel(L.clients, 'client') + ' dans votre fichier.</p></div>';
+    var toujours = V.toujours.length ? '<div class="bloc"><h2>Le palmarès depuis le début</h2><ol class="top-clients">' + V.toujours.map(function (p) { return '<li><span>' + esc(p.nom) + '</span><b>' + p.parts + ' parts</b></li>'; }).join('') + '</ol><p class="aide petit">Depuis la première réservation, le ' + dateFr(V.premiere) + ' ' + V.premiere.slice(0, 4) + '.</p></div>' : '';
+    return tete_ + '<div class="tuiles">' + tuiles + '</div>' +
+      '<div class="bloc"><div class="bloc-tete"><h2>Chiffre d’affaires ' + (periodeStats <= 30 ? 'par jour' : periodeStats <= 90 ? 'par semaine' : 'par mois') + '</h2><span class="compte">Survolez une barre pour le détail</span></div>' +
+        histoG(V.jours, function (x) { return x.ca; }, function (v) { return euro(v); }, function (x) { return [pluriel(x.commandes, 'commande'), pluriel(x.parts, 'part')]; }, 'Chiffre d’affaires sur la période') + '</div>' +
+      '<div class="a-retenir bloc"><h2>À retenir</h2><ul>' + conseilsVentes(V).map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="stats-grille">' + palmares +
+        colonnes('Les jours qui vendent le plus', V.semaine, JCOURTS, null, 'part') + service + clientsBloc + messages + toujours +
+      '</div>';
+  }
+  function jauge(nom, a, b, coul, aide) {
+    var p = b ? Math.round(a / b * 100) : 0;
+    return '<li><span class="jg-nom">' + nom + '</span><span class="jg-val">' + (b ? p + ' %' : '–') + ' <small>' + a + ' / ' + b + '</small></span><span class="jg-piste"><span class="jg-' + coul + '" style="width:' + p + '%"></span></span>' + (aide ? '<small class="jg-aide">' + aide + '</small>' : '') + '</li>';
+  }
+  function conseilsVentes(V) {
+    var T = V.total, out = [], p = V.plats[0];
+    if (p) out.push('Votre plat star : <b>' + esc(p.nom) + '</b>, avec ' + pluriel(p.parts, 'part') + ' (' + euro(p.ca) + ')' + (p.epuise ? ', et il a été épuisé ' + (p.epuise > 1 ? p.epuise + ' fois' : 'une fois') + ' : à refaire, en prévoyant un peu plus.' : '.'));
+    var j = V.semaine.indexOf(Math.max.apply(null, V.semaine));
+    if (Math.max.apply(null, V.semaine)) out.push('Le <b>' + JOURS[j].toLowerCase() + '</b> est le jour qui vend le plus : c’est le bon jour pour votre plat le plus généreux.');
+    if (T.commandes) out.push('<b>' + pct(T.en_ligne, T.commandes) + '</b> des commandes ont été passées en ligne' + (T.en_ligne ? '.' : ' : pensez à partager le lien de réservation (lejardinparmentier.fr/#reserver) sur Facebook et Instagram.'));
+    if (T.passees && T.passees - T.recup) out.push('<b>' + (T.passees - T.recup) + '</b> commande' + (T.passees - T.recup > 1 ? 's' : '') + ' passée' + (T.passees - T.recup > 1 ? 's' : '') + ' n’' + (T.passees - T.recup > 1 ? 'ont' : 'a') + ' pas été marquée' + (T.passees - T.recup > 1 ? 's' : '') + ' « récupérée ». Oubli de clic ou client pas venu ? Le rappel SMS aide à éviter ça.');
+    if (V.clients.fideles) out.push('<b>' + V.clients.fideles + '</b> client' + (V.clients.fideles > 1 ? 's' : '') + ' sur ' + V.clients.uniques + ' étaient déjà venus avant : vos habitués comptent.');
+    return out.length ? out : ['Pas encore assez de réservations sur cette période pour en tirer des conclusions.'];
+  }
+  // ---------- Site internet : la fréquentation ----------
+  function siteStats(d) {
     var T = d.total, A = d.avant;
     var appels = T.tel + T.evt, appelsAvant = A.tel + A.evt;
     if (!d.premier) return '<div class="vide grand"><strong>Les statistiques démarrent dès la mise en ligne.</strong><br>Revenez d’ici quelques jours : vous verrez ici vos visiteurs, les appels et les itinéraires demandés depuis le site.</div>';
@@ -468,6 +524,7 @@
         barres('Sur quel appareil', d.appareils, APPAREILS) +
         barres('Cartes traiteur consultées', d.cartes, null, 'Nombre de fois où un onglet a été ouvert.') +
         barres('Réservations d’événements', d.evenements, null, 'Clics sur « Réserver » (appel téléphonique).') +
+        (T.resa ? '<div class="bloc"><h2>Réservation en ligne</h2><ul class="jauges">' + jauge('Visiteurs qui ouvrent la réservation', T.resa, T.visiteurs, 'violet') + jauge('Réservations confirmées', T['resa-ok'], T.resa, 'vert', 'sur les fenêtres de réservation ouvertes') + '</ul></div>' : '') +
         colonnes('Jours de visite', d.semaine, JCOURTS) +
         colonnes('Heures de visite', d.heures, d.heures.map(function (x, h) { return h % 3 ? '' : h + 'h'; }), d.heures.map(function (x, h) { return h + ' h – ' + (h + 1) + ' h'; })) +
         barres('Clics vers vos réseaux', (function () { var r = {}; if (T.insta) r.Instagram = T.insta; if (T.fb) r.Facebook = T.fb; if (T.avis) r['Avis Google'] = T.avis; return r; })(), null, 'Visiteurs partis voir vos pages depuis le site.') +
@@ -489,6 +546,30 @@
     var c = Object.keys(d.cartes)[0];
     if (c) out.push('La carte traiteur la plus consultée : <b>' + esc(c) + '</b>.');
     return out.length ? out : ['Pas encore assez de visites sur cette période pour en tirer des conclusions.'];
+  }
+  // Histogramme générique : val(x) la valeur, fmt(v) son affichage, plus(x) les lignes de détail de l'infobulle
+  function histoG(jours, val, fmt, plus, titre) {
+    var g = [], cle = periodeStats <= 30 ? function (x) { return x.d; } : periodeStats <= 90 ? function (x) { var t = parse(x.d), l = (t.getDay() + 6) % 7; t.setDate(t.getDate() - l); return iso(t); } : function (x) { return x.d.slice(0, 7); };
+    jours.forEach(function (x) {
+      var k = cle(x), last = g[g.length - 1];
+      if (!last || last.k !== k) g.push(last = { k: k, v: 0, x: {} });
+      last.v += val(x); Object.keys(x).forEach(function (c) { if (typeof x[c] === 'number') last.x[c] = (last.x[c] || 0) + x[c]; });
+    });
+    var W = 800, H = 220, pg = 52, pb = 26, max = Math.max(4, Math.max.apply(null, g.map(function (x) { return x.v; })));
+    var pas = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / pas) * pas; if (top / pas > 5) { pas *= 2; top = Math.ceil(max / pas) * pas; }
+    var bw = (W - pg) / g.length, out = '';
+    for (var y = 0; y <= top; y += pas) { var yy = H - pb - (y / top) * (H - pb - 10); out += '<line x1="' + pg + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" class="grille"/><text x="' + (pg - 8) + '" y="' + (yy + 4) + '" class="axe" text-anchor="end">' + nf(y) + '</text>'; }
+    var lbl = Math.ceil(g.length / 10);
+    g.forEach(function (x, i) {
+      var h = (x.v / top) * (H - pb - 10), bx = pg + i * bw + 1, w = Math.max(2, bw - 2), by = H - pb - h, r = Math.min(4, w / 2, h);
+      var nom = periodeStats <= 30 ? dateFr(x.k) : periodeStats <= 90 ? 'semaine du ' + dateFr(x.k) : MOIS[+x.k.slice(5) - 1] + ' ' + x.k.slice(0, 4);
+      var tip = esc(nom) + '|' + fmt(x.v) + '|' + plus(x.x).join('|');
+      out += '<g class="b" data-tip="' + tip + '"><rect class="hit" x="' + (pg + i * bw) + '" y="0" width="' + bw + '" height="' + (H - pb) + '"/>' +
+        (h > 0 ? '<path class="barre" d="M' + bx + ',' + (H - pb) + 'V' + (by + r) + 'q0,-' + r + ' ' + r + ',-' + r + 'h' + (w - 2 * r) + 'q' + r + ',0 ' + r + ',' + r + 'V' + (H - pb) + 'z"/>' : '') + '</g>';
+      if (i % lbl === 0) out += '<text x="' + (pg + i * bw + bw / 2) + '" y="' + (H - 6) + '" class="axe" text-anchor="middle">' + (periodeStats <= 90 ? (parse(x.k).getDate() + '/' + (parse(x.k).getMonth() + 1)) : MOIS[+x.k.slice(5) - 1].slice(0, 4) + '.') + '</text>';
+    });
+    out += '<line x1="' + pg + '" x2="' + W + '" y1="' + (H - pb) + '" y2="' + (H - pb) + '" class="base"/>';
+    return '<div class="graph"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(titre) + '">' + out + '</svg></div>';
   }
   // Histogramme vertical en SVG (une seule série, regroupée par semaine ou par mois sur les longues périodes)
   function histo(jours) {
@@ -517,10 +598,11 @@
         return '<li><span class="hb-nom">' + esc(noms && noms[x] || x) + '</span><span class="hb-val">' + nf(obj[x]) + ' <small>' + Math.round(obj[x] / tot * 100) + ' %</small></span><span class="hb-piste"><span style="width:' + (obj[x] / max * 100) + '%"></span></span></li>';
       }).join('') + '</ul>' : '<p class="aide petit">Pas encore de données sur cette période.</p>') + '</div>';
   }
-  function colonnes(titre, vals, labels, tips) {
+  function colonnes(titre, vals, labels, tips, unite) {
+    unite = unite || 'visiteur';
     var max = Math.max.apply(null, vals) || 1;
     return '<div class="bloc"><h2>' + titre + '</h2><div class="colonnes" style="--n:' + vals.length + '">' + vals.map(function (v, i) {
-      return '<div class="col" data-tip="' + esc((tips ? tips[i] : labels[i]) + '|' + v + ' visiteur' + (v > 1 ? 's' : '')) + '"><span class="col-b' + (v === max && v ? ' max' : '') + '" style="height:' + (v / max * 100) + '%"></span><small>' + labels[i] + '</small></div>';
+      return '<div class="col" data-tip="' + esc((tips ? tips[i] : labels[i]) + '|' + v + ' ' + unite + (v > 1 ? 's' : '')) + '"><span class="col-b' + (v === max && v ? ' max' : '') + '" style="height:' + (v / max * 100) + '%"></span><small>' + labels[i] + '</small></div>';
     }).join('') + '</div></div>';
   }
   // Infobulle commune aux graphiques
@@ -580,7 +662,36 @@
         '<label class="champ"><span>Nouveau mot de passe</span><input type="password" id="mdp-nouveau" autocomplete="new-password" minlength="10"></label>' +
         '<label class="champ"><span>Confirmation</span><input type="password" id="mdp-conf" autocomplete="new-password"></label></div>' +
         '<p class="aide petit">10 caractères minimum, avec au moins une lettre et un chiffre.</p>' +
-        '<button type="button" class="btn btn-violet" data-act="mdp">Changer le mot de passe</button></section>';
+        '<button type="button" class="btn btn-violet" data-act="mdp">Changer le mot de passe</button></section>' +
+      (admin ? '<div id="smtp">' + blocSmtp() + '</div>' : '');
+  }
+  // ---------- Envoi des e-mails : boîte mail OVH connectée en SMTP ----------
+  var SMTP = null, smtpEdition = false;
+  function blocSmtp() {
+    if (!SMTP) { getJSON('smtp').then(function (j) { SMTP = j; var z = document.getElementById('smtp'); if (z) z.innerHTML = blocSmtp(); }).catch(function () {}); return ''; }
+    var S = SMTP, form = !S.pret || smtpEdition;
+    return '<section class="bloc"><div class="bloc-tete"><div><h2>Envoi des e-mails</h2><p class="aide">Confirmations de réservation, menu de la semaine, mot de passe oublié… Pour qu’ils arrivent bien, et pas dans les indésirables, le site les envoie depuis votre boîte mail OVH.</p></div>' +
+      '<span class="statut statut-' + (S.pret ? 'vert">Boîte connectée' : 'orange">Pas encore connectée') + '</span></div>' +
+      (form ? '<div class="grille-2"><label class="champ"><span>Adresse de la boîte mail</span><input id="smtp-u" type="email" value="' + esc(S.utilisateur || 'info@lejardinparmentier.fr') + '" autocomplete="off"></label>' +
+          '<label class="champ"><span>Mot de passe de cette boîte</span><input id="smtp-m" type="password" autocomplete="new-password" placeholder="' + (S.pret ? 'inchangé si vide' : '') + '"></label></div>' +
+          '<p class="aide petit">C’est le mot de passe de la boîte mail elle-même (OVH → Web Cloud → E-mails), pas celui du compte OVH. Il reste sur le serveur du site et n’est jamais affiché.</p>' +
+          '<details class="sms-avance"><summary>Réglages avancés</summary><div class="grille-2"><label class="champ"><span>Serveur d’envoi</span><input id="smtp-h" value="' + esc(S.hote) + '"></label><label class="champ"><span>Port</span><input id="smtp-p" inputmode="numeric" value="' + S.port + '"></label></div><p class="aide petit">Pour une boîte OVH : ssl0.ovh.net, port 465.</p></details>' +
+          '<div class="lettre-actions"><button type="button" class="btn btn-violet" data-act="smtp-ok">' + ico('envoyer') + 'Connecter et m’envoyer un essai</button>' + (S.pret ? '<button type="button" class="btn btn-discret" data-act="smtp-annuler">Annuler</button>' : '') + '</div>'
+        : '<p class="lettre-etat">' + ico('ok') + '<span>Les e-mails du site partent de <b>' + esc(S.utilisateur) + '</b> (' + esc(S.hote) + ').</span></p>' +
+          '<div class="lettre-actions"><button type="button" class="btn btn-ligne" data-act="smtp-changer">Changer de boîte ou de mot de passe</button><button type="button" class="btn btn-discret fc-suppr" data-act="smtp-oublier">Déconnecter</button></div>') +
+      '</section>';
+  }
+  function actionSmtp(a, b) {
+    function maj() { var z = document.getElementById('smtp'); if (z) z.innerHTML = blocSmtp(); }
+    if (a === 'smtp-changer') { smtpEdition = true; return maj(); }
+    if (a === 'smtp-annuler') { smtpEdition = false; return maj(); }
+    if (VISITE) return toast('Mode visite : rien n’est enregistré.');
+    if (a === 'smtp-oublier') return demander('Déconnecter la boîte mail ?', 'Les e-mails repartiront par l’envoi de base de l’hébergement, souvent classé en indésirable.', [{ txt: 'Annuler', val: false }, { txt: 'Déconnecter', val: true, cls: 'btn-danger' }])
+      .then(function (r) { if (r) api('smtp-oublier', {}).then(function (j) { SMTP = j; maj(); }).catch(function (e) { toast(e.message, true); }); });
+    b.disabled = true; b.textContent = 'Essai en cours…';
+    api('smtp-enregistrer', { utilisateur: document.getElementById('smtp-u').value, mdp: document.getElementById('smtp-m').value, hote: document.getElementById('smtp-h').value, port: document.getElementById('smtp-p').value })
+      .then(function (j) { SMTP = j; smtpEdition = false; maj(); toast('C’est connecté ! Un e-mail d’essai vient d’être envoyé à ' + j.a + '.'); })
+      .catch(function (e) { toast(e.message, true); b.disabled = false; b.innerHTML = ico('envoyer') + 'Connecter et m’envoyer un essai'; });
   }
   function formCompte(u) {
     var nouveau = !u; u = u || { identifiant: '', email: '', nom: '', role: 'editeur' };
@@ -1684,6 +1795,8 @@
       clFiltre = b.dataset.f; majClients();
     } else if (a === 'client-fiche') {
       ficheClient(b.dataset.id ? CL.filter(function (c) { return c.id === b.dataset.id; })[0] : null);
+    } else if (a.indexOf('smtp-') === 0) {
+      actionSmtp(a, b);
     } else if (a.indexOf('sms-') === 0) {
       actionSms(a, b);
     } else if (a === 'r-sms') {

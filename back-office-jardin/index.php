@@ -98,15 +98,19 @@ if ($api !== '') {
         $part = $in['part'] ?? '';
         if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis'], true)) repondre(400, ['erreur' => 'Données invalides.']);
         $d = site_load();
+        $ancien = $d[$part] ?? null;
         $d[$part] = $in['data'] ?? null;
         $d = site_clean($d);
         sauvegarder();
         if (!json_save(DATA . '/site.json', $d)) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable. Donnez-lui les droits d’écriture (755 ou 775) chez votre hébergeur.']);
+        // plats passés « épuisés » : gardés en mémoire pour les statistiques
+        if (in_array($part, ['semaine', 'semaine_suivante'], true)) foreach ($d[$part]['jours'] as $i => $j)
+            if ($j['epuise'] && empty($ancien['jours'][$i]['epuise'])) epuise_noter(date_du_jour($d[$part], $j['jour']), $j['nom']);
         repondre(200, ['ok' => true, 'data' => $d[$part]]);
     }
     if ($api === 'stats') {
         if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
-        repondre(200, stats_synthese((int)($_GET['jours'] ?? 30)));
+        repondre(200, stats_synthese((int)($_GET['jours'] ?? 30)) + ['ventes' => ventes_synthese((int)($_GET['jours'] ?? 30))]);
     }
     if ($api === 'photo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         api_garde();
@@ -354,13 +358,38 @@ if ($api !== '') {
             if (!$s) repondre(400, ['erreur' => 'Aucun menu de la semaine à envoyer : remplissez d’abord l’onglet « Menu de la semaine ».']);
             if ($api === 'lettre-test') {
                 $ok = mail_envoyer($moi['email'], '[Essai] ' . lettre_sujet($s), lettre_html($s, $moi['nom'], adresse_site() . '/lettre'), lettre_texte($s, $moi['nom'], adresse_site() . '/lettre'));
-                if (!$ok) repondre(500, ['erreur' => 'L’e-mail n’a pas pu partir : l’envoi d’e-mails est peut-être désactivé chez l’hébergeur.']);
+                if (!$ok) repondre(500, ['erreur' => 'L’e-mail n’a pas pu partir (' . ($GLOBALS['mail_erreur'] ?? '') . '). Connectez votre boîte mail dans Utilisateurs → Envoi des e-mails.']);
                 lettre_noter(['du' => $s['du'], 'date' => date('Y-m-d H:i'), 'mode' => 'test', 'nb' => 1, 'ok' => 1, 'a' => $moi['email']]);
                 repondre(200, ['ok' => true, 'a' => $moi['email']] + $listeClients());
             }
             [$n, $e] = lettre_envoyer($s, $qui);
             if (!$n && $e) repondre(500, ['erreur' => $e]);
             repondre(200, ['ok' => true, 'n' => $n, 'avert' => $e] + $listeClients());
+        }
+    }
+    // ---- Boîte mail utilisée pour envoyer les e-mails du site (SMTP, OVH par défaut) ----
+    if (strpos($api, 'smtp') === 0) {
+        if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
+        $etatSmtp = function () { $c = smtp_config(); return ['ok' => true, 'pret' => $c['pret'], 'hote' => $c['hote'], 'port' => $c['port'], 'utilisateur' => $c['utilisateur']]; };
+        if ($api === 'smtp') repondre(200, $etatSmtp());
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') repondre(405, ['erreur' => 'Méthode non autorisée.']);
+        api_garde(true);
+        $in = entree();
+        if ($api === 'smtp-oublier') { @unlink(SMTP_CONFIG); repondre(200, $etatSmtp()); }
+        if ($api === 'smtp-enregistrer') {
+            $c = smtp_config();
+            $n = ['hote' => preg_replace('/[^a-z0-9.-]/i', '', (string)($in['hote'] ?? '')) ?: 'ssl0.ovh.net', 'port' => (int)($in['port'] ?? 465) ?: 465,
+                  'utilisateur' => email_ok($in['utilisateur'] ?? ''), 'mdp' => (string)($in['mdp'] ?? '') !== '' ? (string)$in['mdp'] : $c['mdp']];
+            if ($n['utilisateur'] === '') repondre(400, ['erreur' => 'Indiquez l’adresse e-mail complète de la boîte (ex. info@lejardinparmentier.fr).']);
+            if ($n['mdp'] === '') repondre(400, ['erreur' => 'Indiquez le mot de passe de cette boîte mail.']);
+            $n['pret'] = true;
+            // on essaie d'abord : rien n'est enregistré si l'envoi échoue
+            $ok = mail_envoyer($moi['email'], 'Essai · les e-mails du site fonctionnent', '<div style="font:15px/1.6 Arial,sans-serif"><p>Bonne nouvelle : le site envoie bien ses e-mails depuis <b>' . h($n['utilisateur']) . '</b>.</p><p>Confirmations de réservation, menu de la semaine et mots de passe oubliés partiront désormais de cette adresse.</p></div>',
+                "Bonne nouvelle : le site envoie bien ses e-mails depuis {$n['utilisateur']}.\n", '', $n);
+            if (!$ok) repondre(400, ['erreur' => 'L’essai a échoué : ' . ($GLOBALS['mail_erreur'] ?? 'erreur inconnue') . '. Vérifiez l’adresse et le mot de passe de la boîte mail.']);
+            unset($n['pret']);
+            if (!json_save(SMTP_CONFIG, $n)) repondre(500, ['erreur' => 'Impossible d’enregistrer : le dossier data/ n’est pas modifiable.']);
+            repondre(200, ['a' => $moi['email']] + $etatSmtp());
         }
     }
     // ---- Plat épuisé (bouton rapide de l'onglet Réservations) ----
@@ -374,6 +403,7 @@ if ($api !== '') {
                 if ($s['du'] === '' || $date < $s['du'] || ($s['au'] !== '' && $date > $s['au'])) continue;
                 foreach ($d[$k]['jours'] as $i => $j) if (norm($j['jour']) === norm($nom) && $j['nom'] !== '') {
                     $d[$k]['jours'][$i]['epuise'] = !empty($in['valeur']);
+                    if (!empty($in['valeur'])) epuise_noter($date, $j['nom']);
                     sauvegarder();
                     json_save(DATA . '/site.json', site_clean($d));
                     return [$k, site_load()[$k]];
@@ -579,7 +609,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=20" rel="stylesheet">
+<link href="admin.css?v=21" rel="stylesheet">
 </head>
 <body>
 
@@ -667,7 +697,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=20"></script>
+<script src="admin.js?v=21"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
