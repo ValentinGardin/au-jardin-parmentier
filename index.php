@@ -60,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=22" rel="stylesheet">
+<link href="style.css?v=23" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 <?php
 $ld = [['@context' => 'https://schema.org', '@type' => ['FoodEstablishment', 'LocalBusiness'], 'name' => 'Au Jardin Parmentier',
@@ -122,6 +122,7 @@ foreach ($ld as $bloc): ?>
 <?php if ($platDuJour || $prochain): ?>
       <!-- Mini-menu : le plat d'aujourd'hui (en boutique ou au téléphone), puis le prochain plat réservable en ligne -->
       <div class="hero-menu anim" style="--d:4">
+        <p class="hm-titre"><span class="hm-titre-ico" aria-hidden="true"><svg><use href="#i-sac"/></svg></span>Le plat du jour<span class="hm-titre-sous">fait maison, à emporter</span></p>
 <?php if ($platDuJour): ?>
         <a class="hm-ligne" href="#semaine">
           <span class="hm-quand">Aujourd’hui</span>
