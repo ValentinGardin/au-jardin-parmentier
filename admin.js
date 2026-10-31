@@ -809,6 +809,7 @@
   function vueResas() {
     if (!R.data || R.data.du !== lundi(R.date) || !R.charge) chargerResas();
     return tete('Réservations', 'Les plats réservés, jour par jour. Un clic pour noter qu’une commande est payée, puis récupérée.',
+      '<button type="button" class="btn btn-ligne" data-act="r-historique">' + ico('livre') + 'Historique</button>' +
       '<button type="button" class="btn btn-ligne" data-act="r-imprimer">' + ico('imprim') + 'Imprimer la liste</button>' +
       '<button type="button" class="btn btn-violet" data-act="resa-nouvelle">' + ico('plus') + 'Nouvelle réservation</button>') +
       blocCommande() + '<div id="resas">' + resasContenu() + '</div>';
@@ -986,6 +987,78 @@
     else if (dedans) R.data.resas.push(n);
     if (onglet === 'resas') majResas();
   }
+
+  // ---------- Historique de toutes les commandes (fenêtre, filtres jour / client, impression) ----------
+  function historique() {
+    var H = { toutes: null, jour: '', quel: 'retrait', client: '' };
+    var d = document.createElement('div');
+    d.className = 'modale-fond histo-fond';
+    d.innerHTML = '<div class="modale histo" role="dialog" aria-modal="true" aria-labelledby="h-t">' +
+      '<div class="histo-tete"><div><h2 id="h-t">Historique des commandes</h2><p class="histo-filtres-txt" id="h-resume">Chargement…</p></div>' +
+      '<div class="histo-actions"><button type="button" class="btn btn-ligne" data-h="imprimer">' + ico('imprim') + 'Imprimer</button><button type="button" class="ib histo-x" data-h="fermer" aria-label="Fermer">×</button></div></div>' +
+      '<div class="histo-filtres"><label class="champ"><span>Jour</span><span class="histo-jour"><input type="date" id="h-jour">' +
+        '<select id="h-quel" aria-label="Type de date"><option value="retrait">de retrait</option><option value="commande">de commande</option></select></span></label>' +
+        '<label class="champ"><span>Client</span><input type="search" id="h-client" list="h-clients" placeholder="Nom, téléphone ou e-mail…"><datalist id="h-clients"></datalist></label>' +
+        '<button type="button" class="btn btn-discret" data-h="effacer">Tout afficher</button></div>' +
+      '<div class="histo-liste" id="h-liste"><p class="chargement">Chargement…</p></div></div>';
+    document.body.appendChild(d);
+    function fin() { d.remove(); document.removeEventListener('keydown', echap); }
+    function echap(e) { if (e.key === 'Escape') fin(); }
+    document.addEventListener('keydown', echap);
+    function filtrees() {
+      var q = sansAccent(H.client).trim(), qc = q.replace(/\D/g, '');
+      return (H.toutes || []).filter(function (r) {
+        if (H.jour && (H.quel === 'retrait' ? r.date : r.cree.slice(0, 10)) !== H.jour) return false;
+        if (q && sansAccent(nomClient(r.c) + ' ' + r.c.email).indexOf(q) < 0 && !(qc.length > 2 && r.c.tel.replace(/\D/g, '').indexOf(qc) >= 0) && String(r.num) !== q) return false;
+        return true;
+      });
+    }
+    function dessiner() {
+      var l = filtrees(), tot = 0, enc = 0;
+      l.forEach(function (r) { var t = totalResa(r); tot += t; if (r.paye) enc += t; });
+      var res = [];
+      if (H.jour) res.push((H.quel === 'retrait' ? 'retrait le ' : 'commandées le ') + dateLongue(H.jour).toLowerCase());
+      if (H.client) res.push('client « ' + H.client + ' »');
+      d.querySelector('#h-resume').textContent = pluriel(l.length, 'commande') + (res.length ? ' · ' + res.join(' · ') : ' · toutes') + (tot ? ' · ' + euros(tot) + ' (dont ' + euros(enc) + ' encaissés)' : '');
+      d.querySelector('#h-liste').innerHTML = l.length ? '<table class="histo-table"><thead><tr><th>N°</th><th>Retrait</th><th>Client</th><th>Commande</th><th class="n">Total</th><th>État</th><th>Prise</th></tr></thead><tbody>' + l.map(function (r) {
+        var t = totalResa(r);
+        return '<tr data-id="' + r.id + '" data-d="' + r.date + '" title="Ouvrir ce jour dans les réservations"><td class="h-num">' + r.num + '</td>' +
+          '<td><b>' + esc(dateLongue(r.date)) + '</b><small>commandée ' + esc(quand(r.cree).replace(/ par .*$/, '')) + '</small></td>' +
+          '<td><b>' + esc(nomClient(r.c) || 'Sans nom') + '</b><small>' + esc(r.c.tel || r.c.email || '') + '</small></td>' +
+          '<td>' + r.lignes.map(function (x) { return x.qte + ' × ' + esc(x.nom); }).join('<br>') + (r.note ? '<small class="h-note">« ' + esc(r.note) + ' »</small>' : '') + '</td>' +
+          '<td class="n">' + (t ? euros(t) : '–') + '</td>' +
+          '<td><span class="h-etat ' + (r.paye ? 'ok' : 'non') + '">' + (r.paye ? 'Payé' : 'Non payé') + '</span><span class="h-etat ' + (r.recupere ? 'ok' : 'non') + '">' + (r.recupere ? 'Récupéré' : 'À récupérer') + '</span></td>' +
+          '<td><small>' + (r.source === 'site' ? 'En ligne' : esc(r.par)) + '</small></td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="vide">Aucune commande ne correspond.</p>';
+    }
+    getJSON('resas&du=2000-01-01&au=2100-12-31').then(function (j) {
+      H.toutes = j.resas.slice().sort(function (a, b) { return (b.date + b.cree).localeCompare(a.date + a.cree); });
+      var noms = {};
+      H.toutes.forEach(function (r) { var n = nomClient(r.c); if (n) noms[n] = 1; });
+      d.querySelector('#h-clients').innerHTML = Object.keys(noms).sort(function (a, b) { return a.localeCompare(b, 'fr'); }).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
+      dessiner();
+    }).catch(function (e) { d.querySelector('#h-liste').innerHTML = '<p class="vide">' + esc(e.message) + '</p>'; });
+    d.addEventListener('input', function (e) {
+      if (e.target.id === 'h-client') { H.client = e.target.value; dessiner(); }
+    });
+    d.addEventListener('change', function (e) {
+      if (e.target.id === 'h-jour') { H.jour = e.target.value; dessiner(); }
+      if (e.target.id === 'h-quel') { H.quel = e.target.value; dessiner(); }
+    });
+    d.addEventListener('click', function (e) {
+      if (e.target === d) return fin();
+      var b = e.target.closest('[data-h]');
+      if (b) {
+        if (b.dataset.h === 'fermer') fin();
+        else if (b.dataset.h === 'effacer') { H.jour = ''; H.client = ''; d.querySelector('#h-jour').value = ''; d.querySelector('#h-client').value = ''; dessiner(); }
+        else if (b.dataset.h === 'imprimer') { document.body.classList.add('impression-histo'); window.print(); }
+        return;
+      }
+      var tr = e.target.closest('tr[data-d]');
+      if (tr) { fin(); R.date = tr.dataset.d; R.q = ''; R.filtre = 'tout'; onglet = 'resas'; ecrire('onglet', onglet); render(); }
+    });
+  }
+  window.addEventListener('afterprint', function () { document.body.classList.remove('impression-histo'); });
 
   // ---------- Fenêtre « Nouvelle réservation » ----------
   // Pensée pour aller vite au téléphone : on tape le nom (les clients connus sont proposés), le jour est déjà choisi,
@@ -2001,6 +2074,8 @@
           if (VISITE) return toast('Mode visite : rien n’est supprimé.');
           api('resa-suppr', { id: rs.id }).then(function () { R.data.resas = R.data.resas.filter(function (x) { return x.id !== rs.id; }); chargerClients(); majResas(); toast('Réservation supprimée.'); }).catch(function (er) { toast(er.message, true); });
         });
+    } else if (a === 'r-historique') {
+      historique();
     } else if (a === 'r-imprimer') {
       window.print();
     } else if (a === 'cl-filtre') {

@@ -835,3 +835,40 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .imp-accord{margin-top:1rem}
 .cl-tri{display:flex;align-items:center;gap:.45rem;font-size:.85rem;color:var(--gris);white-space:nowrap}
 .cl-tri select{width:auto;padding:.6rem 2rem .6rem .8rem;border:1px solid var(--trait);border-radius:12px;background-color:var(--blanc);font:inherit;color:var(--encre);cursor:pointer}
+
+/* Historique des commandes */
+.histo{width:min(100%,1080px);max-height:calc(100vh - 2rem);display:flex;flex-direction:column;padding:0;overflow:hidden}
+.histo-tete{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.3rem 1.5rem .8rem}
+.histo-tete h2{margin:0 0 .2rem}
+.histo-filtres-txt{margin:0!important;font-size:.88rem}
+.histo-actions{display:flex;gap:.4rem;align-items:center}
+.histo-x{font-size:1.5rem;line-height:1;color:var(--gris)}
+.histo-filtres{display:flex;gap:.8rem;align-items:flex-end;flex-wrap:wrap;padding:0 1.5rem .9rem;border-bottom:1px solid var(--trait)}
+.histo-filtres .champ{margin:0;flex:1;min-width:220px}
+.histo-jour{display:flex;gap:.4rem}
+.histo-jour select{width:auto}
+.histo-liste{flex:1;overflow:auto;padding:0 1.5rem 1.2rem}
+.histo-table{width:100%;border-collapse:collapse;font-size:.86rem;font-variant-numeric:tabular-nums}
+.histo-table th{position:sticky;top:0;z-index:1;background:var(--blanc);text-align:left;padding:.7rem .5rem .5rem;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--gris);border-bottom:1px solid var(--trait)}
+.histo-table td{padding:.6rem .5rem;border-bottom:1px solid var(--trait);vertical-align:top}
+.histo-table td small{display:block;color:var(--gris);font-size:.76rem}
+.histo-table .n{text-align:right;white-space:nowrap}
+.histo-table tbody tr{cursor:pointer}
+.histo-table tbody tr:hover td{background:var(--fond)}
+.h-num{font-weight:700;color:var(--gris-clair)}
+.h-note{font-style:italic}
+.h-etat{display:block;width:fit-content;margin-bottom:.2rem;padding:.08rem .45rem;border-radius:6px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.h-etat.ok{background:var(--vert-pale);color:var(--vert)}
+.h-etat.non{background:var(--fond);color:var(--gris)}
+@media (max-width:760px){.histo-table th:nth-child(7),.histo-table td:nth-child(7){display:none}}
+@media print{
+  body.impression-histo > *:not(.histo-fond){display:none!important}
+  body.impression-histo .histo-fond{position:static;display:block;padding:0;background:none;backdrop-filter:none}
+  body.impression-histo .histo{width:100%;max-height:none;box-shadow:none;border-radius:0;overflow:visible;animation:none}
+  body.impression-histo .histo-liste{overflow:visible;padding:0}
+  body.impression-histo .histo-filtres,body.impression-histo .histo-actions{display:none}
+  body.impression-histo .histo-tete{padding:0 0 .6rem}
+  body.impression-histo .histo-table th{position:static}
+  body.impression-histo .histo-table tr{break-inside:avoid}
+}
+.histo-table td:nth-child(3) small{white-space:nowrap}
