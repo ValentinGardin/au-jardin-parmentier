@@ -663,3 +663,22 @@ h2{font-size:clamp(1.75rem,3vw,2.45rem)}
 .faq-q[open] .faq-r{animation:entree .35s var(--ease)}
 @media (max-width:860px){.faq-in{grid-template-columns:1fr}.faq-tete{position:static}.faq-r{padding-right:.2rem}}
 .rs-champ .bientot{display:inline-block;margin-left:.3rem;padding:.08rem .45rem;border-radius:999px;background:var(--sable);color:var(--gris);font:600 .7rem var(--texte);font-style:normal;letter-spacing:.02em;vertical-align:middle;white-space:nowrap}
+
+/* Accueil : mini-menu (aujourd'hui, puis le prochain plat réservable) */
+.hero-menu{margin-top:1.6rem;max-width:31rem;background:var(--blanc);border:1px solid var(--trait);border-radius:16px;box-shadow:var(--ombre);overflow:hidden}
+.hm-ligne{display:grid;grid-template-columns:9.4rem minmax(0,1fr) auto;gap:.8rem;align-items:center;padding:.75rem .9rem;color:var(--encre);text-decoration:none}
+.hm-ligne + .hm-ligne{border-top:1px solid var(--trait)}
+a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
+.hm-quand{font:600 .68rem/1.25 var(--texte);letter-spacing:.14em;text-transform:uppercase;color:var(--gris)}
+.hm-suivant .hm-quand{color:var(--violet)}
+.hm-plat{display:flex;align-items:baseline;gap:.5rem;min-width:0}
+.hm-plat b{font-weight:600;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-plat small{flex:none;color:var(--gris);font-size:.85rem}
+.hm-act{font-size:.78rem;color:var(--gris);white-space:nowrap}
+.hm-act.epuise{color:#b42318;font-weight:600}
+.hm-btn{border:0;border-radius:999px;background:var(--violet);color:#fff;font:600 .8rem var(--texte);padding:.5rem .95rem;cursor:pointer;transition:background-color .2s}
+.hm-btn:hover{background:var(--violet-fonce)}
+.hm-suivant{background:#fdf8fb}
+.hm-note{margin:0;padding:.5rem .9rem .6rem;border-top:1px solid var(--trait);font-size:.76rem;color:var(--gris);background:var(--blanc)}
+.hm-note a{white-space:nowrap}
+@media (max-width:480px){.hm-ligne{grid-template-columns:1fr auto}.hm-quand{grid-column:1/-1}}

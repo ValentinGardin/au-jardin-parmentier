@@ -60,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=19" rel="stylesheet">
+<link href="style.css?v=20" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 <?php
 $ld = [['@context' => 'https://schema.org', '@type' => ['FoodEstablishment', 'LocalBusiness'], 'name' => 'Au Jardin Parmentier',
@@ -111,19 +111,32 @@ foreach ($ld as $bloc): ?>
 <?php endif; ?>
       <h1 class="anim" style="--d:1">Bienvenue dans notre <span class="accent">atelier gourmand.</span></h1>
       <p class="lead anim" style="--d:2">De bons produits, et des repas préparés selon vos envies, par Angel &amp; Fab, au cœur de Montdidier.</p>
+<?php $prochain = $cmdJours[0] ?? null;   // prochain plat réservable en ligne (au plus tôt demain) ?>
       <div class="ctas anim" style="--d:3">
-<?php if ($cmdJours): ?>        <button type="button" class="btn btn-violet btn-lg" data-reserver>Réserver mon plat du jour</button>
+<?php if ($prochain): ?>        <button type="button" class="btn btn-violet btn-lg" data-reserver="<?= $prochain['date'] ?>">Réserver un plat</button>
         <a class="btn btn-ligne btn-lg" href="#semaine">Le menu de la semaine</a>
 <?php else: if ($aSemaine): ?>        <a class="btn btn-violet btn-lg" href="#semaine">Le menu de la semaine</a>
 <?php endif; ?>        <a class="btn btn-ligne btn-lg" href="#traiteur">Nos cartes traiteur</a>
 <?php endif; ?>
       </div>
+<?php if ($platDuJour || $prochain): ?>
+      <!-- Mini-menu : le plat d'aujourd'hui (en boutique ou au téléphone), puis le prochain plat réservable en ligne -->
+      <div class="hero-menu anim" style="--d:4">
 <?php if ($platDuJour): ?>
-      <a class="du-jour anim" style="--d:4" href="#semaine">
-        <span class="du-jour-tag">Aujourd’hui</span>
-        <span class="du-jour-nom"><?= h($platDuJour['nom']) ?><?= $platDuJour['epuise'] ? ' · épuisé' : '' ?></span>
-        <?php if ($platDuJour['prix'] !== ''): ?><span class="du-jour-px"><?= h($platDuJour['prix']) ?></span><?php endif; ?>
-      </a>
+        <a class="hm-ligne" href="#semaine">
+          <span class="hm-quand">Aujourd’hui</span>
+          <span class="hm-plat"><b><?= h($platDuJour['nom']) ?></b><?php if ($platDuJour['prix'] !== ''): ?><small><?= h($platDuJour['prix']) ?></small><?php endif; ?></span>
+          <span class="hm-act<?= $platDuJour['epuise'] ? ' epuise' : '' ?>"><?= $platDuJour['epuise'] ? 'Épuisé' : ($prochain ? 'En boutique' : 'À emporter') ?></span>
+        </a>
+<?php endif; if ($prochain): ?>
+        <div class="hm-ligne hm-suivant">
+          <span class="hm-quand"><?= h(ucfirst(date_fr($prochain['date'], true))) ?></span>
+          <span class="hm-plat"><b><?= h($prochain['plat']['nom']) ?></b><?php if ($prochain['plat']['prix'] !== ''): ?><small><?= h($prochain['plat']['prix']) ?></small><?php endif; ?></span>
+          <button type="button" class="hm-btn" data-reserver="<?= $prochain['date'] ?>">Réserver</button>
+        </div>
+        <p class="hm-note">Réservation en ligne jusqu’à la veille<?= $platDuJour && !$platDuJour['epuise'] ? ' · pour aujourd’hui, appelez le <a href="' . $telHref . '">' . $tel . '</a>' : '' ?></p>
+<?php endif; ?>
+      </div>
 <?php endif; ?>
     </div>
     <div class="hero-visuel anim" style="--d:2">
