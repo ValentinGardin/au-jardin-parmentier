@@ -159,9 +159,17 @@
       if (evt()) return etape1Evt(evt());
       var j = jour();
       entete(1, 'Réserver mon plat');
-      corps.innerHTML = '<p class="rs-q">Pour quel jour ?</p><div class="rs-jours" role="radiogroup" aria-label="Jour de retrait">' + D.jours.map(function (x) {
-          var c = court(x.date);
-          return '<button type="button" role="radio" aria-checked="' + (x.date === j.date) + '" data-rs="jour" data-d="' + x.date + '"' + (x.forte ? ' class="forte" title="Forte demande"' : '') + '><span>' + c.j + '</span><b>' + c.n + '</b><small>' + c.m + '</small></button>';
+      var t0 = new Date(), auj = t0.getFullYear() + '-' + ('0' + (t0.getMonth() + 1)).slice(-2) + '-' + ('0' + t0.getDate()).slice(-2);
+      var semAuj = lundi(auj), semSuiv = (function () { var x = new Date(semAuj + 'T12:00:00'); x.setDate(x.getDate() + 7); return x.toISOString().slice(0, 10); })();
+      // jours regroupés par semaine, avec un petit titre et un trait fin entre deux semaines
+      var groupes = [];
+      D.jours.forEach(function (x) { var l = lundi(x.date), g = groupes[groupes.length - 1]; if (!g || g.l !== l) groupes.push(g = { l: l, j: [] }); g.j.push(x); });
+      corps.innerHTML = '<p class="rs-q">Pour quel jour ?</p><div class="rs-jours" role="radiogroup" aria-label="Jour de retrait">' + groupes.map(function (g) {
+          var titre = g.l === semAuj ? 'Cette semaine' : g.l === semSuiv ? 'Semaine prochaine' : 'Semaine du ' + court(g.l).n + ' ' + court(g.l).m;
+          return '<div class="rs-sem"><span class="rs-sem-t">' + titre + '</span><div class="rs-sem-j">' + g.j.map(function (x) {
+            var c = court(x.date);
+            return '<button type="button" role="radio" aria-checked="' + (x.date === j.date) + '" data-rs="jour" data-d="' + x.date + '"' + (x.forte ? ' class="forte" title="Forte demande"' : '') + '><span>' + c.j + '</span><b>' + c.n + '</b><small>' + c.m + '</small></button>';
+          }).join('') + '</div></div>';
         }).join('') + '</div>' +
         '<p class="rs-q">Votre commande <span>pour ' + esc(j.libelle) + '</span></p>' +
         '<div class="rs-plat' + (etat.plat ? ' choisi' : '') + '"><div class="rs-plat-txt"><span class="rs-tag">Plat du jour' + (j.forte ? ' <em class="rs-forte">Forte demande · réservez vite</em>' : '') + '</span><strong>' + esc(j.plat.nom) + '</strong>' + (j.plat.desc ? '<small>' + esc(j.plat.desc) + '</small>' : '') + '</div>' +
