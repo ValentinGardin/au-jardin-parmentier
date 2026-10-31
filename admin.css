@@ -833,3 +833,5 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .imp-table td{padding:.4rem .7rem;border-top:1px solid var(--trait)}
 .imp-table em{color:var(--gris-clair)}
 .imp-accord{margin-top:1rem}
+.cl-tri{display:flex;align-items:center;gap:.45rem;font-size:.85rem;color:var(--gris);white-space:nowrap}
+.cl-tri select{width:auto;padding:.6rem 2rem .6rem .8rem;border:1px solid var(--trait);border-radius:12px;background-color:var(--blanc);font:inherit;color:var(--encre);cursor:pointer}

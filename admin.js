@@ -1246,15 +1246,36 @@
     ['tout', 'oui', 'sms', 'non', ''].forEach(function (k) { clFiltre = k; nb[k] = CL.filter(filtreClient).length; });
     clFiltre = garde;
     var q = sansAccent(clQ).trim(), qc = q.replace(/\D/g, '');
-    var l = CL.filter(function (c) {
+    var l = trierClients(CL.filter(function (c) {
       if (!filtreClient(c)) return false;
       return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
-    });
+    }));
     var f = [['tout', 'Tous'], ['oui', 'Menu par e-mail'], ['sms', 'SMS'], ['non', 'Ont refusé'], ['', 'À demander']];
     return '<div class="r-outils"><div class="periodes" role="group" aria-label="Filtrer">' + f.map(function (x) {
         return '<button type="button" data-act="cl-filtre" data-f="' + x[0] + '" aria-pressed="' + (clFiltre === x[0]) + '">' + x[1] + ' <span>' + nb[x[0]] + '</span></button>';
-      }).join('') + '</div><input type="search" id="cl-q" class="r-q" value="' + esc(clQ) + '" placeholder="Rechercher un nom, un téléphone, un e-mail…" aria-label="Rechercher"></div>' +
+      }).join('') + '</div><input type="search" id="cl-q" class="r-q" value="' + esc(clQ) + '" placeholder="Rechercher un nom, un téléphone, un e-mail…" aria-label="Rechercher">' +
+      '<label class="cl-tri"><span class="sr-only">Trier par</span><select id="cl-tri">' + TRIS.map(function (t) { return '<option value="' + t[0] + '"' + (t[0] === clTri ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label></div>' +
       '<div id="cl-liste">' + clientsListe(l) + '</div>';
+  }
+  // Tri de la liste des clients (gardé pendant la session)
+  var TRIS = [['az', 'Tri : A → Z'], ['za', 'Tri : Z → A'], ['cmd', 'Tri : plus de commandes'], ['der', 'Tri : dernière commande'], ['recent', 'Tri : ajoutés récemment']];
+  var clTri = lire('clTri') || 'az';
+  function cleNom(c) { return sansAccent((c.nom || '') + ' ' + (c.prenom || '')).trim(); }
+  // les contacts sans nom passent toujours après les autres (classés par e-mail)
+  function parNom(a, b, sens) {
+    var x = cleNom(a), y = cleNom(b);
+    if (!x !== !y) return x ? -1 : 1;
+    return sens * (x || a.email).localeCompare(y || b.email, 'fr');
+  }
+  function trierClients(l) {
+    var f = {
+      az: function (a, b) { return parNom(a, b, 1); },
+      za: function (a, b) { return parNom(a, b, -1); },
+      cmd: function (a, b) { return (b.nb - a.nb) || parNom(a, b, 1); },
+      der: function (a, b) { return (b.der || '').localeCompare(a.der || '') || parNom(a, b, 1); },
+      recent: function (a, b) { return (b.cree || '').localeCompare(a.cree || ''); }
+    }[clTri] || null;
+    return f ? l.slice().sort(f) : l;
   }
   function clientsListe(l) {
     if (!CL.length) return '<div class="vide grand">Pas encore de client. Ils s’ajoutent tout seuls à chaque réservation et à chaque inscription au menu par e-mail.</div>';
@@ -1269,10 +1290,10 @@
   function majClientsListe() {
     var z = document.getElementById('cl-liste'); if (!z) return;
     var q = sansAccent(clQ).trim(), qc = q.replace(/\D/g, '');
-    z.innerHTML = clientsListe(CL.filter(function (c) {
+    z.innerHTML = clientsListe(trierClients(CL.filter(function (c) {
       if (!filtreClient(c)) return false;
       return !q || sansAccent(nomClient(c) + ' ' + c.email).indexOf(q) >= 0 || (qc.length > 2 && c.tel.replace(/\D/g, '').indexOf(qc) >= 0);
-    }));
+    })));
   }
   function ficheClient(c) {
     var nouveau = !c; c = c || { id: '', prenom: '', nom: '', tel: '', email: '', note: '', lettre: { statut: '', historique: [] } };
@@ -1779,6 +1800,7 @@
   });
   app.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.id === 'cl-tri') { clTri = t.value; ecrire('clTri', clTri); majClientsListe(); return; }
     if (t.id === 'r-cal') { if (t.value) { R.date = t.value; render(true); } return; }
     if (t.dataset.sms) {
       var o = {}; o[t.dataset.sms] = t.type === 'checkbox' ? t.checked : t.value;
