@@ -662,3 +662,4 @@ h2{font-size:clamp(1.75rem,3vw,2.45rem)}
 .faq-r{padding:0 3rem 1.2rem .2rem;color:var(--gris);font-size:.95rem;line-height:1.7}
 .faq-q[open] .faq-r{animation:entree .35s var(--ease)}
 @media (max-width:860px){.faq-in{grid-template-columns:1fr}.faq-tete{position:static}.faq-r{padding-right:.2rem}}
+.rs-champ .bientot{display:inline-block;margin-left:.3rem;padding:.08rem .45rem;border-radius:999px;background:var(--sable);color:var(--gris);font:600 .7rem var(--texte);font-style:normal;letter-spacing:.02em;vertical-align:middle;white-space:nowrap}

@@ -60,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=18" rel="stylesheet">
+<link href="style.css?v=19" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 <?php
 $ld = [['@context' => 'https://schema.org', '@type' => ['FoodEstablishment', 'LocalBusiness'], 'name' => 'Au Jardin Parmentier',
@@ -551,7 +551,8 @@ foreach ($ld as $bloc): ?>
     <div class="rs-pied" id="rs-pied"></div>
   </div>
 </div>
-<script type="application/json" id="rs-donnees"><?= json_encode(['jours' => $cmdJours, 'evts' => $cmdEvts, 'tel' => $tel, 'telHref' => $telHref, 'limite' => str_replace(':', 'h', commande_config()['limite'])], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<script type="application/json" id="rs-donnees"><?= json_encode(['jours' => $cmdJours, 'evts' => $cmdEvts, 'tel' => $tel, 'telHref' => $telHref, 'limite' => str_replace(':', 'h', commande_config()['limite']),
+    'mailPret' => smtp_config()['pret'], 'smsPret' => sms_pret(sms_config())], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <?php endif; ?>
 
 
@@ -598,6 +599,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=14" defer></script>
+<script src="main.js?v=15" defer></script>
 </body>
 </html>

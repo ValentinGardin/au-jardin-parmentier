@@ -210,7 +210,7 @@ if ($api !== '') {
         }
     }
     // ---- Réservations et clients ----
-    if (in_array($api, ['resas', 'resa', 'resa-etat', 'resa-suppr', 'clients', 'client', 'client-suppr', 'clients-csv', 'lettre-auto', 'lettre-test', 'lettre-envoyer'], true)) {
+    if (in_array($api, ['resas', 'resa', 'resa-etat', 'resa-suppr', 'clients', 'client', 'client-suppr', 'clients-csv', 'clients-import', 'lettre-auto', 'lettre-test', 'lettre-envoyer'], true)) {
         if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
         $masquer = $moi['role'] === 'visiteur';
         $qui = $moi['nom'] ?: $moi['identifiant'];
@@ -340,6 +340,32 @@ if ($api !== '') {
             });
             if ($e) repondre(400, ['erreur' => $e]);
             repondre(200, $listeClients());
+        }
+        // Import d'une liste de contacts (fichier CSV lu dans le navigateur) : ajoutés aux clients,
+        // inscrits au menu de la semaine si leur accord est déjà acquis (sauf s'ils l'avaient refusé)
+        if ($api === 'clients-import') {
+            $r = verrou(function () use ($in, $qui) {
+                $l = clients_charger(); $n = ['ajoutes' => 0, 'maj' => 0, 'ignores' => 0, 'refus' => 0, 'inscrits' => 0];
+                foreach (array_slice(liste($in['contacts'] ?? []), 0, 2000) as $x) {
+                    $email = email_ok($x['email'] ?? '');
+                    if ($email === '') { $n['ignores']++; continue; }
+                    $ci = ['prenom' => txt($x['prenom'] ?? '', 40), 'nom' => txt($x['nom'] ?? '', 60), 'tel' => (string)($x['tel'] ?? ''), 'email' => $email];
+                    $i = client_index($l, $ci['tel'], $email);
+                    if ($i === null) { $l[] = client_clean($ci); $i = count($l) - 1; $n['ajoutes']++; }
+                    else {
+                        $m = $l[$i];
+                        foreach (['prenom', 'nom', 'tel'] as $k) if (trim((string)$m[$k]) === '' && trim($ci[$k]) !== '') $m[$k] = $ci[$k];
+                        $l[$i] = client_clean($m, $l[$i]); $n['maj']++;
+                    }
+                    if (!empty($in['accord'])) {
+                        if ($l[$i]['lettre']['statut'] === 'non') $n['refus']++;
+                        elseif ($l[$i]['lettre']['statut'] !== 'oui') { client_lettre($l[$i], true, 'import · ' . $qui); $n['inscrits']++; }
+                    }
+                }
+                return clients_enregistrer($l) ? $n : null;
+            });
+            if (!$r) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable.']);
+            repondre(200, ['resultat' => $r] + $listeClients());
         }
         if ($api === 'client-suppr') {
             // Droit à l'effacement : le client disparaît, ses anciennes réservations restent (sans nom) pour l'historique
@@ -630,7 +656,7 @@ if ($logged) {
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=26" rel="stylesheet">
+<link href="admin.css?v=27" rel="stylesheet">
 </head>
 <body>
 
@@ -719,7 +745,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=26"></script>
+<script src="admin.js?v=27"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

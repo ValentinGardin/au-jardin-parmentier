@@ -822,3 +822,14 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .r-evt-btn .ico{color:var(--c,var(--violet))}
 .r-evt-btn span{display:grid;font-size:.88rem;line-height:1.25}
 .r-evt-btn small{color:var(--gris);font-size:.78rem}
+/* Import de contacts */
+.imp-fichier{display:flex;align-items:center;gap:.6rem;padding:.9rem 1rem;border:1.5px dashed var(--trait);border-radius:12px;cursor:pointer;font-weight:600;color:var(--violet)}
+.imp-fichier:hover{border-color:var(--violet);background:var(--violet-pale)}
+.imp-fichier input{position:absolute;opacity:0;width:1px;height:1px}
+.imp-resume{margin:.9rem 0 .5rem!important;color:var(--encre)!important}
+.imp-table{max-height:240px;overflow:auto;border:1px solid var(--trait);border-radius:10px}
+.imp-table table{width:100%;border-collapse:collapse;font-size:.85rem}
+.imp-table th{position:sticky;top:0;background:var(--fond);text-align:left;padding:.45rem .7rem;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--gris)}
+.imp-table td{padding:.4rem .7rem;border-top:1px solid var(--trait)}
+.imp-table em{color:var(--gris-clair)}
+.imp-accord{margin-top:1rem}

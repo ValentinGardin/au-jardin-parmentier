@@ -1201,7 +1201,7 @@
     if (CL === null) chargerClients();
     if (SMS === null || SMS.erreurChargement) chargerSms();
     return tete('Clients', 'Toutes les personnes qui ont réservé ou qui reçoivent le menu par e-mail. Un client est reconnu automatiquement par son téléphone ou son e-mail.',
-      (VISITE ? '' : '<a class="btn btn-ligne" href="' + E.api + '?api=clients-csv" download>' + ico('telecharger') + 'Exporter (Excel)</a>') +
+      (VISITE ? '' : '<button type="button" class="btn btn-ligne" data-act="clients-import">' + ico('upload') + 'Importer</button><a class="btn btn-ligne" href="' + E.api + '?api=clients-csv" download>' + ico('telecharger') + 'Exporter (Excel)</a>') +
       '<button type="button" class="btn btn-violet" data-act="client-fiche">' + ico('plus') + 'Nouveau client</button>') +
       '<div class="messages-clients"><div id="lettre-zone">' + (LETTRE ? blocLettre() : '') + '</div><div id="sms">' + blocSms() + '</div></div>' +
       '<div id="clients">' + clientsContenu() + '</div>';
@@ -1334,6 +1334,84 @@
         .catch(function (er) { al.textContent = er.message; al.hidden = false; });
     });
   }
+  // ---------- Import d'une liste de contacts (CSV exporté d'une messagerie, d'Excel…) ----------
+  function lireCsv(txt) {
+    var lignes = [], l = [], champ = '', q = false;
+    var sep = (txt.split('\n')[0].match(/;/g) || []).length > (txt.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+    for (var i = 0; i < txt.length; i++) {
+      var c = txt[i];
+      if (q) { if (c === '"') { if (txt[i + 1] === '"') { champ += '"'; i++; } else q = false; } else champ += c; }
+      else if (c === '"') q = true;
+      else if (c === sep) { l.push(champ); champ = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i + 1] === '\n') i++; l.push(champ); lignes.push(l); l = []; champ = ''; }
+      else champ += c;
+    }
+    if (champ || l.length) { l.push(champ); lignes.push(l); }
+    return lignes.filter(function (x) { return x.some(function (v) { return v.trim(); }); });
+  }
+  function contactsCsv(lignes) {
+    var tete = (lignes[0] || []).map(function (h) { return sansAccent(h).trim(); }), corps = lignes.slice(1);
+    function col(tests) { for (var t = 0; t < tests.length; t++) for (var i = 0; i < tete.length; i++) if (tests[t](tete[i])) return i; return -1; }
+    var cMail = col([function (h) { return h.indexOf('mail') >= 0 && h.indexOf('principal') >= 0; }, function (h) { return h.indexOf('mail') >= 0; }]);
+    var cPrenom = col([function (h) { return h === 'prenom' || h === 'first name' || h === 'firstname'; }]);
+    var cNom = col([function (h) { return h === 'nom de famille' || h === 'nom' || h === 'last name' || h === 'lastname'; }]);
+    var cAff = col([function (h) { return h.indexOf('afficher') >= 0 || h === 'display name' || h === 'name' || h === 'nom complet'; }]);
+    var cTel = col([function (h) { return h.indexOf('portable') >= 0 || h.indexOf('mobile') >= 0; }, function (h) { return h.indexOf('tel') === 0 || h.indexOf('telephone') >= 0; }]);
+    var vus = {}, out = [];
+    corps.forEach(function (r) {
+      var email = (cMail >= 0 ? r[cMail] : '') || '';
+      if (!/@/.test(email)) email = (r.filter(function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); })[0] || '');
+      email = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || vus[email]) return;
+      vus[email] = 1;
+      var prenom = cPrenom >= 0 ? (r[cPrenom] || '').trim() : '', nom = cNom >= 0 ? (r[cNom] || '').trim() : '', aff = cAff >= 0 ? (r[cAff] || '').trim() : '';
+      if (prenom && nom && sansAccent(prenom) === sansAccent(nom)) prenom = '';
+      // sans prénom ni nom : le « nom à afficher » s'il n'est pas l'adresse elle-même
+      if (!prenom && !nom && aff && aff.indexOf('@') < 0) nom = aff;
+      out.push({ prenom: prenom, nom: nom, email: email, tel: cTel >= 0 ? (r[cTel] || '').trim() : '' });
+    });
+    return out;
+  }
+  function importClients() {
+    var d = document.createElement('div'), contacts = [];
+    d.className = 'modale-fond';
+    d.innerHTML = '<div class="modale modale-large" role="dialog" aria-modal="true" aria-labelledby="imp-t"><h2 id="imp-t">Importer des contacts</h2>' +
+      '<p>Un fichier CSV exporté de votre messagerie (Thunderbird, Outlook, Gmail…) ou d’Excel. Les personnes déjà présentes sont reconnues par leur e-mail : pas de doublon.</p>' +
+      '<label class="imp-fichier"><input type="file" accept=".csv,text/csv" id="imp-f">' + ico('upload') + '<span>Choisir le fichier CSV</span></label>' +
+      '<div id="imp-apercu"></div>' +
+      '<label class="case imp-accord"><input type="checkbox" id="imp-accord" checked> Ces personnes ont donné leur accord pour recevoir le menu de la semaine chaque lundi</label>' +
+      '<p class="aide petit">Une personne qui s’était désinscrite ou avait refusé n’est jamais réinscrite.</p>' +
+      '<div class="modale-actions"><button type="button" class="btn btn-discret" data-r="0">Annuler</button><button type="button" class="btn btn-violet" id="imp-ok" disabled>Importer</button></div></div>';
+    document.body.appendChild(d);
+    function fin() { d.remove(); }
+    d.addEventListener('click', function (e) { if (e.target === d || e.target.closest('[data-r="0"]')) fin(); });
+    d.querySelector('#imp-f').addEventListener('change', function (e) {
+      var fichier = e.target.files[0]; if (!fichier) return;
+      fichier.arrayBuffer().then(function (buf) {
+        var txt;
+        // les exports de messagerie sont souvent en Windows-1252 et non en UTF-8
+        try { txt = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (er) { txt = new TextDecoder('windows-1252').decode(buf); }
+        contacts = contactsCsv(lireCsv(txt.replace(/^﻿/, '')));
+        var connus = CL ? contacts.filter(function (c) { return CL.some(function (k) { return k.email === c.email; }); }).length : 0;
+        d.querySelector('.imp-fichier span').textContent = fichier.name;
+        d.querySelector('#imp-apercu').innerHTML = contacts.length ? '<p class="imp-resume"><b>' + pluriel(contacts.length, 'contact') + '</b> avec une adresse e-mail valide' + (connus ? ', dont ' + connus + ' déjà dans vos clients' : '') + '.</p>' +
+          '<div class="imp-table"><table><thead><tr><th>Nom</th><th>E-mail</th></tr></thead><tbody>' + contacts.map(function (c) {
+            return '<tr><td>' + (esc(nomClient(c)) || '<em>sans nom</em>') + '</td><td>' + esc(c.email) + '</td></tr>';
+          }).join('') + '</tbody></table></div>' : '<p class="alerte">Aucune adresse e-mail trouvée dans ce fichier.</p>';
+        var b = d.querySelector('#imp-ok'); b.disabled = !contacts.length; b.textContent = 'Importer ' + pluriel(contacts.length, 'contact');
+      });
+    });
+    d.querySelector('#imp-ok').addEventListener('click', function () {
+      if (VISITE) { fin(); return toast('Mode visite : rien n’est importé.'); }
+      var b = this; b.disabled = true; b.textContent = 'Import…';
+      api('clients-import', { contacts: contacts, accord: d.querySelector('#imp-accord').checked }).then(function (j) {
+        CL = j.clients; LETTRE = j.lettre; fin(); majClients();
+        var r = j.resultat;
+        toast(pluriel(r.ajoutes, 'client') + ' ajouté' + (r.ajoutes > 1 ? 's' : '') + (r.maj ? ', ' + r.maj + ' déjà connu' + (r.maj > 1 ? 's' : '') : '') + (r.inscrits ? ' · ' + r.inscrits + ' inscrit' + (r.inscrits > 1 ? 's' : '') + ' au menu du lundi' : '') + (r.refus ? ' · ' + r.refus + ' laissé' + (r.refus > 1 ? 's' : '') + ' désinscrit' + (r.refus > 1 ? 's' : '') : '') + '.');
+      }).catch(function (er) { b.disabled = false; b.textContent = 'Importer'; toast(er.message, true); });
+    });
+  }
+
   function actionLettre(a, b) {
     if (VISITE) return toast('Mode visite : aucun e-mail n’est envoyé.');
     if (a === 'lettre-test') {
@@ -1904,6 +1982,8 @@
       window.print();
     } else if (a === 'cl-filtre') {
       clFiltre = b.dataset.f; majClients();
+    } else if (a === 'clients-import') {
+      importClients();
     } else if (a === 'client-fiche') {
       ficheClient(b.dataset.id ? CL.filter(function (c) { return c.id === b.dataset.id; })[0] : null);
     } else if (a.indexOf('smtp-') === 0) {

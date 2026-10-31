@@ -55,7 +55,8 @@ if (!$lignes) fin(400, ['erreur' => 'Choisissez au moins un plat.']);
 
 $ci = ['prenom' => txt($in['prenom'] ?? '', 40), 'nom' => txt($in['nom'] ?? '', 60), 'tel' => (string)($in['tel'] ?? ''), 'email' => (string)($in['email'] ?? '')];
 if ($ci['prenom'] === '' || $ci['nom'] === '') fin(400, ['erreur' => 'Indiquez votre prénom et votre nom.', 'champ' => $ci['prenom'] === '' ? 'prenom' : 'nom']);
-if (strlen(tel_chiffres($ci['tel'])) !== 10) fin(400, ['erreur' => 'Indiquez un numéro de téléphone à 10 chiffres, pour que nous puissions vous joindre.', 'champ' => 'tel']);
+// téléphone conseillé mais pas obligatoire ; s'il est donné, il doit être complet
+if (trim($ci['tel']) !== '' && strlen(tel_chiffres($ci['tel'])) !== 10) fin(400, ['erreur' => 'Ce numéro de téléphone semble incomplet (10 chiffres).', 'champ' => 'tel']);
 if ($ci['email'] !== '' && email_ok($ci['email']) === '') fin(400, ['erreur' => 'Cette adresse e-mail ne semble pas valide.', 'champ' => 'email']);
 if (limite_ip('commande', 8)) fin(429, ['erreur' => 'Trop de réservations depuis cette connexion. Appelez-nous au ' . TEL_BOUTIQUE . '.']);
 
