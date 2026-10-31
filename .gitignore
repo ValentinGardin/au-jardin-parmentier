@@ -23,3 +23,6 @@ data/commande.json
 data/limites.json
 data/epuises.json
 data/smtp.json
+
+# Fichiers à imprimer ou à télécharger (pas utilisés par le site)
+livrables/
