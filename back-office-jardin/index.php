@@ -344,26 +344,7 @@ if ($api !== '') {
         // Import d'une liste de contacts (fichier CSV lu dans le navigateur) : ajoutés aux clients,
         // inscrits au menu de la semaine si leur accord est déjà acquis (sauf s'ils l'avaient refusé)
         if ($api === 'clients-import') {
-            $r = verrou(function () use ($in, $qui) {
-                $l = clients_charger(); $n = ['ajoutes' => 0, 'maj' => 0, 'ignores' => 0, 'refus' => 0, 'inscrits' => 0];
-                foreach (array_slice(liste($in['contacts'] ?? []), 0, 2000) as $x) {
-                    $email = email_ok($x['email'] ?? '');
-                    if ($email === '') { $n['ignores']++; continue; }
-                    $ci = ['prenom' => txt($x['prenom'] ?? '', 40), 'nom' => txt($x['nom'] ?? '', 60), 'tel' => (string)($x['tel'] ?? ''), 'email' => $email];
-                    $i = client_index($l, $ci['tel'], $email);
-                    if ($i === null) { $l[] = client_clean($ci); $i = count($l) - 1; $n['ajoutes']++; }
-                    else {
-                        $m = $l[$i];
-                        foreach (['prenom', 'nom', 'tel'] as $k) if (trim((string)$m[$k]) === '' && trim($ci[$k]) !== '') $m[$k] = $ci[$k];
-                        $l[$i] = client_clean($m, $l[$i]); $n['maj']++;
-                    }
-                    if (!empty($in['accord'])) {
-                        if ($l[$i]['lettre']['statut'] === 'non') $n['refus']++;
-                        elseif ($l[$i]['lettre']['statut'] !== 'oui') { client_lettre($l[$i], true, 'import · ' . $qui); $n['inscrits']++; }
-                    }
-                }
-                return clients_enregistrer($l) ? $n : null;
-            });
+            $r = verrou(function () use ($in, $qui) { return clients_importer(liste($in['contacts'] ?? []), !empty($in['accord']), 'import · ' . $qui); });
             if (!$r) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable.']);
             repondre(200, ['resultat' => $r] + $listeClients());
         }
