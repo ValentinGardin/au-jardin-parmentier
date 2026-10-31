@@ -1219,7 +1219,8 @@
     if (clFiltre === 'oui') return l === 'oui';
     if (clFiltre === 'sms') return m === 'oui';
     if (clFiltre === 'non') return l === 'non' || m === 'non';
-    if (clFiltre === '') return l === '' || m === '';
+    // à demander : seulement ce qu'on peut leur proposer (l'e-mail s'ils ont une adresse, le SMS s'ils ont un numéro)
+    if (clFiltre === '') return (c.email && l === '') || (c.tel && m === '');
     return true;
   }
   function blocLettre() {

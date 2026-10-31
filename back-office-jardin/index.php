@@ -726,7 +726,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=29"></script>
+<script src="admin.js?v=30"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
