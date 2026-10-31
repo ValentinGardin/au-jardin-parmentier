@@ -72,9 +72,10 @@
     cat: function () { return { titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }; },
     carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
-    item: function () { return { nom: '', prix: '', epuise: false }; },
+    item: function () { return { nom: '', prix: '', epuise: false, cat: false }; },
+    catEvt: function () { return { nom: '', prix: '', epuise: false, cat: true }; },
     faq: function () { return { q: '', r: '' }; },
-    evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
+    evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', date_fin: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
   };
 
   // ---------- Champs ----------
@@ -392,7 +393,7 @@
   function statutEvt(e) {
     var t = E.aujourdhui;
     if (!e.actif) return ['gris', 'Masqué sur le site'];
-    if (e.masquer_apres && e.date && e.date < t) return ['gris', 'Date passée : masqué automatiquement'];
+    if (e.masquer_apres && e.date && evtFin(e) < t) return ['gris', 'Date passée : masqué automatiquement'];
     if (e.reservation.active && e.reservation.date && e.reservation.date < t) return ['orange', 'En ligne · réservations closes'];
     return ['vert', 'En ligne sur le site'];
   }
@@ -400,6 +401,7 @@
     var liste = site.evenements.map(function (e, i) {
       var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
       var items = e.items.map(function (it, j) {
+        if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">Catégorie</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' + boutonsOrdre(p + '.items', j, ni) + '</div>';
         return '<div class="item-ligne"><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Plateau de charcuterie et fromage pour deux" aria-label="Produit">' +
           '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="17.00 €" inputmode="decimal" aria-label="Prix">' +
           '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + p + '.items.' + j + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
@@ -414,10 +416,12 @@
           '<span class="statut statut-' + st[0] + '">' + st[1] + '</span>' +
           '<div class="evt-bloc-actions"><button type="button" class="ib" data-act="dup-evt" data-i="' + i + '" title="Dupliquer (ex. pour l’an prochain)" aria-label="Dupliquer">' + ico('copie') + '</button>' +
           '<button type="button" class="ib ib-suppr" data-act="del" data-p="evenements" data-i="' + i + '" data-quoi="l’événement « ' + esc(e.titre) + ' »" title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div></div>' +
-        '<div class="grille-evt">' + champ('Nom de l’événement', p + '.titre', { ph: 'ex. Beaujolais nouveau, Menu de Noël…' }) + champ('Date de l’événement', p + '.date', { type: 'date' }) + '</div>' +
+        champ('Nom de l’événement', p + '.titre', { ph: 'ex. Beaujolais nouveau, Menu de Noël…' }) +
+        '<div class="grille-2">' + champ('Date de l’événement', p + '.date', { type: 'date' }) + champ('Dernier jour', p + '.date_fin', { type: 'date', opt: true, aide: 'Seulement s’il dure plusieurs jours (ex. Noël : 24 → 25 décembre). Les clients choisissent leur jour de retrait.' }) + '</div>' +
         champ('Petit texte d’accroche', p + '.accroche', { zone: true, rows: 2, opt: true, ph: 'ex. On fête l’arrivée du Beaujolais nouveau !' }) +
         '<div class="champ"><span>Ce que vous proposez</span><div class="items-liste">' + items + '</div>' +
-          '<button type="button" class="btn-ajout" data-act="add" data-p="' + p + '.items" data-tpl="item">' + ico('plus') + 'Ajouter un produit ou un plat</button></div>' +
+          '<div class="ajouts"><button type="button" class="btn-ajout" data-act="add" data-p="' + p + '.items" data-tpl="item">' + ico('plus') + 'Ajouter un produit ou un plat</button>' +
+          '<button type="button" class="btn-ajout discret" data-act="add" data-p="' + p + '.items" data-tpl="catEvt">' + ico('plus') + 'Ajouter une catégorie <em>(Entrées, Plats…)</em></button></div></div>' +
         champ('Phrases mises en avant', p + '.lignes', { lignes: true, rows: 2, opt: true, ph: '« Sans oublier nos huîtres de Normandie »', aide: 'Une phrase par ligne, affichée en couleur sous les produits.' }) +
         champ('Phrase au-dessus du bouton Réserver', p + '.cta', { opt: true, ph: 'N’oubliez pas de réserver !' }) +
         '<div class="resa-bloc"><label class="interrupteur"><input type="checkbox" data-p="' + p + '.reservation.active"' + (e.reservation.active ? ' checked' : '') + '><span></span>Date limite de réservation</label>' +
@@ -766,13 +770,26 @@
     });
     return out;
   }
+  // Événements : dernier jour, jours, libellé (« jeudi 24 et vendredi 25 décembre »)
+  function evtFin(e) { return e.date_fin || e.date; }
+  function evtDans(e, date) { return !!e.date && date >= e.date && date <= evtFin(e); }
+  function evtQuand(e) {
+    if (!e.date) return '';
+    if (!e.date_fin) return jourNom(e.date).toLowerCase() + ' ' + dateFr(e.date);
+    var n = Math.round((parse(e.date_fin) - parse(e.date)) / 864e5) + 1;
+    var a = parse(e.date), memeMois = a.getMonth() === parse(e.date_fin).getMonth();
+    return (n === 2 ? '' : 'du ') + jourNom(e.date).toLowerCase() + ' ' + (memeMois ? (a.getDate() === 1 ? '1er' : a.getDate()) : dateFr(e.date)) + (n === 2 ? ' et ' : ' au ') + jourNom(e.date_fin).toLowerCase() + ' ' + dateFr(e.date_fin);
+  }
+  // premier jour de retrait encore possible (aujourd'hui au plus tôt)
+  function evtPremierJour(e) { return !e.date ? '' : e.date >= E.aujourdhui ? e.date : evtFin(e) >= E.aujourdhui ? E.aujourdhui : e.date; }
+  function aProduits(e) { return e.items.some(function (it) { return !it.cat; }); }
   function evtsAVenir(date) {
     return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) {
-      return x.e.actif && x.e.items.length && (!x.e.date || x.e.date >= E.aujourdhui || x.e.date === date);
+      return x.e.actif && aProduits(x.e) && (!x.e.date || evtFin(x.e) >= E.aujourdhui || evtDans(x.e, date));
     }).sort(function (a, b) { return (a.e.date || '9') < (b.e.date || '9') ? -1 : 1; });
   }
   function evtsDu(date) {
-    return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) { return x.e.actif && x.e.date === date && x.e.items.length; });
+    return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) { return x.e.actif && evtDans(x.e, date) && aProduits(x.e); });
   }
   // Parts réservées d'une offre (offre spéciale ou produit d'événement) à une date
   function offreParts(type, nom, date) {
@@ -869,7 +886,7 @@
       return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
     }).join('') + '</div>' : '') + '<input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone, un n° de commande…" aria-label="Rechercher"></div>';
     var aVenir = evtsAVenir('').filter(function (x) { return x.e.date; }).map(function (x) {
-      return '<button type="button" class="r-evt-btn" data-act="resa-evt" data-e="' + x.i + '" style="--c:' + esc(x.e.couleur) + '">' + ico('plus') + '<span>Réservation pour <b>' + esc(x.e.titre) + '</b><small>retrait ' + esc(jourNom(x.e.date).toLowerCase() + ' ' + dateFr(x.e.date)) + '</small></span></button>';
+      return '<button type="button" class="r-evt-btn" data-act="resa-evt" data-e="' + x.i + '" style="--c:' + esc(x.e.couleur) + '">' + ico('plus') + '<span>Réservation pour <b>' + esc(x.e.titre) + '</b><small>retrait ' + esc(evtQuand(x.e)) + '</small></span></button>';
     }).join('');
     return semaine + titre + (aVenir ? '<div class="r-evts">' + aVenir + '</div>' : '') + resume + deCote() + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
   }
@@ -880,6 +897,7 @@
     if (m.special) h += '<p class="r-offre">Offre spéciale : <b' + (m.special.epuise ? ' class="raye"' : '') + '>' + esc(m.special.nom) + '</b>' + etat(m.special.epuise, offreParts('special', m.special.nom, R.date), E.forteOffre) + bouton('data-quoi="special"', m.special.epuise) + '</p>';
     evtsDu(R.date).forEach(function (x) {
       h += '<div class="r-offre r-evt" style="--c:' + esc(x.e.couleur) + '"><b>' + esc(x.e.titre) + '</b><ul>' + x.e.items.map(function (it, k) {
+        if (it.cat) return '<li class="r-evt-cat">' + esc(it.nom) + '</li>';
         return '<li><span' + (it.epuise ? ' class="raye"' : '') + '>' + esc(it.nom) + '</span>' + etat(it.epuise, offreParts('evenement', it.nom, R.date), E.forteOffre) + bouton('data-quoi="evenement" data-e="' + x.i + '" data-k="' + k + '"', it.epuise) + '</li>';
       }).join('') + '</ul></div>';
     });
@@ -1121,7 +1139,8 @@
       if (m.special || l.type === 'special') o.push(['special', 'Offre spéciale · ' + (l.type === 'special' ? l.nom : m.special.nom) + (m.special && m.special.epuise ? ' · ÉPUISÉE' : ''), m.special && m.special.epuise && l.type !== 'special']);
       // produits des événements à venir (un groupe par événement) : on peut les choisir depuis n'importe quel jour
       var evts = evtsAVenir(f.date).map(function (x) {
-        return { label: x.e.titre + (x.e.date ? ' · ' + jourNom(x.e.date).toLowerCase() + ' ' + dateFr(x.e.date) : ''), o: x.e.items.map(function (it, k) {
+        return { label: x.e.titre + (x.e.date ? ' · ' + evtQuand(x.e) : ''), o: x.e.items.map(function (it, k) {
+          if (it.cat) return ['cat:' + k, '— ' + it.nom + ' —', true];
           return ['evt:' + x.i + ':' + k, it.nom + (it.prix ? ' · ' + it.prix : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)];
         }) };
       });
@@ -1207,8 +1226,8 @@
         nv.qte = f.lignes[i].qte; f.lignes[i] = nv;
         if (t.value.indexOf('evt:') === 0) {
           var ev = saved.evenements[+t.value.split(':')[1]];
-          if (ev && ev.date && ev.date !== f.date) {
-            f.date = ev.date;
+          if (ev && ev.date && !evtDans(ev, f.date)) {
+            f.date = evtPremierJour(ev);
             f.lignes = f.lignes.map(function (l) { if (l.type === 'autre' || l.type === 'evenement' || l.jour) return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
             part('fr-dates', htmlDates());
             toast('Retrait le jour de l’événement : ' + dateLongue(f.date).toLowerCase() + '.');
@@ -2062,8 +2081,8 @@
     } else if (a === 'resa-nouvelle') {
       formResa(null);
     } else if (a === 'resa-evt') {
-      var ev = saved.evenements[+b.dataset.e], k0 = ev.items.map(function (it) { return !it.epuise; }).indexOf(true);
-      formResa(null, null, { date: ev.date, lignes: [k0 >= 0 ? ligneVide(ev.date, 'evt:' + b.dataset.e + ':' + k0) : ligneVide(ev.date, 'autre')] });
+      var ev = saved.evenements[+b.dataset.e], k0 = ev.items.map(function (it) { return !it.epuise && !it.cat; }).indexOf(true), dj = evtPremierJour(ev);
+      formResa(null, null, { date: dj, lignes: [k0 >= 0 ? ligneVide(dj, 'evt:' + b.dataset.e + ':' + k0) : ligneVide(dj, 'autre')] });
     } else if (a === 'resa-modif') {
       formResa(resaParId(b.dataset.id));
     } else if (a === 'resa-suppr') {

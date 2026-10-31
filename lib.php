@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.38 · 31 octobre 2026';
+const VERSION = '1.39 · 31 octobre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -98,7 +98,9 @@ function couleurs_evt($hex) {
 function evenement_clean($e) {
     $items = [];
     foreach (liste($e['items'] ?? []) as $p) {
-        $p = ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise'])];
+        // « cat » : un titre de catégorie (Entrées, Plats, Desserts…) et non un produit
+        $p = !empty($p['cat']) ? ['nom' => txt($p['nom'] ?? '', 60), 'prix' => '', 'epuise' => false, 'cat' => true]
+                               : ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']), 'cat' => false];
         if ($p['nom'] !== '') $items[] = $p;
     }
     $r = is_array($e['reservation'] ?? null) ? $e['reservation'] : [];
@@ -106,6 +108,8 @@ function evenement_clean($e) {
         'actif' => !empty($e['actif']),
         'titre' => txt($e['titre'] ?? '', 80) ?: 'Événement',
         'date' => date_ok($e['date'] ?? ''),
+        // dernier jour si l'événement dure plusieurs jours (ex. Noël : 24 et 25 décembre)
+        'date_fin' => ($f = date_ok($e['date_fin'] ?? '')) !== '' && date_ok($e['date'] ?? '') !== '' && $f > $e['date'] ? $f : '',
         'accroche' => txt($e['accroche'] ?? '', 200),
         'items' => $items,
         'lignes' => liste_txt($e['lignes'] ?? [], 160),
@@ -121,7 +125,7 @@ function evenement_clean($e) {
 function evenements_visibles($liste) {
     $t = date('Y-m-d');
     $v = array_values(array_filter($liste, function ($e) use ($t) {
-        return $e['actif'] && !($e['masquer_apres'] && $e['date'] !== '' && $e['date'] < $t);
+        return $e['actif'] && !($e['masquer_apres'] && $e['date'] !== '' && evt_fin($e) < $t);
     }));
     usort($v, function ($a, $b) { return strcmp($a['date'] ?: '9999', $b['date'] ?: '9999'); });
     return $v;
@@ -277,3 +281,20 @@ const FAQ_DEPART = [
     ['q' => 'Prêtez-vous du matériel pour les buffets ?', 'r' => "Oui : nous louons des chafing-dish pour garder vos plats au chaud, et nous pouvons prêter des caissons isothermes (contre un chèque de caution)."],
     ['q' => 'Où se trouve Au Jardin Parmentier ?', 'r' => "Au 9, place Parmentier, 80500 Montdidier, dans la Somme, en plein centre-ville. Le plan et l'itinéraire sont en bas de cette page."],
 ];
+
+// ---- Événements sur plusieurs jours ----
+function evt_fin($e) { return $e['date_fin'] ?: $e['date']; }
+function evt_jours($e) {
+    $out = [];
+    if ($e['date'] === '') return $out;
+    for ($d = $e['date']; $d <= evt_fin($e) && count($out) < 14; $d = date('Y-m-d', strtotime($d . ' +1 day'))) $out[] = $d;
+    return $out;
+}
+// « jeudi 24 décembre », « jeudi 24 et vendredi 25 décembre », « du jeudi 24 au samedi 26 décembre »
+function evt_quand($e) {
+    if ($e['date'] === '') return '';
+    if (!$e['date_fin']) return date_fr($e['date'], true);
+    $n = count(evt_jours($e));
+    $a = date('n', strtotime($e['date'])) === date('n', strtotime($e['date_fin'])) ? strtolower(JOURS[(int)date('N', strtotime($e['date'])) - 1]) . ' ' . (int)date('j', strtotime($e['date'])) : date_fr($e['date'], true);
+    return $n === 2 ? $a . ' et ' . date_fr($e['date_fin'], true) : 'du ' . $a . ' au ' . date_fr($e['date_fin'], true);
+}

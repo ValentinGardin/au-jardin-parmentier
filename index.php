@@ -60,7 +60,7 @@ $dateDuJour = function ($sw, $nom) {
 <link rel="manifest" href="site.webmanifest">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=23" rel="stylesheet">
+<link href="style.css?v=24" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 <?php
 $ld = [['@context' => 'https://schema.org', '@type' => ['FoodEstablishment', 'LocalBusiness'], 'name' => 'Au Jardin Parmentier',
@@ -105,7 +105,7 @@ foreach ($ld as $bloc): ?>
   <div class="wrap hero-in">
     <div class="hero-txt">
 <?php if ($evts): $e0 = $evts[0]; ?>
-      <a class="pastille annonce anim" style="--d:0" href="#evenements"><span class="annonce-tag">À ne pas manquer</span><?= h($e0['titre']) ?><?= $e0['date'] ? ' · ' . h(date_fr($e0['date'], true)) : '' ?><span aria-hidden="true">→</span></a>
+      <a class="pastille annonce anim" style="--d:0" href="#evenements"><span class="annonce-tag">À ne pas manquer</span><?= h($e0['titre']) ?><?= $e0['date'] ? ' · ' . h(evt_quand($e0)) : '' ?><span aria-hidden="true">→</span></a>
 <?php else: ?>
       <p class="pastille anim" style="--d:0"><span class="point"></span>Épicerie fine &amp; traiteur · Montdidier</p>
 <?php endif; ?>
@@ -173,7 +173,8 @@ foreach ($ld as $bloc): ?>
     $ouvert = reservation_ouverte($e);
     $iEvt = array_search($e, $s['evenements'], true); $enLigne = $evtEnLigne[$iEvt] ?? null;
     $dans = $e['date'] ? (int)round((strtotime($e['date']) - strtotime(date('Y-m-d'))) / 86400) : null;
-    $quand = $dans === null ? '' : ($dans < 0 ? '' : ($dans === 0 ? 'C’est aujourd’hui !' : ($dans === 1 ? 'C’est demain !' : 'Dans ' . $dans . ' jours')));
+    $enCoursEvt = $e['date'] && $e['date'] <= date('Y-m-d') && evt_fin($e) >= date('Y-m-d');
+    $quand = $dans === null ? '' : ($enCoursEvt ? 'C’est aujourd’hui !' : ($dans < 0 ? '' : ($dans === 1 ? 'C’est demain !' : 'Dans ' . $dans . ' jours')));
     $ph = photo($e['photo']); ?>
     <?php $cl = couleurs_evt($e['couleur']); ?>
     <article class="evt<?= $cl['clair'] ? ' evt-clair' : '' ?><?= $ph ? ' avec-photo' : '' ?> reveal" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
@@ -181,14 +182,17 @@ foreach ($ld as $bloc): ?>
 <?php if ($ph): ?>      <img class="evt-photo" <?= img_attrs(photo_fichier($e['photo']), '(max-width: 900px) 90vw, 320px') ?> alt="" loading="lazy" width="1000" height="750">
 <?php endif; ?>
       <div class="evt-tete">
-<?php if ($e['date']): ?>        <p class="evt-date"><span><?= h(ucfirst(date_fr($e['date'], true))) ?></span><?php if ($quand): ?><em><?= h($quand) ?></em><?php endif; ?></p>
+<?php if ($e['date']): ?>        <p class="evt-date"><span><?= h(ucfirst(evt_quand($e))) ?></span><?php if ($quand): ?><em><?= h($quand) ?></em><?php endif; ?></p>
 <?php endif; ?>        <h2><?= h($e['titre']) ?></h2>
 <?php if ($e['accroche'] !== ''): ?>        <p class="evt-accroche"><?= h($e['accroche']) ?></p>
 <?php endif; ?>
       </div>
       <div class="evt-corps">
 <?php if ($e['items']): ?>        <ul class="evt-items">
-<?php foreach ($e['items'] as $k => $it): $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], $e['date']) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+<?php foreach ($e['items'] as $k => $it):
+      if ($it['cat']): ?>          <li class="evt-cat"><?= h($it['nom']) ?></li>
+<?php continue; endif;
+      $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
 <?php endforeach; ?>        </ul>
 <?php endif; foreach ($e['lignes'] as $l): ?>        <p class="evt-ligne"><?= h($l) ?></p>
 <?php endforeach; ?>
@@ -580,11 +584,11 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
 <?php if ($ph): ?>    <img class="pop-img" <?= img_attrs(photo_fichier($pop['photo']), '(max-width: 500px) 92vw, 460px') ?> alt="" width="1000" height="750">
 <?php endif; ?>
     <div class="pop-corps">
-<?php if ($pop['date']): ?>      <p class="evt-date"><span><?= h(ucfirst(date_fr($pop['date'], true))) ?></span></p>
+<?php if ($pop['date']): ?>      <p class="evt-date"><span><?= h(ucfirst(evt_quand($pop))) ?></span></p>
 <?php endif; ?>      <h2 id="pop-titre"><?= h($pop['titre']) ?></h2>
 <?php if ($pop['accroche'] !== ''): ?>      <p class="pop-accroche"><?= h($pop['accroche']) ?></p>
 <?php endif; if ($pop['items']): ?>      <ul class="evt-items">
-<?php foreach (array_slice($pop['items'], 0, 4) as $it): ?>        <li><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+<?php foreach (array_slice(array_values(array_filter($pop['items'], function ($it) { return !$it['cat']; })), 0, 4) as $it): ?>        <li><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
 <?php endforeach; ?>      </ul>
 <?php endif; ?>
       <div class="pop-actions">
@@ -614,6 +618,6 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
   <symbol id="i-fb" viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.6-1.6h1.7V4.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V22h3.4z"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></g></symbol>
 </svg>
-<script src="main.js?v=17" defer></script>
+<script src="main.js?v=18" defer></script>
 </body>
 </html>

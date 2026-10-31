@@ -22,9 +22,11 @@ if (isset($in['evt'])) {
     $evt = null;
     foreach (commande_evts(site_load()) as $e) if ($e['i'] === (int)$in['evt']) $evt = $e;
     if (!$evt) fin(400, ['erreur' => 'Les réservations en ligne pour cet événement sont closes. Appelez-nous au ' . TEL_BOUTIQUE . '.']);
-    $jour = ['date' => $evt['date']];
+    // jour de retrait choisi parmi les jours de l'événement (ex. 24 ou 25 décembre)
+    $jour = ['date' => in_array($in['date'] ?? '', array_column($evt['jours'], 'date'), true) ? $in['date'] : $evt['date']];
     $lignes = [];
     foreach ($evt['items'] as $it) {
+        if ($it['cat']) continue;
         $q = max(0, min(20, (int)($in['items'][$it['k']] ?? 0)));
         if (!$q) continue;
         if ($it['epuise']) fin(400, ['erreur' => '« ' . $it['nom'] . ' » vient d’être épuisé, désolé ! Retirez-le de votre commande.']);

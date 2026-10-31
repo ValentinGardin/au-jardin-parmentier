@@ -872,3 +872,13 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
   body.impression-histo .histo-table tr{break-inside:avoid}
 }
 .histo-table td:nth-child(3) small{white-space:nowrap}
+/* Événements : catégories et ajouts */
+.item-cat{background:var(--fond);border-radius:10px;padding:.35rem .5rem}
+.item-cat-tag{flex:none;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--violet)}
+.ajouts{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.btn-ajout.discret{color:var(--gris)}
+.btn-ajout em{font-style:normal;font-weight:400;color:var(--gris-clair)}
+.r-evt-cat{font-size:.68rem!important;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gris);margin-top:.2rem}
+@media (max-width:640px){.ajouts{grid-template-columns:1fr}}
+.item-ligne{grid-template-columns:minmax(0,1fr) 110px auto auto}
+.item-ligne.item-cat{grid-template-columns:auto minmax(0,1fr) auto}

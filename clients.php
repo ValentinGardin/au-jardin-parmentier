@@ -479,12 +479,16 @@ function commande_evts($d) {
     $c = commande_config(); $out = [];
     $demain = date('Y-m-d', strtotime('tomorrow'));
     foreach ($d['evenements'] as $i => $e) {
-        if (!$e['actif'] || $e['date'] === '' || $e['date'] < $demain || !reservation_ouverte($e) || !$e['items']) continue;
-        if ($e['date'] === $demain && date('H:i') >= $c['limite']) continue;
+        if (!$e['actif'] || $e['date'] === '' || !reservation_ouverte($e)) continue;
+        if (!array_filter($e['items'], function ($it) { return !$it['cat']; })) continue;
+        // jours de retrait possibles : ceux de l'événement, à partir de demain (la veille jusqu'à l'heure limite)
+        $jours = [];
+        foreach (evt_jours($e) as $j) if ($j > $demain || ($j === $demain && date('H:i') < $c['limite'])) $jours[] = ['date' => $j, 'libelle' => date_fr($j, true)];
+        if (!$jours) continue;
         $items = [];
-        foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => $it['prix'], 'epuise' => $it['epuise'],
-            'forte' => !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], $e['date']) >= FORTE_OFFRE];
-        $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $e['date'], 'libelle' => date_fr($e['date'], true), 'couleur' => $e['couleur'], 'items' => $items];
+        foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => $it['prix'], 'epuise' => $it['epuise'], 'cat' => $it['cat'],
+            'forte' => !$it['cat'] && !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
+        $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
     }
     return $out;
 }

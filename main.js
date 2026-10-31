@@ -126,8 +126,9 @@
     function autres() { return avant_().filter(function (j) { return etat.autres[j.date]; }); }
     // Mode « événement » : les produits de l'événement, à récupérer le jour de l'événement
     function evt() { return etat.evt === null ? null : (D.evts || []).filter(function (e) { return e.i === etat.evt; })[0]; }
+    function evtJour() { var e = evt(); return e ? (e.jours.filter(function (x) { return x.date === etat.evtDate; })[0] || e.jours[0]) : null; }
     function total() { var j = jour(), e = evt();
-      if (e) return e.items.reduce(function (t, it) { return t + num(it.prix) * (etat.items[it.k] || 0); }, 0); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
+      if (e) return e.items.reduce(function (t, it) { return t + (it.cat ? 0 : num(it.prix) * (etat.items[it.k] || 0)); }, 0); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
     function nb() { if (evt()) return Object.keys(etat.items).reduce(function (t, k) { return t + etat.items[k]; }, 0); return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
     function getQ(k) { return k.indexOf('e:') === 0 ? (etat.items[k.slice(2)] || 0) : k.indexOf('a:') === 0 ? (etat.autres[k.slice(2)] || 0) : etat[k]; }
     function setQ(k, v) { if (k.indexOf('e:') === 0) etat.items[k.slice(2)] = v; else if (k.indexOf('a:') === 0) etat.autres[k.slice(2)] = v; else etat[k] = v; }
@@ -143,8 +144,15 @@
     }
     function etape1Evt(e) {
       entete(1, e.titre);
-      corps.innerHTML = '<p class="rs-evt-quand" style="--c:' + esc(e.couleur) + '">' + '<b>À récupérer ' + esc(e.libelle) + '</b><span>à la boutique, 9 place Parmentier</span></p>' +
+      var jr = evtJour();
+      // plusieurs jours (ex. 24 et 25 décembre) : le client choisit son jour de retrait
+      corps.innerHTML = (e.jours.length > 1 ? '<p class="rs-q">Pour quel jour ?</p><div class="rs-jours rs-jours-evt" role="radiogroup" aria-label="Jour de retrait">' + e.jours.map(function (x) {
+          var c = court(x.date);
+          return '<button type="button" role="radio" aria-checked="' + (x.date === jr.date) + '" data-rs="evt-jour" data-d="' + x.date + '"><span>' + c.j + '</span><b>' + c.n + '</b><small>' + c.m + '</small></button>';
+        }).join('') + '</div>' : '') +
+        '<p class="rs-evt-quand" style="--c:' + esc(e.couleur) + '">' + '<b>À récupérer ' + esc(jr.libelle) + '</b><span>à la boutique, 9 place Parmentier</span></p>' +
         '<p class="rs-q">Votre commande</p>' + e.items.map(function (it) {
+          if (it.cat) return '<p class="rs-cat">' + esc(it.nom) + '</p>';
           var q = etat.items[it.k] || 0;
           return '<div class="rs-plat' + (q ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-plat-txt">' +
             (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +
@@ -193,14 +201,14 @@
     }
     function recap() {
       var j = jour(), l = [], e = evt();
-      if (e) return e.items.filter(function (it) { return etat.items[it.k]; }).map(function (it) { return etat.items[it.k] + ' × ' + it.nom; });
+      if (e) return e.items.filter(function (it) { return !it.cat && etat.items[it.k]; }).map(function (it) { return etat.items[it.k] + ' × ' + it.nom; });
       if (etat.plat) l.push(etat.plat + ' × ' + j.plat.nom);
       if (j.special && etat.special) l.push(etat.special + ' × ' + j.special.nom);
       autres().forEach(function (a) { l.push(etat.autres[a.date] + ' × ' + a.plat.nom + ' (plat du ' + a.jour.toLowerCase() + ')'); });
       return l;
     }
     function etape2() {
-      var j = evt() ? { libelle: evt().libelle } : jour();
+      var j = evt() ? { libelle: evtJour().libelle } : jour();
       entete(2, 'Vos coordonnées');
       corps.innerHTML = '<button type="button" class="rs-recap" data-rs="retour"><span><b>' + esc(recap().join(', ')) + '</b><small>' + esc(j.libelle) + (total() ? ' · ' + euros(total()) : '') + '</small></span><em>Modifier</em></button>' +
         '<form class="rs-form" id="rs-form" novalidate>' +
@@ -251,7 +259,7 @@
       if (client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
       var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';
       fetch('commander', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(evt() ? { evt: etat.evt, items: etat.items, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t } : { date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
+        body: JSON.stringify(evt() ? { evt: etat.evt, date: evtJour().date, items: etat.items, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t } : { date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j.ok) { if (j.jours) { D.jours = j.jours; } throw j; }
@@ -277,7 +285,8 @@
       etat.evt = iEvt === undefined ? null : iEvt;
       if (etat.evt !== null) {
         etat.items = {};
-        var e = evt(), dispo = e ? e.items.filter(function (it) { return !it.epuise; }) : [];
+        var e = evt(), dispo = e ? e.items.filter(function (it) { return !it.epuise && !it.cat; }) : [];
+        etat.evtDate = e ? e.jours[0].date : '';
         if (dispo.length === 1) etat.items[dispo[0].k] = 1;   // un seul produit : déjà dans la commande
       }
       if (offre) { etat.plat = 0; etat.special = 1; }
@@ -302,6 +311,7 @@
       var b = e.target.closest('[data-rs]'); if (!b || !rs.contains(b)) return;
       var a = b.dataset.rs;
       if (a === 'fermer') fermer();
+      else if (a === 'evt-jour') { etat.evtDate = b.dataset.d; etape1(); corps.querySelector('[data-d="' + etat.evtDate + '"]').focus(); }
       else if (a === 'jour') {
         etat.date = b.dataset.d; if (!jour().special) etat.special = 0;
         Object.keys(etat.autres).forEach(function (k) { if (k >= etat.date) delete etat.autres[k]; });
