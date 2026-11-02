@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.39 · 31 octobre 2026';
+const VERSION = '1.40 · 2 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -16,9 +16,11 @@ function site_load() {
     $f = is_file(DATA . '/site.json') ? DATA . '/site.json' : DATA . '/site.exemple.json';
     $d = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
     $d = site_clean(is_array($d) ? $d : []);
-    // Bascule automatique : le jour où la semaine suivante commence, elle devient le menu en cours
-    $n = $d['semaine_suivante'];
-    if ($n['du'] !== '' && $n['du'] <= date('Y-m-d') && semaine_remplie($n)) {
+    // Bascule automatique : dès que la semaine en cours est terminée (ou au plus tard le jour où la suivante
+    // commence), le menu préparé dans « Semaine suivante » devient le menu en cours
+    $n = $d['semaine_suivante']; $t = date('Y-m-d'); $s = $d['semaine'];
+    $finEnCours = $s['au'] !== '' ? $s['au'] : ($s['du'] !== '' ? date('Y-m-d', strtotime($s['du'] . ' +6 days')) : '');
+    if ($n['du'] !== '' && semaine_remplie($n) && ($n['du'] <= $t || ($finEnCours !== '' && $finEnCours < $t && $n['du'] > $s['du']))) {
         unset($n['publie']);
         $d['semaine'] = $n;
         $d['semaine_suivante'] = semaine_suivante_clean([]);

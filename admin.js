@@ -53,11 +53,12 @@
     var t = E.aujourdhui;
     if (s === site.semaine_suivante) {
       if (!s.du) return ['gris', 'Dates à renseigner'];
-      return s.publie ? ['vert', 'Publiée : visible sur le site, en ligne le ' + dateFr(s.du)] : ['gris', 'Brouillon : remplacera le menu actuel le ' + dateFr(s.du)];
+      var fin = site.semaine.au || site.semaine.du, apres = fin ? dateFr(plus(fin, 1)) : dateFr(s.du);
+      return s.publie ? ['vert', 'Publiée : visible sur le site, remplace le menu actuel le ' + apres] : ['gris', 'Brouillon : remplacera le menu actuel le ' + apres + ' (dès la fin de la semaine en cours)'];
     }
     if (s.conges && s.conges.actif) return ['orange', 'Fermeture affichée à la place du menu'];
     if (!s.du) return ['gris', 'Dates à renseigner'];
-    if (s.du > t) return ['bleu', 'À venir : s’affichera le ' + dateFr(s.du)];
+    if (s.du > t) return ['vert', 'En ligne sur le site · commence le ' + dateFr(s.du)];
     if (s.au && s.au < t) return ['orange', 'Semaine terminée : pensez à préparer la suivante'];
     return ['vert', 'En ligne en ce moment'];
   }
