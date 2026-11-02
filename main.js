@@ -216,7 +216,7 @@
         '<div class="rs-2"><label class="rs-champ"><span>Prénom <i class="rs-etoile" aria-hidden="true">*</i></span><input name="prenom" autocomplete="given-name" required aria-required="true" value="' + esc(client.prenom) + '"></label>' +
         '<label class="rs-champ"><span>Nom <i class="rs-etoile" aria-hidden="true">*</i></span><input name="nom" autocomplete="family-name" required aria-required="true" value="' + esc(client.nom) + '"></label></div>' +
         '<label class="rs-champ"><span>E-mail <i class="rs-etoile" aria-hidden="true">*</i></span><input name="email" type="email" autocomplete="email" required aria-required="true" value="' + esc(client.email) + '"></label>' +
-        '<label class="rs-champ"><span>Téléphone <em>conseillé, pour vous joindre en cas d’imprévu</em>' + (D.smsPret ? '' : ' <i class="bientot">Rappel par SMS : bientôt</i>') + '</span><input name="tel" type="tel" inputmode="tel" autocomplete="tel" value="' + esc(client.tel) + '" placeholder="06 12 34 56 78"></label>' +
+        '<label class="rs-champ"><span>Téléphone <em>facultatif, pour vous joindre en cas d’imprévu</em>' + (D.smsPret ? '' : ' <i class="bientot">Rappel par SMS : bientôt</i>') + '</span><input name="tel" type="tel" inputmode="tel" autocomplete="tel" value="' + esc(client.tel) + '" placeholder="06 12 34 56 78"></label>' +
         '<label class="rs-champ rs-note"><span>Un petit mot pour nous ? <em>facultatif</em></span><textarea name="note" rows="2" maxlength="500" placeholder="ex. Je passe vers 12h15">' + esc(client.note) + '</textarea></label>' +
         '<div class="rs-idees" aria-label="Suggestions">' + ['Je passe vers 12h', 'Je passe en fin de journée', 'Sans sauce, svp', 'Allergie : ', 'C’est pour offrir'].map(function (t) {
           return '<button type="button" data-rs="idee" data-t="' + esc(t) + '">' + esc(t.replace(/ : $/, '…')) + '</button>';
@@ -231,7 +231,6 @@
       var vide = ['prenom', 'nom', 'tel'].filter(function (k) { return !f[k].value; })[0];
       setTimeout(function () { (vide ? f[vide] : pied.querySelector('.btn-violet')).focus(); }, 60);
       f.addEventListener('input', function (e) {
-        if (e.target.name === 'tel' && etat.sansTel) { etat.sansTel = false; pied.querySelector('.btn-violet').textContent = 'Confirmer ma réservation'; }
         e.target.removeAttribute('aria-invalid');
         f.querySelector('.rs-erreur').hidden = true;
       });
@@ -250,12 +249,6 @@
       if (!client.prenom) return erreur('Indiquez votre prénom.', 'prenom');
       if (!client.nom) return erreur('Indiquez votre nom.', 'nom');
       if (client.tel && client.tel.replace(/\D/g, '').replace(/^33/, '0').length !== 10) return erreur('Ce numéro de téléphone semble incomplet (10 chiffres).', 'tel');
-      // téléphone conseillé mais pas obligatoire : on le rappelle une fois, puis on laisse confirmer sans
-      if (!client.tel && !etat.sansTel) {
-        etat.sansTel = true;
-        var bt = pied.querySelector('.btn-violet'); bt.textContent = 'Confirmer sans téléphone';
-        return erreur('Sans numéro, nous ne pourrons pas vous prévenir en cas d’imprévu. Vous pouvez l’ajouter, ou confirmer sans.', 'tel');
-      }
       if (!client.email) return erreur('Indiquez votre adresse e-mail : vous y recevrez le récapitulatif de votre commande.', 'email');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
       var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';

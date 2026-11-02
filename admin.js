@@ -1264,7 +1264,11 @@
       else if (a === 'date') {
         f.date = b.dataset.d;
         // le plat du jour suit le jour choisi
-        f.lignes = f.lignes.map(function (l) { if (l.type === 'autre' || l.type === 'evenement' || l.jour) return l; var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n; });
+        f.lignes = f.lignes.map(function (l) {
+          if (l.type === 'autre' && !l.nom.trim()) { var v = ligneVide(f.date); v.qte = l.qte; return v; }   // ligne encore vide : le plat du jour de ce jour-là
+          if (l.type === 'autre' || l.type === 'evenement' || l.jour) return l;
+          var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n;
+        });
         part('fr-dates', htmlDates()); part('fr-lignes', htmlLignes());
       } else if (a === 'plus' || a === 'moins') { f.lignes[i].qte = Math.max(1, Math.min(99, f.lignes[i].qte + (a === 'plus' ? 1 : -1))); part('fr-lignes', htmlLignes()); }
       else if (a === 'retirer') { f.lignes.splice(i, 1); part('fr-lignes', htmlLignes()); }
