@@ -26,3 +26,6 @@ data/smtp.json
 
 # Fichiers à imprimer ou à télécharger (pas utilisés par le site)
 livrables/
+
+# Outils de compilation
+outils/node_modules/

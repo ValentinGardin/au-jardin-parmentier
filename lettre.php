@@ -83,7 +83,7 @@ if ($jeton !== '') {
 <meta name="robots" content="noindex">
 <title>Menu de la semaine par e-mail · Au Jardin Parmentier</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link href="fonts/fonts.css" rel="stylesheet">
+<link href="<?= asset('fonts/fonts.css') ?>" rel="stylesheet">
 <style>
   body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#faf8f5;font:400 16px/1.6 Inter,system-ui,sans-serif;color:#1d171b}
   .c{max-width:440px;width:100%;background:#fff;border-radius:20px;padding:36px 30px;text-align:center;box-shadow:0 12px 32px -12px rgba(29,23,27,.14)}

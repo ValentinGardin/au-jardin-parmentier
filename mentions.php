@@ -31,7 +31,7 @@ $realisation = 'G’agency';
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="style.css?v=8" rel="stylesheet">
+<link href="<?= asset('style.css') ?>" rel="stylesheet">
 </head>
 <body>
 

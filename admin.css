@@ -253,15 +253,12 @@ input.prix{text-align:right;font-variant-numeric:tabular-nums}
 
 /* Événements */
 .evt-bloc{border-top:6px solid var(--violet)}
-.evt-bloc.evt-vin{border-top-color:#5e1426}.evt-bloc.evt-sapin{border-top-color:#1c4634}.evt-bloc.evt-printemps{border-top-color:#4f7a2b}.evt-bloc.evt-or{border-top-color:#2a2118}
 .evt-bloc-tete{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--trait)}
 .evt-bloc-actions{margin-left:auto;display:flex;gap:2px}
 .interrupteur.grand{font-size:1rem;color:var(--encre)}
 .interrupteur.grand span{width:48px;height:28px}
 .interrupteur.grand span::after{width:22px;height:22px}
 .interrupteur.grand input:checked + span::after{transform:translateX(20px)}
-.grille-evt{display:grid;grid-template-columns:1.6fr 1fr;gap:0 1rem}
-@media (max-width:640px){.grille-evt{grid-template-columns:1fr}}
 .items-liste{display:grid;gap:.4rem}
 .item-ligne{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:.5rem;align-items:center}
 .resa-bloc{padding:1rem;border-radius:12px;background:var(--fond);margin-bottom:1rem}
@@ -350,7 +347,7 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .avatar{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--violet-pale);color:var(--violet);font:700 .9rem var(--titre);flex-shrink:0}
 .avatar.grand{width:42px;height:42px;font-size:1.15rem}
 @media (max-width:1560px){.logo span{display:none}}
-@media (max-width:1640px){.qui-role{display:none}.qui{padding:.3rem}}
+@media (max-width:1640px){.qui{padding:.3rem}}
 @media (min-width:1181px){.onglets > button[role=tab] .ico{display:none}}
 @media (max-width:1640px) and (min-width:1181px){.onglets button{padding:.55rem .7rem}.haut-actions .btn span{display:none}}
 .comptes-liste{display:grid;gap:.5rem}

@@ -646,8 +646,8 @@ if ($logged) {
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="fonts/fonts.css" rel="stylesheet">
-<link href="admin.css?v=31" rel="stylesheet">
+<link href="<?= asset('fonts/fonts.css') ?>" rel="stylesheet">
+<link href="<?= asset('admin.css') ?>" rel="stylesheet">
 </head>
 <body>
 
@@ -735,8 +735,8 @@ if ($logged) {
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
-<script src="visuels.js?v=2"></script>
-<script src="admin.js?v=36"></script>
+<script src="<?= asset('visuels.js') ?>"></script>
+<script src="<?= asset('admin.js') ?>"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

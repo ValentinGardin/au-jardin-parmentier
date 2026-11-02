@@ -18,7 +18,7 @@ $titrePage = count($cartes) === 1 ? $cartes[0]['titre'] : 'Cartes traiteur';
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="fonts/fonts.css" rel="stylesheet">
+<link href="<?= asset('fonts/fonts.css') ?>" rel="stylesheet">
 <style>
   @page{size:A4;margin:11mm 12mm}
   :root{--violet:#700954;--violet-pale:#f6ecf2;--sable:#f2ece4;--encre:#1d171b;--gris:#5f575d;--trait:#e2d9cf}

@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.43 · 2 novembre 2026';
+const VERSION = '1.44 · 2 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -10,6 +10,14 @@ const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 
 date_default_timezone_set('Europe/Paris');
 
 function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+// Adresse d'un fichier CSS ou JS : sa version compacte (.min, créée par outils/build.mjs) si elle est à jour,
+// suivie d'un numéro de version tiré de la date du fichier (le navigateur recharge dès qu'il change)
+function asset($f) {
+    $min = preg_replace('/\.(js|css)$/', '.min.$1', $f);
+    $src = @filemtime(__DIR__ . '/' . $f); $m = @filemtime(__DIR__ . '/' . $min);
+    $u = $m && $m >= $src ? $min : $f;
+    return $u . '?v=' . base_convert((string)max($m, $src), 10, 36);
+}
 
 function site_load() {
     // site.json est créé par le back-office ; tant qu'il n'existe pas, le contenu de départ (site.exemple.json) est affiché

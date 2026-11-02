@@ -19,7 +19,7 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link href="fonts/fonts.css" rel="stylesheet">
+<link href="<?= asset('fonts/fonts.css') ?>" rel="stylesheet">
 <style>
   @page{size:A4;margin:0}
   :root{--violet:#700954;--orange:#d9641e;--encre:#1d171b;--gris:#5f575d}
