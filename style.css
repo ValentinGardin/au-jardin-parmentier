@@ -702,3 +702,4 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .hero-menu{max-width:34rem}
 .hm-plat{flex-wrap:wrap;row-gap:0}
 .hm-plat b{white-space:normal;overflow:visible}
+.hm-ligne{grid-template-columns:10.6rem minmax(0,1fr) auto}@media (max-width:480px){.hm-ligne{grid-template-columns:1fr auto}}

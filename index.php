@@ -119,24 +119,40 @@ foreach ($ld as $bloc): ?>
 <?php endif; ?>        <a class="btn btn-ligne btn-lg" href="#traiteur">Nos cartes traiteur</a>
 <?php endif; ?>
       </div>
-<?php if ($platDuJour || $prochain): ?>
-      <!-- Mini-menu : le plat d'aujourd'hui (en boutique ou au téléphone), puis le prochain plat réservable en ligne -->
+<?php
+// Le prochain plat du jour (aujourd'hui, sinon le prochain jour avec un plat), même s'il n'est plus réservable en ligne
+$premier = null;
+$semainesVues = [$sem];
+if ($suiv['publie'] && semaine_remplie($suiv)) $semainesVues[] = $suiv;
+foreach ($semainesVues as $sw) {
+    if ($sw['conges']['actif']) continue;
+    foreach ($sw['jours'] as $j) {
+        if ($j['nom'] === '' || $j['ferme']) continue;
+        $dj = $dateDuJour($sw, $j['jour']);
+        if ($dj !== '' && $dj >= date('Y-m-d') && (!$premier || $dj < $premier['date'])) $premier = ['date' => $dj, 'plat' => $j];
+    }
+}
+if ($premier && $prochain && $premier['date'] === $prochain['date']) $premier = null;   // déjà réservable : une seule ligne
+$quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui' : ucfirst(date_fr($premier['date'], true))) : '';
+?>
+<?php if ($premier || $prochain): ?>
+      <!-- Mini-menu : le prochain plat du jour (plus réservable en ligne : en boutique ou au téléphone), puis le prochain réservable -->
       <div class="hero-menu anim" style="--d:4">
         <p class="hm-titre"><span class="hm-titre-ico" aria-hidden="true"><svg><use href="#i-sac"/></svg></span>Le plat du jour<span class="hm-titre-sous">fait maison, à emporter</span></p>
-<?php if ($platDuJour): ?>
+<?php if ($premier): $pp = $premier['plat']; ?>
         <a class="hm-ligne" href="#semaine">
-          <span class="hm-quand">Aujourd’hui</span>
-          <span class="hm-plat"><b><?= h($platDuJour['nom']) ?></b><?php if ($platDuJour['prix'] !== ''): ?><small><?= h($platDuJour['prix']) ?></small><?php endif; ?></span>
-          <span class="hm-act<?= $platDuJour['epuise'] ? ' epuise' : ($prochain ? ' off' : '') ?>"><?= $platDuJour['epuise'] ? 'Épuisé' : ($prochain ? 'Plus réservable en ligne' : 'À emporter') ?></span>
+          <span class="hm-quand"><?= h($quandPremier) ?></span>
+          <span class="hm-plat"><b><?= h($pp['nom']) ?></b><?php if ($pp['prix'] !== ''): ?><small><?= h($pp['prix']) ?></small><?php endif; ?></span>
+          <span class="hm-act<?= $pp['epuise'] ? ' epuise' : ($cmd ? ' off' : '') ?>"><?= $pp['epuise'] ? 'Épuisé' : ($cmd ? 'Plus réservable en ligne' : 'À emporter') ?></span>
         </a>
 <?php endif; if ($prochain): ?>
-<?php if (date('o-W', strtotime($prochain['date'])) !== date('o-W')): ?>        <p class="hm-sep"><span>Semaine prochaine</span></p>
+<?php if (date('o-W', strtotime($prochain['date'])) !== date('o-W', $premier ? strtotime($premier['date']) : time())): ?>        <p class="hm-sep"><span>Semaine prochaine</span></p>
 <?php endif; ?>        <div class="hm-ligne hm-suivant">
           <span class="hm-quand"><?= h(ucfirst(date_fr($prochain['date'], true))) ?></span>
           <span class="hm-plat"><b><?= h($prochain['plat']['nom']) ?></b><?php if ($prochain['plat']['prix'] !== ''): ?><small><?= h($prochain['plat']['prix']) ?></small><?php endif; ?></span>
           <button type="button" class="hm-btn" data-reserver="<?= $prochain['date'] ?>">Réserver</button>
         </div>
-        <p class="hm-note">Réservation en ligne jusqu’à la veille<?= $platDuJour && !$platDuJour['epuise'] ? ' · pour aujourd’hui, appelez le <a href="' . $telHref . '">' . $tel . '</a>' : '' ?></p>
+        <p class="hm-note">Réservation en ligne jusqu’à la veille<?= $premier && !$premier['plat']['epuise'] ? ' · pour ' . ($premier['date'] === date('Y-m-d') ? 'aujourd’hui' : strtolower(JOURS[(int)date('N', strtotime($premier['date'])) - 1])) . ', appelez le <a href="' . $telHref . '">' . $tel . '</a>' : '' ?></p>
 <?php endif; ?>
       </div>
 <?php endif; ?>
