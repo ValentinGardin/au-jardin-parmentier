@@ -268,7 +268,9 @@ foreach ($ld as $bloc): ?>
           <span class="jour-plat"><strong><?= h($j['nom']) ?><?php if ($j['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($dj >= date('Y-m-d') && ($parts[$dj] ?? 0) >= FORTE_DEMANDE): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span>
           <span class="jour-px"><?= h($j['prix']) ?><?php if ($cmd && !$j['epuise']):
             if (in_array($dj, $cmdDates, true)): ?><button type="button" class="jour-resa" data-reserver="<?= $dj ?>" aria-label="Réserver le plat du <?= h(strtolower($j['jour'])) ?>">Réserver</button><?php
-            elseif ($dj === date('Y-m-d')): ?><a class="jour-resa tel" href="<?= $telHref ?>">Par téléphone</a><?php endif; endif; ?></span>
+            elseif ($dj === date('Y-m-d')): ?><a class="jour-resa tel" href="<?= $telHref ?>">Par téléphone</a><?php
+            elseif ($dj !== ''): ?><span class="jour-resa off" title="Ce jour n’est plus réservable en ligne">Plus réservable en ligne</span><?php endif;
+          elseif ($cmd && $j['epuise']): ?><span class="jour-resa off">Plus disponible</span><?php endif; ?></span>
 <?php endif; ?>
         </li>
 <?php endforeach; ?>
