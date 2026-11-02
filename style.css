@@ -698,3 +698,7 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 /* Jour plus réservable en ligne (passé, ou après l'heure limite de la veille) */
 .jour-resa.off{border:1px dashed #d8cfc6;color:var(--gris);font-weight:500;font-size:.78rem;cursor:default;background:transparent}
 .jour-resa.off:hover{background:transparent;color:var(--gris)}
+.hm-act.off{padding:.32rem .7rem;border:1px dashed #d8cfc6;border-radius:999px;font-size:.72rem;font-weight:500}
+.hero-menu{max-width:34rem}
+.hm-plat{flex-wrap:wrap;row-gap:0}
+.hm-plat b{white-space:normal;overflow:visible}

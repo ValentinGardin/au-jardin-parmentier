@@ -127,7 +127,7 @@ foreach ($ld as $bloc): ?>
         <a class="hm-ligne" href="#semaine">
           <span class="hm-quand">Aujourd’hui</span>
           <span class="hm-plat"><b><?= h($platDuJour['nom']) ?></b><?php if ($platDuJour['prix'] !== ''): ?><small><?= h($platDuJour['prix']) ?></small><?php endif; ?></span>
-          <span class="hm-act<?= $platDuJour['epuise'] ? ' epuise' : '' ?>"><?= $platDuJour['epuise'] ? 'Épuisé' : ($prochain ? 'En boutique' : 'À emporter') ?></span>
+          <span class="hm-act<?= $platDuJour['epuise'] ? ' epuise' : ($prochain ? ' off' : '') ?>"><?= $platDuJour['epuise'] ? 'Épuisé' : ($prochain ? 'Plus réservable en ligne' : 'À emporter') ?></span>
         </a>
 <?php endif; if ($prochain): ?>
 <?php if (date('o-W', strtotime($prochain['date'])) !== date('o-W')): ?>        <p class="hm-sep"><span>Semaine prochaine</span></p>
