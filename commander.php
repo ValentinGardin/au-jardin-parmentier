@@ -59,7 +59,8 @@ $ci = ['prenom' => txt($in['prenom'] ?? '', 40), 'nom' => txt($in['nom'] ?? '', 
 if ($ci['prenom'] === '' || $ci['nom'] === '') fin(400, ['erreur' => 'Indiquez votre prénom et votre nom.', 'champ' => $ci['prenom'] === '' ? 'prenom' : 'nom']);
 // téléphone conseillé mais pas obligatoire ; s'il est donné, il doit être complet
 if (trim($ci['tel']) !== '' && strlen(tel_chiffres($ci['tel'])) !== 10) fin(400, ['erreur' => 'Ce numéro de téléphone semble incomplet (10 chiffres).', 'champ' => 'tel']);
-if ($ci['email'] !== '' && email_ok($ci['email']) === '') fin(400, ['erreur' => 'Cette adresse e-mail ne semble pas valide.', 'champ' => 'email']);
+if (trim($ci['email']) === '') fin(400, ['erreur' => 'Indiquez votre adresse e-mail : vous y recevrez le récapitulatif de votre commande.', 'champ' => 'email']);
+if (email_ok($ci['email']) === '') fin(400, ['erreur' => 'Cette adresse e-mail ne semble pas valide.', 'champ' => 'email']);
 if (limite_ip('commande', 8)) fin(429, ['erreur' => 'Trop de réservations depuis cette connexion. Appelez-nous au ' . TEL_BOUTIQUE . '.']);
 
 $res = verrou(function () use ($ci, $in, $jour, $lignes) {
@@ -78,22 +79,12 @@ $res = verrou(function () use ($ci, $in, $jour, $lignes) {
 if (!$res) fin(500, ['erreur' => 'La réservation n’a pas pu être enregistrée. Appelez-nous au ' . TEL_BOUTIQUE . '.']);
 [$r, $c] = $res;
 
-// E-mails : confirmation au client (s'il a donné son adresse) et prévenir la boutique
-$total = array_reduce($r['lignes'], function ($t, $l) { return $t + (float)str_replace(',', '.', preg_replace('/[^\d,.]/', '', $l['prix'])) * $l['qte']; }, 0);
-$detail = implode("\n", array_map(function ($l) { return $l['qte'] . ' × ' . $l['nom'] . ($l['prix'] !== '' ? ' (' . $l['prix'] . ')' : '') . ($l['jour'] !== '' ? ' · plat du ' . date_fr($l['jour'], true) . ', mis de côté' : ''); }, $r['lignes']));
+// E-mails : récapitulatif au client, et alerte à la boutique (info@…)
+[$sujet, $html, $texte] = mail_commande($r, $c, 'client');
+$mailOk = mail_envoyer($c['email'], $sujet, $html, $texte);
+[$sujet, $html, $texte] = mail_commande($r, $c, 'boutique');
+mail_envoyer(EXPEDITEUR, $sujet, $html, $texte);
+$total = array_reduce($r['lignes'], function ($t, $l) { return $t + prix_nombre($l['prix']) * $l['qte']; }, 0);
 $quand = date_fr($r['date'], true);
-if ($c['email'] !== '') {
-    $html = '<div style="font:15px/1.6 Arial,sans-serif;color:#1d171b;max-width:520px"><p>Bonjour ' . h($c['prenom']) . ',</p>'
-        . '<p>Votre réservation <strong>n° ' . $r['num'] . '</strong> est bien enregistrée, à récupérer <strong>' . h($quand) . '</strong> à la boutique.</p>'
-        . '<p style="padding:12px 16px;background:#f6ecf2;border-radius:12px">' . nl2br(h($detail)) . ($total ? '<br><strong>Total : ' . number_format($total, 2, '.', '') . ' €</strong>, à régler sur place' : '') . '</p>'
-        . ($r['note'] !== '' ? '<p>Votre note : ' . h($r['note']) . '</p>' : '')
-        . '<p>Au Jardin Parmentier<br>9, place Parmentier – 80500 Montdidier<br>' . TEL_BOUTIQUE . '</p><p style="font-size:13px;color:#6b6369">Un changement ? Appelez-nous simplement.</p></div>';
-    mail_envoyer($c['email'], 'Réservation n° ' . $r['num'] . ' · ' . $quand . ' · Au Jardin Parmentier', $html,
-        "Bonjour {$c['prenom']},\n\nVotre réservation n° {$r['num']} est enregistrée, à récupérer $quand à la boutique.\n\n$detail\n\nAu Jardin Parmentier, 9 place Parmentier, Montdidier · " . TEL_BOUTIQUE . "\n");
-}
-mail_envoyer(EXPEDITEUR, 'Nouvelle réservation en ligne n° ' . $r['num'] . ' · ' . $quand, '<div style="font:15px/1.6 Arial,sans-serif">'
-    . '<p><strong>' . h(client_nom($c)) . '</strong> · ' . h($c['tel']) . ($c['email'] ? ' · ' . h($c['email']) : '') . '</p><p>' . h($quand) . '<br>' . nl2br(h($detail)) . '</p>'
-    . ($r['note'] !== '' ? '<p>Note : ' . h($r['note']) . '</p>' : '') . '<p>Retrouvez-la dans le back-office, onglet Réservations.</p></div>',
-    client_nom($c) . ' · ' . $c['tel'] . "\n$quand\n$detail\n" . ($r['note'] !== '' ? "Note : {$r['note']}\n" : ''));
 
-fin(200, ['ok' => true, 'num' => $r['num'], 'quand' => $quand, 'total' => $total, 'email' => $c['email'] !== '']);
+fin(200, ['ok' => true, 'num' => $r['num'], 'quand' => $quand, 'total' => $total, 'email' => $mailOk ? $c['email'] : '']);

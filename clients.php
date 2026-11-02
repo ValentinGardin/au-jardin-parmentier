@@ -515,3 +515,60 @@ function clients_importer($contacts, $accord, $source) {
     }
     return clients_enregistrer($l) ? $n : null;
 }
+
+// ---- E-mails d'une réservation : récapitulatif au client, et alerte à la boutique ----
+// $pour : « client » ou « boutique ». Renvoie [sujet, html, texte].
+function mail_commande($r, $c, $pour) {
+    $e = function ($t) { return htmlspecialchars((string)$t, ENT_QUOTES, 'UTF-8'); };
+    $quand = date_fr($r['date'], true);
+    $total = 0; $lignesHtml = ''; $lignesTxt = '';
+    foreach ($r['lignes'] as $l) {
+        $px = prix_nombre($l['prix']) * $l['qte']; $total += $px;
+        $sous = ($l['jour'] ?? '') !== '' && $l['jour'] !== $r['date'] ? 'plat du ' . date_fr($l['jour'], true) . ', mis de côté' : '';
+        $lignesHtml .= '<tr><td style="padding:10px 0;border-bottom:1px solid #eee5dc;font:15px/1.4 Arial,sans-serif;color:#1d171b"><b style="color:#700954">' . (int)$l['qte'] . ' ×</b> ' . $e($l['nom'])
+            . ($sous ? '<br><span style="font-size:12px;color:#6b6369">' . $e($sous) . '</span>' : '') . '</td>'
+            . '<td style="padding:10px 0;border-bottom:1px solid #eee5dc;text-align:right;white-space:nowrap;font:600 15px Arial,sans-serif;color:#1d171b">' . ($px ? number_format($px, 2, ',', ' ') . ' €' : '') . '</td></tr>';
+        $lignesTxt .= '- ' . $l['qte'] . ' × ' . $l['nom'] . ($px ? ' : ' . number_format($px, 2, ',', ' ') . ' €' : '') . ($sous ? " ($sous)" : '') . "\n";
+    }
+    $totalTxt = number_format($total, 2, ',', ' ') . ' €';
+    $recap = '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:6px 0 0">' . $lignesHtml
+        . ($total ? '<tr><td style="padding:12px 0 0;font:700 15px Arial,sans-serif;color:#1d171b">Total</td><td style="padding:12px 0 0;text-align:right;font:800 18px Arial,sans-serif;color:#700954">' . $totalTxt . '</td></tr>' : '') . '</table>';
+    $note = $r['note'] !== '' ? '<p style="margin:16px 0 0;padding:12px 14px;border-radius:10px;background:#fff8e1;font:14px/1.5 Arial,sans-serif;color:#6b4e00"><b>Note :</b> ' . $e($r['note']) . '</p>' : '';
+    $boite = function ($titre, $contenu) {
+        return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0;padding:24px 12px;background:#f2ece4">'
+            . '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden">'
+            . '<div style="padding:18px 26px;background:#700954;color:#fff;font:700 13px Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase">Au Jardin Parmentier</div>'
+            . '<div style="padding:26px 26px 22px">' . $titre . $contenu . '</div>'
+            . '<div style="padding:16px 26px;background:#faf8f5;font:12px/1.6 Arial,sans-serif;color:#6b6369;text-align:center">Au Jardin Parmentier · 9, place Parmentier – 80500 Montdidier · 09 50 17 39 62</div>'
+            . '</div></body></html>';
+    };
+    if ($pour === 'client') {
+        $sujet = 'Votre réservation n° ' . $r['num'] . ' · ' . $quand . ' · Au Jardin Parmentier';
+        $html = $boite('<p style="margin:0 0 4px;font:15px Arial,sans-serif;color:#6b6369">Bonjour ' . $e($c['prenom'] ?: client_nom($c)) . ',</p>'
+            . '<h1 style="margin:0 0 14px;font:800 24px/1.2 Arial,sans-serif;color:#1d171b">Votre réservation est confirmée</h1>',
+            '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;background:#f6ecf2;border-radius:14px"><tr>'
+            . '<td style="padding:14px 16px;font:13px Arial,sans-serif;color:#6b6369">Commande<br><b style="font:800 22px Arial,sans-serif;color:#700954">n° ' . (int)$r['num'] . '</b></td>'
+            . '<td style="padding:14px 16px;font:13px Arial,sans-serif;color:#6b6369;text-align:right">À récupérer<br><b style="font:700 16px Arial,sans-serif;color:#1d171b">' . $e(ucfirst($quand)) . '</b></td></tr></table>'
+            . '<p style="margin:20px 0 0;font:700 13px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#700954">Votre commande</p>' . $recap . $note
+            . '<p style="margin:18px 0 0;font:14px/1.6 Arial,sans-serif;color:#1d171b">À récupérer à la boutique, <b>9, place Parmentier à Montdidier</b>. ' . ($total ? 'Vous réglez <b>sur place</b>, au retrait.' : '') . '</p>'
+            . '<p style="margin:12px 0 0;font:14px/1.6 Arial,sans-serif;color:#6b6369">Un changement ou un empêchement ? Appelez-nous au <a href="tel:+33950173962" style="color:#700954;font-weight:700">09 50 17 39 62</a> en indiquant votre numéro de commande.</p>'
+            . '<p style="margin:18px 0 0;font:14px Arial,sans-serif;color:#1d171b">À très vite,<br>Angel &amp; Fab</p>');
+        $texte = 'Bonjour ' . ($c['prenom'] ?: client_nom($c)) . ",\n\nVotre réservation est confirmée.\nCommande n° {$r['num']} · à récupérer " . $quand . " à la boutique (9, place Parmentier, Montdidier).\n\n" . $lignesTxt
+            . ($total ? "Total : $totalTxt, à régler sur place.\n" : '') . ($r['note'] !== '' ? "Note : {$r['note']}\n" : '') . "\nUn changement ? 09 50 17 39 62\n\nÀ très vite,\nAngel & Fab\n";
+        return [$sujet, $html, $texte];
+    }
+    $lien = adresse_site() . '/' . ESPACE . '/';
+    $sujet = 'Nouvelle réservation n° ' . $r['num'] . ' · ' . $quand . ' · ' . (client_nom($c) ?: 'client');
+    $html = $boite('<p style="margin:0 0 4px;font:700 12px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#1f7a4d">Nouvelle réservation en ligne</p>'
+        . '<h1 style="margin:0 0 14px;font:800 24px/1.2 Arial,sans-serif;color:#1d171b">n° ' . (int)$r['num'] . ' · ' . $e(ucfirst($quand)) . '</h1>',
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;background:#faf8f5;border:1px solid #eee5dc;border-radius:14px"><tr><td style="padding:14px 16px;font:14px/1.6 Arial,sans-serif;color:#1d171b">'
+        . '<b style="font-size:16px">' . $e(client_nom($c) ?: 'Client') . '</b><br>'
+        . ($c['tel'] !== '' ? '<a href="tel:' . $e(preg_replace('/[^\d+]/', '', $c['tel'])) . '" style="color:#700954;font-weight:700;text-decoration:none">' . $e($c['tel']) . '</a><br>' : '<span style="color:#a95a0b">Pas de téléphone</span><br>')
+        . ($c['email'] !== '' ? '<a href="mailto:' . $e($c['email']) . '" style="color:#6b6369">' . $e($c['email']) . '</a>' : '') . '</td></tr></table>'
+        . '<p style="margin:20px 0 0;font:700 13px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#700954">Commande</p>' . $recap . $note
+        . '<p style="margin:16px 0 0;font:13px Arial,sans-serif;color:#6b6369">Réservée le ' . $e(date_fr(substr($r['cree'], 0, 10), true)) . ' à ' . $e(str_replace(':', 'h', substr($r['cree'], 11, 5))) . ' · paiement sur place</p>'
+        . '<p style="margin:22px 0 0;text-align:center"><a href="' . $e($lien) . '" style="display:inline-block;background:#700954;color:#fff;text-decoration:none;font:700 15px Arial,sans-serif;padding:12px 22px;border-radius:12px">Ouvrir les réservations</a></p>');
+    $texte = "Nouvelle réservation en ligne n° {$r['num']} · " . $quand . "\n\n" . (client_nom($c) ?: 'Client') . "\n" . ($c['tel'] ?: 'pas de téléphone') . ($c['email'] ? ' · ' . $c['email'] : '') . "\n\n" . $lignesTxt
+        . ($total ? "Total : $totalTxt\n" : '') . ($r['note'] !== '' ? "Note : {$r['note']}\n" : '') . "\nBack-office : $lien\n";
+    return [$sujet, $html, $texte];
+}

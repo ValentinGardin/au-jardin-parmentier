@@ -697,9 +697,9 @@
           '<label class="champ"><span>Mot de passe de cette boîte</span><input id="smtp-m" type="password" autocomplete="new-password" placeholder="' + (S.pret ? 'inchangé si vide' : '') + '"></label></div>' +
           '<p class="aide petit">C’est le mot de passe de la boîte mail elle-même (OVH → Web Cloud → E-mails), pas celui du compte OVH. Il reste sur le serveur du site et n’est jamais affiché.</p>' +
           '<details class="sms-avance"><summary>Réglages avancés</summary><div class="grille-2"><label class="champ"><span>Serveur d’envoi</span><input id="smtp-h" value="' + esc(S.hote) + '"></label><label class="champ"><span>Port</span><input id="smtp-p" inputmode="numeric" value="' + S.port + '"></label></div><p class="aide petit">Pour une boîte OVH : ssl0.ovh.net, port 465.</p></details>' +
-          '<div class="lettre-actions"><button type="button" class="btn btn-violet" data-act="smtp-ok">' + ico('envoyer') + 'Connecter et m’envoyer un essai</button>' + (S.pret ? '<button type="button" class="btn btn-discret" data-act="smtp-annuler">Annuler</button>' : '') + '</div>'
+          '<div class="lettre-actions"><button type="button" class="btn btn-violet" data-act="smtp-ok">' + ico('envoyer') + 'Connecter et m’envoyer un essai</button>' + (S.pret ? '<button type="button" class="btn btn-discret" data-act="smtp-annuler">Annuler</button>' : '<button type="button" class="btn btn-ligne" data-act="smtp-exemple" title="Avec l’envoi de base de l’hébergement">' + ico('mail') + 'M’envoyer un exemple de commande</button>') + '</div>'
         : '<p class="lettre-etat">' + ico('ok') + '<span>Les e-mails du site partent de <b>' + esc(S.utilisateur) + '</b> (' + esc(S.hote) + ').</span></p>' +
-          '<div class="lettre-actions"><button type="button" class="btn btn-ligne" data-act="smtp-changer">Changer de boîte ou de mot de passe</button><button type="button" class="btn btn-discret fc-suppr" data-act="smtp-oublier">Déconnecter</button></div>') +
+          '<div class="lettre-actions"><button type="button" class="btn btn-ligne" data-act="smtp-exemple">' + ico('mail') + 'M’envoyer un exemple de commande</button><button type="button" class="btn btn-ligne" data-act="smtp-changer">Changer de boîte ou de mot de passe</button><button type="button" class="btn btn-discret fc-suppr" data-act="smtp-oublier">Déconnecter</button></div>') +
       '</section>';
   }
   function actionSmtp(a, b) {
@@ -707,6 +707,11 @@
     if (a === 'smtp-changer') { smtpEdition = true; return maj(); }
     if (a === 'smtp-annuler') { smtpEdition = false; return maj(); }
     if (VISITE) return toast('Mode visite : rien n’est enregistré.');
+    if (a === 'smtp-exemple') {
+      b.disabled = true;
+      return api('smtp-exemple', {}).then(function (j) { toast('Deux e-mails d’exemple envoyés à ' + j.a + ' : le récapitulatif client et l’alerte boutique.'); })
+        .catch(function (e) { toast(e.message, true); }).then(function () { b.disabled = false; });
+    }
     if (a === 'smtp-oublier') return demander('Déconnecter la boîte mail ?', 'Les e-mails repartiront par l’envoi de base de l’hébergement, souvent classé en indésirable.', [{ txt: 'Annuler', val: false }, { txt: 'Déconnecter', val: true, cls: 'btn-danger' }])
       .then(function (r) { if (r) api('smtp-oublier', {}).then(function (j) { SMTP = j; maj(); }).catch(function (e) { toast(e.message, true); }); });
     b.disabled = true; b.textContent = 'Essai en cours…';

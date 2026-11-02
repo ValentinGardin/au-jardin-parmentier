@@ -388,6 +388,16 @@ if ($api !== '') {
         api_garde(true);
         $in = entree();
         if ($api === 'smtp-oublier') { @unlink(SMTP_CONFIG); repondre(200, $etatSmtp()); }
+        // Exemple des deux e-mails d'une commande en ligne (récapitulatif client + alerte boutique), envoyés à soi-même
+        if ($api === 'smtp-exemple') {
+            $r = ['num' => 128, 'date' => date('Y-m-d', strtotime('tomorrow')), 'cree' => date('Y-m-d H:i'), 'note' => 'Je passe vers 12h, sans sauce svp',
+                  'lignes' => [['type' => 'plat', 'nom' => 'Bœuf bourguignon', 'prix' => '11.00 €', 'qte' => 2, 'jour' => ''], ['type' => 'autre', 'nom' => 'Tarte au citron', 'prix' => '3.50 €', 'qte' => 1, 'jour' => '']]];
+            $c = ['prenom' => 'Marie', 'nom' => 'Dupont', 'tel' => '06 12 34 56 78', 'email' => 'marie.dupont@exemple.fr'];
+            $ok = 0;
+            foreach (['client', 'boutique'] as $pour) { [$sj, $ht, $tx] = mail_commande($r, $c, $pour); if (mail_envoyer($moi['email'], '[Exemple] ' . $sj, $ht, $tx)) $ok++; }
+            if ($ok < 2) repondre(500, ['erreur' => 'L’envoi a échoué (' . ($GLOBALS['mail_erreur'] ?? '') . '). Vérifiez la boîte mail connectée.']);
+            repondre(200, ['ok' => true, 'a' => $moi['email']]);
+        }
         if ($api === 'smtp-enregistrer') {
             $c = smtp_config();
             $n = ['hote' => preg_replace('/[^a-z0-9.-]/i', '', (string)($in['hote'] ?? '')) ?: 'ssl0.ovh.net', 'port' => (int)($in['port'] ?? 465) ?: 465,
@@ -726,7 +736,7 @@ if ($logged) {
 
 <script type="application/json" id="etat"><?= json_encode($etat, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="visuels.js?v=2"></script>
-<script src="admin.js?v=34"></script>
+<script src="admin.js?v=35"></script>
 <?php endif; ?>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

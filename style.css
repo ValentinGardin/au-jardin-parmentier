@@ -701,3 +701,7 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .evt-items li.evt-cat:first-child{padding-top:.4rem}
 .rs-cat{margin:1rem 0 .45rem;font:600 .68rem/1 var(--texte);letter-spacing:.18em;text-transform:uppercase;color:var(--violet)}
 .rs-jours-evt{margin-bottom:.9rem}
+/* Champs obligatoires */
+.rs-etoile{font-style:normal;color:#c0262d;font-weight:700;margin-left:.1rem}
+.rs-oblig{margin:-.2rem 0 .7rem;font-size:.78rem;color:var(--gris)}
+.rs-oblig i{font-style:normal;color:#c0262d;font-weight:700}

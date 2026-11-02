@@ -212,15 +212,16 @@
       entete(2, 'Vos coordonnées');
       corps.innerHTML = '<button type="button" class="rs-recap" data-rs="retour"><span><b>' + esc(recap().join(', ')) + '</b><small>' + esc(j.libelle) + (total() ? ' · ' + euros(total()) : '') + '</small></span><em>Modifier</em></button>' +
         '<form class="rs-form" id="rs-form" novalidate>' +
-        '<div class="rs-2"><label class="rs-champ"><span>Prénom</span><input name="prenom" autocomplete="given-name" required value="' + esc(client.prenom) + '"></label>' +
-        '<label class="rs-champ"><span>Nom</span><input name="nom" autocomplete="family-name" required value="' + esc(client.nom) + '"></label></div>' +
+        '<p class="rs-oblig"><i aria-hidden="true">*</i> Champs obligatoires</p>' +
+        '<div class="rs-2"><label class="rs-champ"><span>Prénom <i class="rs-etoile" aria-hidden="true">*</i></span><input name="prenom" autocomplete="given-name" required aria-required="true" value="' + esc(client.prenom) + '"></label>' +
+        '<label class="rs-champ"><span>Nom <i class="rs-etoile" aria-hidden="true">*</i></span><input name="nom" autocomplete="family-name" required aria-required="true" value="' + esc(client.nom) + '"></label></div>' +
+        '<label class="rs-champ"><span>E-mail <i class="rs-etoile" aria-hidden="true">*</i></span><input name="email" type="email" autocomplete="email" required aria-required="true" value="' + esc(client.email) + '"></label>' +
         '<label class="rs-champ"><span>Téléphone <em>conseillé, pour vous joindre en cas d’imprévu</em>' + (D.smsPret ? '' : ' <i class="bientot">Rappel par SMS : bientôt</i>') + '</span><input name="tel" type="tel" inputmode="tel" autocomplete="tel" value="' + esc(client.tel) + '" placeholder="06 12 34 56 78"></label>' +
-        '<label class="rs-champ"><span>E-mail <em>facultatif</em>' + (D.mailPret ? '<em>, pour recevoir la confirmation</em>' : ' <i class="bientot">Confirmation par e-mail : bientôt</i>') + '</span><input name="email" type="email" autocomplete="email" value="' + esc(client.email) + '"></label>' +
         '<label class="rs-champ rs-note"><span>Un petit mot pour nous ? <em>facultatif</em></span><textarea name="note" rows="2" maxlength="500" placeholder="ex. Je passe vers 12h15">' + esc(client.note) + '</textarea></label>' +
         '<div class="rs-idees" aria-label="Suggestions">' + ['Je passe vers 12h', 'Je passe en fin de journée', 'Sans sauce, svp', 'Allergie : ', 'C’est pour offrir'].map(function (t) {
           return '<button type="button" data-rs="idee" data-t="' + esc(t) + '">' + esc(t.replace(/ : $/, '…')) + '</button>';
         }).join('') + '</div>' +
-        '<label class="rs-case rs-case-lettre"' + (client.email ? '' : ' hidden') + '><input type="checkbox" name="lettre"' + (client.lettre ? ' checked' : '') + '><span>Recevoir aussi le menu de la semaine chaque lundi par e-mail</span></label>' +
+        '<label class="rs-case rs-case-lettre"><input type="checkbox" name="lettre"' + (client.lettre ? ' checked' : '') + '><span>Recevoir aussi le menu de la semaine chaque lundi par e-mail</span></label>' +
         '<label class="rs-case"><input type="checkbox" name="memo"' + (client.memo ? ' checked' : '') + '><span>Me reconnaître la prochaine fois sur cet appareil</span></label>' +
         '<div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><input name="site_web" tabindex="-1" autocomplete="off"></div>' +
         '<p class="rs-erreur" role="alert" hidden></p></form>';
@@ -230,7 +231,6 @@
       var vide = ['prenom', 'nom', 'tel'].filter(function (k) { return !f[k].value; })[0];
       setTimeout(function () { (vide ? f[vide] : pied.querySelector('.btn-violet')).focus(); }, 60);
       f.addEventListener('input', function (e) {
-        if (e.target.name === 'email') f.querySelector('.rs-case-lettre').hidden = !e.target.value.trim();
         if (e.target.name === 'tel' && etat.sansTel) { etat.sansTel = false; pied.querySelector('.btn-violet').textContent = 'Confirmer ma réservation'; }
         e.target.removeAttribute('aria-invalid');
         f.querySelector('.rs-erreur').hidden = true;
@@ -256,7 +256,8 @@
         var bt = pied.querySelector('.btn-violet'); bt.textContent = 'Confirmer sans téléphone';
         return erreur('Sans numéro, nous ne pourrons pas vous prévenir en cas d’imprévu. Vous pouvez l’ajouter, ou confirmer sans.', 'tel');
       }
-      if (client.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
+      if (!client.email) return erreur('Indiquez votre adresse e-mail : vous y recevrez le récapitulatif de votre commande.', 'email');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
       var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';
       fetch('commander', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(evt() ? { evt: etat.evt, date: evtJour().date, items: etat.items, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t } : { date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
@@ -275,7 +276,7 @@
         '<p class="rs-ok-titre">C’est réservé !</p><p class="rs-num">Commande n° <b>' + j.num + '</b></p>' +
         '<p>' + esc(recap().join(', ')) + '<br>à récupérer <b>' + esc(j.quand) + '</b> à la boutique,<br>9, place Parmentier à Montdidier.</p>' +
         (j.total ? '<p class="rs-ok-px">' + euros(j.total) + ' à régler sur place</p>' : '') +
-        '<p class="rs-info">' + (j.email && D.mailPret ? 'Un e-mail de confirmation vient de vous être envoyé. ' : '') + 'Un changement ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p></div>';
+        '<p class="rs-info">' + (j.email ? 'Le récapitulatif vient de vous être envoyé à <b>' + esc(j.email) + '</b>. ' : '') + 'Un changement ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p></div>';
       pied.innerHTML = '<button type="button" class="btn btn-violet btn-lg" data-rs="fermer">Parfait, à bientôt !</button>';
       pied.querySelector('button').focus();
       etat.fini = true;
