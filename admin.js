@@ -49,12 +49,18 @@
     if (!b || b < a) return 'à partir du ' + dateFr(du);
     return 'du ' + (a.getMonth() === b.getMonth() ? (a.getDate() === 1 ? '1er' : a.getDate()) : dateFr(du)) + ' au ' + dateFr(au) + ' ' + b.getFullYear();
   }
+  // Même règle que le serveur : le dimanche de la semaine, ou le lendemain du dernier jour s'il tombe avant
+  function dateBascule(s) {
+    if (!s.du) return '';
+    var d = parse(s.du), dim = plus(s.du, (7 - d.getDay()) % 7), lend = s.au ? plus(s.au, 1) : dim;
+    return lend < dim ? lend : dim;
+  }
   function statutSemaine(s) {
     var t = E.aujourdhui;
     if (s === site.semaine_suivante) {
       if (!s.du) return ['gris', 'Dates à renseigner'];
-      var fin = site.semaine.au || site.semaine.du, apres = fin ? dateFr(plus(fin, 1)) : dateFr(s.du);
-      return s.publie ? ['vert', 'Publiée : visible sur le site, remplace le menu actuel le ' + apres] : ['gris', 'Brouillon : remplacera le menu actuel le ' + apres + ' (dès la fin de la semaine en cours)'];
+      var b = dateBascule(site.semaine), apres = b && b < s.du ? jourNom(b).toLowerCase() + ' ' + dateFr(b) + ' à minuit' : 'le ' + dateFr(s.du);
+      return s.publie ? ['vert', 'Publiée : visible sur le site, remplace le menu actuel ' + (b && b < s.du ? 'le ' : '') + apres] : ['gris', 'Brouillon : remplacera automatiquement le menu actuel ' + (b && b < s.du ? 'le ' : '') + apres];
     }
     if (s.conges && s.conges.actif) return ['orange', 'Fermeture affichée à la place du menu'];
     if (!s.du) return ['gris', 'Dates à renseigner'];

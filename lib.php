@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.40 · 2 novembre 2026';
+const VERSION = '1.41 · 2 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -16,11 +16,10 @@ function site_load() {
     $f = is_file(DATA . '/site.json') ? DATA . '/site.json' : DATA . '/site.exemple.json';
     $d = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
     $d = site_clean(is_array($d) ? $d : []);
-    // Bascule automatique : dès que la semaine en cours est terminée (ou au plus tard le jour où la suivante
-    // commence), le menu préparé dans « Semaine suivante » devient le menu en cours
-    $n = $d['semaine_suivante']; $t = date('Y-m-d'); $s = $d['semaine'];
-    $finEnCours = $s['au'] !== '' ? $s['au'] : ($s['du'] !== '' ? date('Y-m-d', strtotime($s['du'] . ' +6 days')) : '');
-    if ($n['du'] !== '' && semaine_remplie($n) && ($n['du'] <= $t || ($finEnCours !== '' && $finEnCours < $t && $n['du'] > $s['du']))) {
+    // Bascule automatique : le dimanche à minuit (ou dès le lendemain du dernier jour s'il tombe plus tôt),
+    // le menu préparé dans « Semaine suivante » devient le menu en cours
+    $n = $d['semaine_suivante']; $t = date('Y-m-d');
+    if ($n['du'] !== '' && semaine_remplie($n) && ($n['du'] <= $t || (($b = date_bascule($d['semaine'])) !== '' && $b <= $t && $n['du'] > $d['semaine']['du']))) {
         unset($n['publie']);
         $d['semaine'] = $n;
         $d['semaine_suivante'] = semaine_suivante_clean([]);
@@ -78,6 +77,14 @@ function semaine_clean($s) {
 }
 // Jours à afficher : ceux qui ont un plat, ou qui sont marqués fermés
 // Semaine suivante : mêmes champs, plus « publie » (affichée en avance sur le site avec le bouton « Semaine suivante »)
+// Jour où le menu de la semaine laisse la place au suivant : le dimanche de sa semaine,
+// ou le lendemain de son dernier jour si celui-ci tombe avant (ex. menu du mardi au vendredi → samedi)
+function date_bascule($s) {
+    if ($s['du'] === '') return '';
+    $dimanche = date('Y-m-d', strtotime('sunday this week', strtotime($s['du'])));
+    $lendemain = $s['au'] !== '' ? date('Y-m-d', strtotime($s['au'] . ' +1 day')) : $dimanche;
+    return min($dimanche, $lendemain);
+}
 function semaine_suivante_clean($s) {
     return semaine_clean($s) + ['publie' => !empty($s['publie'])];
 }
