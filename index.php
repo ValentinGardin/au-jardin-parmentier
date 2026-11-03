@@ -206,7 +206,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
       <div class="evt-corps">
 <?php if ($e['items']): ?>        <ul class="evt-items">
 <?php foreach ($e['items'] as $k => $it):
-      if ($it['cat']): ?>          <li class="evt-cat"><?= h($it['nom']) ?></li>
+      if ($it['cat']): ?>          <li class="evt-cat"><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><b><?= h($it['prix']) ?></b><?php endif; ?></li>
 <?php continue; endif;
       $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
 <?php endforeach; ?>        </ul>
@@ -606,7 +606,7 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
 <?php endif; ?>      <h2 id="pop-titre"><?= h($pop['titre']) ?></h2>
 <?php if ($pop['accroche'] !== ''): ?>      <p class="pop-accroche"><?= h($pop['accroche']) ?></p>
 <?php endif; if ($pop['items']): ?>      <ul class="evt-items">
-<?php foreach (array_slice(array_values(array_filter($pop['items'], function ($it) { return !$it['cat']; })), 0, 4) as $it): ?>        <li><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+<?php $nPop = 0; foreach ($pop['items'] as $k => $it): if ($it['cat'] || $nPop++ >= 4) continue; $px = evt_prix($pop['items'], $k); ?>        <li><span><?= h($it['nom']) ?></span><?php if ($px !== ''): ?><i aria-hidden="true"></i><b><?= h($px) ?></b><?php endif; ?></li>
 <?php endforeach; ?>      </ul>
 <?php endif; ?>
       <div class="pop-actions">

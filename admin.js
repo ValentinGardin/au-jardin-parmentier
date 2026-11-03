@@ -409,9 +409,10 @@
     var liste = site.evenements.map(function (e, i) {
       var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
       var items = e.items.map(function (it, j) {
-        if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">Catégorie</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' + boutonsOrdre(p + '.items', j, ni) + '</div>';
+        if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">Catégorie</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' +
+          '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="ex. 9.00 €" inputmode="decimal" aria-label="Prix de la catégorie" title="Prix appliqué à chaque produit de la catégorie qui n’a pas son propre prix">' + boutonsOrdre(p + '.items', j, ni) + '</div>';
         return '<div class="item-ligne"><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Plateau de charcuterie et fromage pour deux" aria-label="Produit">' +
-          '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="17.00 €" inputmode="decimal" aria-label="Prix">' +
+          '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="' + esc(prixEvt(e.items, j) || '17.00 €') + '" inputmode="decimal" aria-label="Prix"' + (prixEvt(e.items, j) ? ' title="Vide : prix de la catégorie"' : '') + '>' +
           '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + p + '.items.' + j + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
           boutonsOrdre(p + '.items', j, ni) + '</div>';
       }).join('');
@@ -816,6 +817,12 @@
   }
   // premier jour de retrait encore possible (aujourd'hui au plus tôt)
   function evtPremierJour(e) { return !e.date ? '' : e.date >= E.aujourdhui ? e.date : evtFin(e) >= E.aujourdhui ? E.aujourdhui : e.date; }
+  // Prix d'un produit d'événement : le sien, sinon celui de sa catégorie
+  function prixEvt(items, k) {
+    if (!items[k].cat && items[k].prix) return items[k].prix;
+    for (var i = k; i >= 0; i--) if (items[i].cat) return items[i].prix || '';
+    return '';
+  }
   function aProduits(e) { return e.items.some(function (it) { return !it.cat; }); }
   function evtsAVenir(date) {
     return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) {
@@ -931,7 +938,7 @@
     if (m.special) h += '<p class="r-offre">Offre spéciale : <b' + (m.special.epuise ? ' class="raye"' : '') + '>' + esc(m.special.nom) + '</b>' + etat(m.special.epuise, offreParts('special', m.special.nom, R.date), E.forteOffre) + bouton('data-quoi="special"', m.special.epuise) + '</p>';
     evtsDu(R.date).forEach(function (x) {
       h += '<div class="r-offre r-evt" style="--c:' + esc(x.e.couleur) + '"><b>' + esc(x.e.titre) + '</b><ul>' + x.e.items.map(function (it, k) {
-        if (it.cat) return '<li class="r-evt-cat">' + esc(it.nom) + '</li>';
+        if (it.cat) return '<li class="r-evt-cat">' + esc(it.nom) + (it.prix ? ' · ' + esc(it.prix) : '') + '</li>';
         return '<li><span' + (it.epuise ? ' class="raye"' : '') + '>' + esc(it.nom) + '</span>' + etat(it.epuise, offreParts('evenement', it.nom, R.date), E.forteOffre) + bouton('data-quoi="evenement" data-e="' + x.i + '" data-k="' + k + '"', it.epuise) + '</li>';
       }).join('') + '</ul></div>';
     });
@@ -1118,7 +1125,7 @@
   function ligneVide(date, type) {
     // « jour:2026-10-28 » : le plat d'un jour précédent, à mettre de côté ce jour-là
     if (String(type).indexOf('jour:') === 0) { var j = type.slice(5), pj = menuDu(j).plat; if (pj && !pj.epuise) return { type: 'plat', nom: pj.nom, prix: pj.prix, qte: 1, jour: j }; }
-    if (String(type).indexOf('evt:') === 0) { var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]]; if (it) return { type: 'evenement', nom: it.nom, prix: it.prix, qte: 1 }; }
+    if (String(type).indexOf('evt:') === 0) { var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]]; if (it) return { type: 'evenement', nom: it.nom, prix: prixEvt(ev.items, +pe[2]), qte: 1 }; }
     var m = menuDu(date);
     if (type !== 'autre' && type !== 'special' && String(type).indexOf('evt:') !== 0 && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
     if (type === 'special' && m.special && !m.special.epuise) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
@@ -1174,8 +1181,9 @@
       // produits des événements à venir (un groupe par événement) : on peut les choisir depuis n'importe quel jour
       var evts = evtsAVenir(f.date).map(function (x) {
         return { label: x.e.titre + (x.e.date ? ' · ' + evtQuand(x.e) : ''), o: x.e.items.map(function (it, k) {
-          if (it.cat) return ['cat:' + k, '— ' + it.nom + ' —', true];
-          return ['evt:' + x.i + ':' + k, it.nom + (it.prix ? ' · ' + it.prix : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)];
+          if (it.cat) return ['cat:' + k, '— ' + it.nom + (it.prix ? ' · ' + it.prix : '') + ' —', true];
+          var px = prixEvt(x.e.items, k);
+          return ['evt:' + x.i + ':' + k, it.nom + (px ? ' · ' + px : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)];
         }) };
       });
       if (l.type === 'evenement' && !evts.some(function (g) { return g.o.some(function (x) { return x[1].indexOf(l.nom) === 0; }); })) o.push(['evt:-', 'Événement · ' + l.nom]);

@@ -152,7 +152,7 @@
         }).join('') + '</div>' : '') +
         '<p class="rs-evt-quand" style="--c:' + esc(e.couleur) + '">' + '<b>À récupérer ' + esc(jr.libelle) + '</b><span>à la boutique, 9 place Parmentier</span></p>' +
         '<p class="rs-q">Votre commande</p>' + e.items.map(function (it) {
-          if (it.cat) return '<p class="rs-cat">' + esc(it.nom) + '</p>';
+          if (it.cat) return '<p class="rs-cat">' + esc(it.nom) + (it.prix ? ' <span>· ' + esc(it.prix) + '</span>' : '') + '</p>';
           var q = etat.items[it.k] || 0;
           return '<div class="rs-plat' + (q ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-plat-txt">' +
             (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +

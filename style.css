@@ -688,6 +688,9 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .hm-titre-sous{margin-left:auto;font:500 .72rem var(--texte);letter-spacing:.02em;color:var(--gris)}
 /* Événement : catégories du menu, plusieurs jours */
 .evt-items li.evt-cat{display:block;padding:1.1rem 0 .35rem;border-bottom:1px solid var(--ligne-evt);font:600 .7rem/1 var(--texte);letter-spacing:.2em;text-transform:uppercase;color:var(--accent-evt)}
+.evt-items li.evt-cat:has(b){display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.evt-items li.evt-cat b{font-weight:700;letter-spacing:.04em;text-transform:none;font-size:.82rem;color:var(--texte-evt)}
+.rs-cat span{letter-spacing:.04em;text-transform:none;font-size:.8rem;color:var(--encre,#1d171b)}
 .evt-items li.evt-cat:first-child{padding-top:.4rem}
 .rs-cat{margin:1rem 0 .45rem;font:600 .68rem/1 var(--texte);letter-spacing:.18em;text-transform:uppercase;color:var(--violet)}
 .rs-jours-evt{margin-bottom:.9rem}

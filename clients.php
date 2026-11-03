@@ -486,7 +486,7 @@ function commande_evts($d) {
         foreach (evt_jours($e) as $j) if ($j > $demain || ($j === $demain && date('H:i') < $c['limite'])) $jours[] = ['date' => $j, 'libelle' => date_fr($j, true)];
         if (!$jours) continue;
         $items = [];
-        foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => $it['prix'], 'epuise' => $it['epuise'], 'cat' => $it['cat'],
+        foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
             'forte' => !$it['cat'] && !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
         $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
     }

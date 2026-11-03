@@ -881,7 +881,7 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .r-evt-cat{font-size:.68rem!important;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gris);margin-top:.2rem}
 @media (max-width:640px){.ajouts{grid-template-columns:1fr}}
 .item-ligne{grid-template-columns:minmax(0,1fr) 110px auto auto}
-.item-ligne.item-cat{grid-template-columns:auto minmax(0,1fr) auto}
+.item-ligne.item-cat{grid-template-columns:auto minmax(0,1fr) 110px auto}
 
 /* ===== Téléphone ===== */
 .pal-tab{overflow-x:auto;margin:0 -.2rem}
