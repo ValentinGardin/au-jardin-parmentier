@@ -933,3 +933,6 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
   .notifs{right:8px!important;left:8px;width:auto}
 }
 .sms-bloc .aide.petit{margin-top:.7rem}
+/* iPhone : texte des champs à 16px minimum, sinon Safari zoome sur le champ (et la page se décale sur le côté) */
+@media (pointer:coarse){input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px}}
+.auth{overflow-x:hidden;max-width:100vw}
