@@ -70,7 +70,10 @@ function photo_recue($f) {
     if ($f['size'] > 8 * 1024 * 1024) return [null, 'Photo trop lourde : 8 Mo maximum.'];
     $info = @getimagesize($f['tmp_name']);
     if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) return [null, 'Format non reconnu : envoyez une photo JPG, PNG ou WebP.'];
-    $nom = 'envoi-' . date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+    // Nom de fichier lisible pour le référencement (ex. « buffet-froid-3f2a.webp »), sauf noms d'appareil photo (IMG_1234…)
+    $base = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', pathinfo((string)($f['name'] ?? ''), PATHINFO_FILENAME)) ?: ''), '-'));
+    if ($base === '' || preg_match('/^(img|dsc|dscn|pxl|photo|image|screenshot|capture|whatsapp|fb|received|[0-9_-]+)([-_]|$)/', $base)) $base = 'photo-jardin-parmentier';
+    $nom = substr($base, 0, 50) . '-' . bin2hex(random_bytes(2));
     $dir = dirname(__DIR__) . '/img/photos';
     if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
         $src = @imagecreatefromstring((string)file_get_contents($f['tmp_name']));
@@ -122,6 +125,21 @@ if ($api !== '') {
         [$nom, $e] = photo_recue($_FILES['photo'] ?? null);
         if ($e) repondre(400, ['erreur' => $e]);
         repondre(200, ['ok' => true, 'nom' => $nom, 'url' => photo($nom)]);
+    }
+    // Suppression d'une photo (fichier + versions réduites) ; elle est aussi retirée des cartes et événements qui l'utilisaient
+    if ($api === 'photo-suppr' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        api_garde();
+        $nom = preg_replace('/[^a-z0-9-]/', '', (string)(entree()['nom'] ?? ''));
+        if ($nom === '' || !in_array($nom, photos_dispo(), true)) repondre(404, ['erreur' => 'Cette photo n’existe plus.']);
+        if (in_array($nom, PHOTOS_SITE, true)) repondre(400, ['erreur' => 'Cette photo fait partie de la page d’accueil : elle ne peut pas être supprimée.']);
+        $dir = dirname(__DIR__) . '/img/photos/';
+        foreach (glob($dir . $nom . '{,-400,-600,-800}.{webp,jpg,jpeg,png}', GLOB_BRACE) ?: [] as $x) @unlink($x);
+        if (photo_fichier($nom)) repondre(500, ['erreur' => 'Suppression impossible : vérifiez les droits du dossier img/photos/.']);
+        $d = site_load(); $modif = false;
+        foreach (['menus', 'evenements'] as $part) foreach ($d[$part] as &$x) if (($x['photo'] ?? '') === $nom) { $x['photo'] = ''; $modif = true; }
+        unset($x);
+        if ($modif) { sauvegarder(); json_save(DATA . '/site.json', site_clean($d)); }
+        repondre(200, ['ok' => true]);
     }
     // Comptes
     if ($api === 'compte' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -629,7 +647,7 @@ if ($logged) {
     lettre_auto(site_load());
     sms_auto();
     $photos = [];
-    foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p)];
+    foreach (photos_dispo() as $p) $photos[] = ['nom' => $p, 'url' => photo($p), 'fixe' => in_array($p, PHOTOS_SITE, true)];
     $etat = ['site' => site_load(), 'photos' => $photos, 'csrf' => $_SESSION['csrf'], 'aujourdhui' => date('Y-m-d'),
              'api' => ESPACE . '/', 'moi' => compte_public($moi), 'comptes' => $estAdmin ? array_map('compte_public', comptes_charger()) : [], 'roles' => ROLES, 'qui' => $moi['nom'] ?: $moi['identifiant'], 'forte' => FORTE_DEMANDE, 'forteOffre' => FORTE_OFFRE,
              'commande' => commande_config() + ['jours' => count(commande_jours(site_load()))]];

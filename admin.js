@@ -110,7 +110,8 @@
       '<label class="photo-opt envoyer"><input type="file" accept="image/jpeg,image/png,image/webp" data-envoi="' + p + '"><span class="sans">' + ico('upload') + 'Ajouter une photo</span></label>' +
       '<label class="photo-opt"><input type="radio" name="' + nom + '" data-p="' + p + '" value=""' + (val ? '' : ' checked') + '><span class="sans">Sans photo</span></label>' +
       E.photos.map(function (ph) {
-        return '<label class="photo-opt"><input type="radio" name="' + nom + '" data-p="' + p + '" value="' + esc(ph.nom) + '"' + (val === ph.nom ? ' checked' : '') + '><img src="' + esc(ph.url) + '" alt="' + esc(ph.nom) + '" loading="lazy"></label>';
+        return '<span class="photo-case"><label class="photo-opt"><input type="radio" name="' + nom + '" data-p="' + p + '" value="' + esc(ph.nom) + '"' + (val === ph.nom ? ' checked' : '') + '><img src="' + esc(ph.url) + '" alt="' + esc(ph.nom) + '" loading="lazy"></label>' +
+          (ph.fixe ? '' : '<button type="button" class="photo-suppr" data-act="photo-suppr" data-nom="' + esc(ph.nom) + '" aria-label="Supprimer cette photo" title="Supprimer cette photo">' + ico('suppr') + '</button>') + '</span>';
       }).join('') + '</div>';
   }
   function tete(titre, aide, actions) {
@@ -283,7 +284,7 @@
         champ('Phrase d’introduction', base + '.intro', { zone: true, rows: 2, opt: true, ph: 'ex. Présentation sur plateaux, avec sauces d’accompagnement.' }) +
         champ('Conditions de commande', base + '.note', { opt: true, ph: 'ex. Commande de 10 personnes minimum à 50 personnes maximum.' }) +
         champ('Informations encadrées', base + '.encart', { lignes: true, rows: 2, opt: true, ph: 'ex. Inclus : couverts, serviette, pain et beurre', aide: 'Une information par ligne, affichée dans un encadré sous les plats.' }) +
-        '<div class="champ"><span>Photo</span>' + photos + '<small>Pour ajouter une photo, déposez-la dans le dossier img/photos/ du site.</small></div></section>' +
+        '<div class="champ"><span>Photo</span>' + photos + '<small>Les photos ajoutées sont converties en WebP (plus légères) et reçoivent automatiquement un texte alternatif pour Google. La corbeille supprime une photo.</small></div></section>' +
       '<section class="bloc"><div class="bloc-tete"><h2>Catégories et plats</h2>' +
         '<span class="bloc-outils"><button type="button" class="lien" data-act="tout-ouvrir">Tout déplier</button><button type="button" class="lien" data-act="tout-fermer">Tout replier</button></span></div>' +
         '<div class="cats-liste">' + (cats || '<p class="vide">Aucune catégorie.</p>') + '</div>' +
@@ -655,6 +656,27 @@
         toast('Photo ajoutée. Pensez à enregistrer.');
       })
       .catch(function (e) { toast(e.message, true); render(true); });
+  }
+
+  // Corbeille sur une photo : confirmation (en précisant où elle est utilisée), puis suppression sur le serveur
+  function supprimerPhoto(nom) {
+    var ph = E.photos.filter(function (x) { return x.nom === nom; })[0]; if (!ph) return;
+    if (VISITE) return toast('Mode visite : rien n’est supprimé.');
+    var usages = [];
+    site.menus.forEach(function (c) { if (c.photo === nom) usages.push('la carte « ' + esc(c.titre) + ' »'); });
+    site.evenements.forEach(function (e) { if (e.photo === nom) usages.push('l’événement « ' + esc(e.titre) + ' »'); });
+    demander('Supprimer cette photo ?', '<img src="' + esc(ph.url) + '" alt="" class="modale-photo">' +
+      (usages.length ? 'Elle est utilisée par ' + usages.join(', ') + ' : ' + (usages.length > 1 ? 'ils seront affichés' : 'elle sera affichée') + ' sans photo.<br>' : '') +
+      'La photo sera effacée définitivement du site.', [{ txt: 'Garder', val: false }, { txt: 'Supprimer', val: true, cls: 'btn-danger' }])
+      .then(function (r) {
+        if (!r) return;
+        api('photo-suppr', { nom: nom }).then(function () {
+          E.photos = E.photos.filter(function (x) { return x.nom !== nom; });
+          [site, saved].forEach(function (s) { s.menus.concat(s.evenements).forEach(function (x) { if (x.photo === nom) x.photo = ''; }); });
+          render(true);
+          toast('Photo supprimée.');
+        }).catch(function (e) { toast(e.message, true); });
+      });
   }
 
   // =============== Utilisateurs / Mon compte ===============
@@ -2126,6 +2148,8 @@
       importClients();
     } else if (a === 'client-fiche') {
       ficheClient(b.dataset.id ? CL.filter(function (c) { return c.id === b.dataset.id; })[0] : null);
+    } else if (a === 'photo-suppr') {
+      supprimerPhoto(b.dataset.nom);
     } else if (a.indexOf('smtp-') === 0) {
       actionSmtp(a, b);
     } else if (a.indexOf('sms-') === 0) {

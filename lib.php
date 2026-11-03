@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.50 · 3 novembre 2026';
+const VERSION = '1.51 · 3 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -205,6 +205,13 @@ function photo_fichier($nom) {
         if (is_file(__DIR__ . '/' . $f)) return $f;
     }
     return null;
+}
+// Photos utilisées directement par la mise en page (accueil, rayons, équipe) : on ne peut pas les supprimer du back-office
+const PHOTOS_SITE = ['hero', 'legumes', 'charcuterie', 'equipe', 'traiteur', 'fromagerie', 'epicerie', 'vins'];
+// Texte alternatif (référencement + lecteurs d'écran) : décrit la photo et rappelle la boutique et la ville
+function alt_photo($quoi) {
+    $quoi = trim((string)$quoi);
+    return ($quoi !== '' ? $quoi . ' · ' : '') . 'Au Jardin Parmentier, épicerie fine et traiteur à Montdidier';
 }
 // Les versions réduites (photo-400.webp, photo-800.webp) ne sont pas proposées dans le back-office
 function photos_dispo() {

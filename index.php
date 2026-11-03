@@ -158,9 +158,9 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <?php endif; ?>
     </div>
     <div class="hero-visuel anim" style="--d:2">
-      <figure class="hv hv-1"><img <?= ($f = photo_fichier('hero')) ? img_attrs($f, '(max-width: 900px) 72vw, 400px') : 'src="img/logo/logo-violet.svg"' ?> alt="Verrines et bouchées préparées par l’atelier" width="1100" height="1375" fetchpriority="high"></figure>
-<?php if ($f = photo_fichier('legumes')): ?>      <figure class="hv hv-2"><img <?= img_attrs($f, '(max-width: 900px) 30vw, 230px') ?> alt="" width="500" height="375"></figure>
-<?php endif; if ($f = photo_fichier('charcuterie')): ?>      <figure class="hv hv-3"><img <?= img_attrs($f, '(max-width: 900px) 28vw, 210px') ?> alt="" width="500" height="375"></figure>
+      <figure class="hv hv-1"><img <?= ($f = photo_fichier('hero')) ? img_attrs($f, '(max-width: 900px) 72vw, 400px') : 'src="img/logo/logo-violet.svg"' ?> alt="<?= h(alt_photo('Verrines et bouchées préparées par notre atelier traiteur')) ?>" width="1100" height="1375" fetchpriority="high"></figure>
+<?php if ($f = photo_fichier('legumes')): ?>      <figure class="hv hv-2"><img <?= img_attrs($f, '(max-width: 900px) 30vw, 230px') ?> alt="<?= h(alt_photo('Fruits et légumes frais de saison')) ?>" width="500" height="375"></figure>
+<?php endif; if ($f = photo_fichier('charcuterie')): ?>      <figure class="hv hv-3"><img <?= img_attrs($f, '(max-width: 900px) 28vw, 210px') ?> alt="<?= h(alt_photo('Charcuterie à la coupe')) ?>" width="500" height="375"></figure>
 <?php endif; ?>
       <div class="hv-badge" aria-hidden="true"><img src="img/logo/symbole-blanc.svg" alt="" width="164" height="244"></div>
     </div>
@@ -195,7 +195,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
     <?php $cl = couleurs_evt($e['couleur']); ?>
     <article class="evt<?= $cl['clair'] ? ' evt-clair' : '' ?><?= $ph ? ' avec-photo' : '' ?> reveal" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
       <img class="evt-sym" src="img/logo/symbole-<?= $cl['clair'] ? 'violet' : 'blanc' ?>.svg" alt="" width="164" height="244">
-<?php if ($ph): ?>      <img class="evt-photo" <?= img_attrs(photo_fichier($e['photo']), '(max-width: 900px) 90vw, 320px') ?> alt="" loading="lazy" width="1000" height="750">
+<?php if ($ph): ?>      <img class="evt-photo" <?= img_attrs(photo_fichier($e['photo']), '(max-width: 900px) 90vw, 320px') ?> alt="<?= h(alt_photo($e['titre'])) ?>" loading="lazy" width="1000" height="750">
 <?php endif; ?>
       <div class="evt-tete">
 <?php if ($e['date']): ?>        <p class="evt-date"><span><?= h(ucfirst(evt_quand($e))) ?></span><?php if ($quand): ?><em><?= h($quand) ?></em><?php endif; ?></p>
@@ -366,7 +366,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <?php foreach ($s['menus'] as $i => $c): $ph = photo($c['photo']); ?>
     <article class="carte" role="tabpanel" id="carte-<?= $i ?>" aria-labelledby="tab-<?= $i ?>"<?= $i ? ' hidden' : '' ?>>
       <header class="carte-tete<?= $ph ? '' : ' sans-photo' ?>">
-<?php if ($ph): ?>        <img <?= img_attrs(photo_fichier($c['photo']), '(max-width: 760px) 92vw, 480px') ?> alt="" loading="lazy" width="1000" height="750">
+<?php if ($ph): ?>        <img <?= img_attrs(photo_fichier($c['photo']), '(max-width: 760px) 92vw, 480px') ?> alt="<?= h(alt_photo('Carte traiteur ' . $c['titre'])) ?>" loading="lazy" width="1000" height="750">
 <?php endif; ?>        <div class="carte-info">
           <h3><?= h($c['titre']) ?></h3>
 <?php if ($c['intro'] !== ''): ?>          <p><?= h($c['intro']) ?></p>
@@ -417,7 +417,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
     <div class="rayons">
 <?php foreach ($rayons as $i => [$slug, $nom, $txt]): $p = photo($slug); ?>
       <article class="rayon reveal<?= $p ? '' : ' sans-photo' ?>" style="--d:<?= $i % 3 ?>">
-<?php if ($p): ?>        <img <?= img_attrs(photo_fichier($slug), '(max-width: 540px) 92vw, (max-width: 900px) 46vw, 380px') ?> alt="" loading="lazy" width="1000" height="750">
+<?php if ($p): ?>        <img <?= img_attrs(photo_fichier($slug), '(max-width: 540px) 92vw, (max-width: 900px) 46vw, 380px') ?> alt="<?= h(alt_photo('Rayon ' . mb_strtolower($nom))) ?>" loading="lazy" width="1000" height="750">
 <?php else: ?>        <img class="rayon-sym" src="img/logo/symbole-violet.svg" alt="" width="164" height="244">
 <?php endif; ?>        <div class="rayon-txt">
           <h3><?= h($nom) ?></h3>
@@ -433,7 +433,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <section id="maison" class="section maison">
   <div class="wrap maison-in">
     <figure class="maison-img reveal">
-<?php if ($f = photo_fichier('equipe')): ?>      <img <?= img_attrs($f, '(max-width: 900px) 92vw, 470px') ?> alt="Angel et Fab dans leur boutique, devant la cave à vins" loading="lazy" width="900" height="1125">
+<?php if ($f = photo_fichier('equipe')): ?>      <img <?= img_attrs($f, '(max-width: 900px) 92vw, 470px') ?> alt="<?= h(alt_photo('Angel et Fab dans leur boutique, devant la cave à vins')) ?>" loading="lazy" width="900" height="1125">
 <?php endif; ?>      <figcaption>Angel &amp; Fab</figcaption>
     </figure>
     <div class="maison-txt">
@@ -454,7 +454,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <section class="galerie" aria-label="Nos réalisations en images">
   <div class="galerie-piste">
 <?php foreach (array_merge($galerie, $galerie) as $i => $g): ?>
-    <img <?= img_attrs($g, '280px') ?> alt="" loading="lazy" width="640" height="800"<?= $i >= count($galerie) ? ' aria-hidden="true"' : '' ?>>
+    <img <?= img_attrs($g, '280px') ?> alt="<?= $i >= count($galerie) ? '' : h(alt_photo('Réalisation traiteur ' . ($i + 1))) ?>" loading="lazy" width="640" height="800"<?= $i >= count($galerie) ? ' aria-hidden="true"' : '' ?>>
 <?php endforeach; ?>
   </div>
 </section>
@@ -599,7 +599,7 @@ if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
 <div class="pop" id="pop" hidden data-cle="<?= h(substr(md5($pop['titre'] . $pop['date']), 0, 10)) ?>">
   <div class="pop-carte<?= $cl['clair'] ? ' evt-clair' : '' ?>" role="dialog" aria-modal="true" aria-labelledby="pop-titre" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
     <button type="button" class="pop-fermer" data-pop-fermer aria-label="Fermer">×</button>
-<?php if ($ph): ?>    <img class="pop-img" <?= img_attrs(photo_fichier($pop['photo']), '(max-width: 500px) 92vw, 460px') ?> alt="" width="1000" height="750">
+<?php if ($ph): ?>    <img class="pop-img" <?= img_attrs(photo_fichier($pop['photo']), '(max-width: 500px) 92vw, 460px') ?> alt="<?= h(alt_photo($pop['titre'])) ?>" width="1000" height="750">
 <?php endif; ?>
     <div class="pop-corps">
 <?php if ($pop['date']): ?>      <p class="evt-date"><span><?= h(ucfirst(evt_quand($pop))) ?></span></p>
