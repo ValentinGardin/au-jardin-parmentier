@@ -387,7 +387,10 @@ if ($api !== '') {
             }
             if (!$s) repondre(400, ['erreur' => 'Aucun menu de la semaine à envoyer : remplissez d’abord l’onglet « Menu de la semaine ».']);
             if ($api === 'lettre-test') {
-                $ok = mail_envoyer($moi['email'], '[Essai] ' . lettre_sujet($s), lettre_html($s, $moi['nom'], adresse_site() . '/lettre'), lettre_texte($s, $moi['nom'], adresse_site() . '/lettre'));
+                // lien de désinscription : le vrai si cette adresse est dans les clients, sinon une page qui explique que c'est un essai
+                $cl = clients_charger(); $ic = client_index($cl, '', $moi['email']);
+                $lienEssai = $ic !== null ? lien_desabo($cl[$ic]) : adresse_site() . '/lettre?essai=1';
+                $ok = mail_envoyer($moi['email'], '[Essai] ' . lettre_sujet($s), lettre_html($s, $moi['nom'], $lienEssai), lettre_texte($s, $moi['nom'], $lienEssai));
                 if (!$ok) repondre(500, ['erreur' => 'L’e-mail n’a pas pu partir (' . ($GLOBALS['mail_erreur'] ?? '') . '). Connectez votre boîte mail dans Utilisateurs → Envoi des e-mails.']);
                 lettre_noter(['du' => $s['du'], 'date' => date('Y-m-d H:i'), 'mode' => 'test', 'nb' => 1, 'ok' => 1, 'a' => $moi['email']]);
                 repondre(200, ['ok' => true, 'a' => $moi['email']] + $listeClients());

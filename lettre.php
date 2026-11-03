@@ -23,7 +23,7 @@ function trop_frequent() {
 $jeton = preg_replace('/[^a-f0-9]/', '', (string)($_GET['d'] ?? ''));
 
 // ---- Inscription ----
-if ($jeton === '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($jeton === '' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'desabo') {
     $email = email_ok($_POST['email'] ?? '');
     $prenom = txt($_POST['prenom'] ?? '', 40);
     $robot = ($_POST['site_web'] ?? '') !== '' || time() - (int)($_POST['t'] ?? 0) < 2;
@@ -58,8 +58,18 @@ if ($jeton === '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ---- Désinscription ----
-$etat = 'inconnu';
+$etat = isset($_GET['essai']) ? 'essai' : 'inconnu';
 $client = null;
+// Désinscription en tapant son adresse (lien abîmé, e-mail transféré, ancien lien…). Même réponse que l'adresse soit connue ou non.
+if ($jeton === '' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'desabo') {
+    $email = email_ok($_POST['email'] ?? '');
+    if ($email !== '' && ($_POST['site_web'] ?? '') === '' && !limite_ip('desabo', 10)) verrou(function () use ($email) {
+        $l = clients_charger();
+        $i = client_index($l, '', $email);
+        if ($i !== null) { client_lettre($l[$i], false, 'désinscription (adresse saisie)'); clients_enregistrer($l); }
+    });
+    $etat = $email !== '' ? 'fait' : 'adresse';
+}
 if ($jeton !== '') {
     foreach (clients_charger() as $c) if (hash_equals($c['jeton'], $jeton)) $client = $c;
     if ($client) $etat = $client['lettre']['statut'] === 'oui' ? 'inscrit' : 'desinscrit';
@@ -92,6 +102,8 @@ if ($jeton !== '') {
   p{color:#6b6369;margin:0 0 1.2rem}
   button,a.b{display:inline-block;border:0;border-radius:12px;padding:.85rem 1.4rem;font:600 1rem Inter,sans-serif;background:#700954;color:#fff;text-decoration:none;cursor:pointer}
   a{color:#700954}
+  .f{display:grid;gap:.6rem}
+  .f input{font:400 16px Inter,sans-serif;padding:.8rem 1rem;border:1px solid #e3ddd6;border-radius:12px;text-align:center}
 </style>
 </head>
 <body>
@@ -105,10 +117,20 @@ if ($jeton !== '') {
   <h1>C’est fait</h1>
   <p>Vous ne recevrez plus le menu de la semaine par e-mail. Vous pouvez vous réinscrire à tout moment depuis notre site.</p>
   <a class="b" href="./">Retour au site</a>
-<?php else: ?>
-  <h1>Lien expiré</h1>
-  <p>Ce lien de désinscription n’est plus valable. Écrivez-nous à <a href="mailto:<?= EXPEDITEUR ?>"><?= EXPEDITEUR ?></a> et nous vous retirerons de la liste.</p>
+<?php elseif ($etat === 'essai'): ?>
+  <h1>E-mail d’essai</h1>
+  <p>Ce lien vient d’un e-mail d’essai envoyé depuis la gestion du site. Dans les vrais envois, chaque client a son propre lien et se désinscrit en un clic.</p>
   <a class="b" href="./">Retour au site</a>
+<?php else: ?>
+  <h1>Se désinscrire</h1>
+  <p><?= $etat === 'adresse' ? 'Cette adresse e-mail ne semble pas valide. ' : '' ?>Indiquez votre adresse e-mail : vous ne recevrez plus le menu de la semaine.</p>
+  <form method="post" class="f">
+    <input type="hidden" name="action" value="desabo">
+    <div style="position:absolute;left:-9999px" aria-hidden="true"><input name="site_web" tabindex="-1" autocomplete="off"></div>
+    <input type="email" name="email" required autocomplete="email" placeholder="votre@adresse.fr" aria-label="Adresse e-mail">
+    <button>Me désinscrire</button>
+  </form>
+  <p style="font-size:.85rem;margin:1.2rem 0 0">Un souci ? Écrivez-nous à <a href="mailto:<?= EXPEDITEUR ?>"><?= EXPEDITEUR ?></a>.</p>
 <?php endif; ?>
 </main>
 </body>
