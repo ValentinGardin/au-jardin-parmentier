@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.59 · 3 novembre 2026';
+const VERSION = '1.60 · 3 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -126,7 +126,7 @@ function evt_prix($items, $k) {
 // Contenu d'une formule (les produits sous une catégorie à prix)
 function evt_contenu($items, $k) {
     $l = [];
-    for ($i = $k + 1; $i < count($items) && !$items[$i]['cat']; $i++) $l[] = $items[$i]['nom'];
+    for ($i = $k + 1; $i < count($items) && !$items[$i]['cat']; $i++) $l[] = $items[$i]['nom'] . (($items[$i]['accomp'] ?? '') !== '' ? ' (' . $items[$i]['accomp'] . ')' : '');
     return $l;
 }
 function evenement_clean($e) {
@@ -136,6 +136,8 @@ function evenement_clean($e) {
         $p = !empty($p['cat']) ? ['nom' => txt($p['nom'] ?? '', 60), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']) && trim((string)($p['prix'] ?? '')) !== '', 'cat' => true]
                                : ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']), 'cat' => false,
                                   'desc' => txt($p['desc'] ?? '', 160),
+                                  // 2e ligne sous le nom du plat : l'accompagnement (ex. « Gratin dauphinois et marrons »)
+                                  'accomp' => txt($p['accomp'] ?? '', 140),
                                   // formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) : chacun son prix ; « kg » = prix au kilo, le client choisit un poids
                                   'formats' => array_slice(array_values(array_filter(array_map(function ($f) {
                                       return ['nom' => txt($f['nom'] ?? '', 40), 'prix' => txt($f['prix'] ?? '', 30), 'kg' => !empty($f['kg'])];

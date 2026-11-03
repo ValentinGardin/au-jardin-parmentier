@@ -1035,3 +1035,10 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
   .evt-apercu{position:static;order:-1}
   .ap-evt{max-height:none}
 }
+/* 2e ligne d'un plat d'événement : l'accompagnement */
+.accomp-ligne{display:flex;align-items:center;gap:.4rem;margin:-.15rem 0 0 .6rem}
+.accomp-ligne span{color:var(--gris-clair,#b7afb4);font-size:.9rem}
+.accomp-ligne input{padding:.38rem .65rem;font-size:.86rem;border-style:dashed;background:transparent}
+.accomp-ligne input:focus{border-style:solid;background:var(--blanc)}
+.item-inclus + .accomp-ligne{margin-left:1.7rem}
+.ap-evt li .ap-accomp{display:block;font-weight:400;font-size:.74rem;opacity:.8;margin-top:.1rem}

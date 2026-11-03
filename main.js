@@ -171,7 +171,7 @@
           var q = etat.items[v0.cle] || 0;
           return '<div class="rs-plat' + (q ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-plat-txt">' +
             (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +
-            '<strong>' + esc(it.nom) + '</strong>' + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + '</div><div class="rs-plat-fin">' + (it.prix ? '<span class="rs-px">' + esc(it.prix) + '</span>' : '') +
+            '<strong>' + esc(it.nom) + '</strong>' + (it.accomp ? '<small class="rs-accomp">' + esc(it.accomp) + '</small>' : '') + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + '</div><div class="rs-plat-fin">' + (it.prix ? '<span class="rs-px">' + esc(it.prix) + '</span>' : '') +
             (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : qte('e:' + v0.cle, q, 0)) + '</div></div>';
         }).join('') +
         '<p class="rs-info">Une question ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p>';
@@ -183,7 +183,7 @@
       var choisi = it.v.some(function (v) { return etat.items[v.cle] > 0; }), dernier = null;
       return '<div class="rs-art' + (choisi ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-art-tete">' +
         (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +
-        '<strong>' + esc(it.nom) + '</strong>' + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : '') + '</div>' +
+        '<strong>' + esc(it.nom) + '</strong>' + (it.accomp ? '<small class="rs-accomp">' + esc(it.accomp) + '</small>' : '') + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : '') + '</div>' +
         (it.epuise ? '' : it.v.map(function (v) {
           var q = etat.items[v.cle] || 0, t = '';
           if (v.choix && v.choix !== dernier) { dernier = v.choix; t = '<p class="rs-var-t">' + (it.titreChoix ? esc(it.titreChoix) + ' : ' : '') + '<b>' + esc(v.choix) + '</b>' + (v.sup ? ' <span>' + esc(v.sup) + '</span>' : '') + '</p>'; }

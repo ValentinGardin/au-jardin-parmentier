@@ -748,3 +748,7 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .evt-large .evt-items li.evt-cat{grid-column:1/-1}
 @media (max-width:760px){.evt-large .evt-items{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:900px){.evt.evt-large.avec-photo{grid-template-columns:1fr;grid-template-areas:"photo" "tete" "corps"}}
+/* 2e ligne d'un plat d'événement : l'accompagnement */
+.evt-accomp{display:block;margin-top:.15rem;font-weight:400;font-size:.86rem;line-height:1.35;opacity:.78}
+.evt-items li.evt-inclus > span,.evt-items li > span:has(.evt-accomp){display:block}
+.rs-accomp{color:var(--violet)!important;font-weight:500}

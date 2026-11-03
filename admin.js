@@ -79,7 +79,7 @@
     cat: function () { return { titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }; },
     carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
-    item: function () { return { nom: '', prix: '', epuise: false, cat: false, desc: '', formats: [], option: { titre: '', choix: [] } }; },
+    item: function () { return { nom: '', prix: '', epuise: false, cat: false, desc: '', accomp: '', formats: [], option: { titre: '', choix: [] } }; },
     catEvt: function () { return { nom: '', prix: '', epuise: false, cat: true }; },
     faq: function () { return { q: '', r: '' }; },
     evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', date_fin: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
@@ -459,17 +459,22 @@
     var mix = 'rgb(' + c.map(function (v) { return Math.round(v + (t - v) * .72); }).join(',') + ')';
     return { fond: '#' + m[1] + m[2] + m[3], texte: clair ? '#1d171b' : '#fff', accent: mix, clair: clair };
   }
+  // 2e ligne sous le nom d'un plat : son accompagnement
+  function ligneAccomp(it, pi) {
+    return '<label class="accomp-ligne"><span aria-hidden="true">↳</span><input data-p="' + pi + '.accomp" value="' + esc(it.accomp || '') + '" placeholder="Accompagnement (2e ligne, facultatif) · ex. Gratin dauphinois et marrons" aria-label="Accompagnement"></label>';
+  }
   function apercuEvt(e) {
     var cl = couleursEvt(e.couleur), ph = E.photos.filter(function (x) { return x.nom === e.photo; })[0];
     var quand = e.date ? evtQuand(e) : '';
     var items = e.items.map(function (it, k) {
       if (!it.nom) return '';
       if (it.cat) return '<li class="ap-cat"><span>' + esc(it.nom) + (it.prix ? ' <i>tout compris</i>' : '') + (it.prix && it.epuise ? ' <em>Épuisé</em>' : '') + '</span>' + (it.prix ? '<b>' + esc(it.prix) + '</b>' : '') + '</li>';
-      if (prixCatEvt(e.items, k)) return '<li class="ap-inclus">' + esc(it.nom) + '</li>';
+      var acc = it.accomp ? '<small class="ap-accomp">' + esc(it.accomp) + '</small>' : '';
+      if (prixCatEvt(e.items, k)) return '<li class="ap-inclus"><span>' + esc(it.nom) + acc + '</span></li>';
       var fs = it.formats || [], ch = it.option ? it.option.choix : [];
       var chips = fs.map(function (f) { var px = f.prix || prixEvt(e.items, k); return '<span>' + esc(f.nom || 'Au kilo') + (px ? ' <b>' + esc(px) + (f.kg ? '/kg' : '') + '</b>' : '') + '</span>'; }).join('') +
         (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (c) { return c.nom + (c.prix ? ' (+' + c.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
-      return '<li' + (it.epuise ? ' class="ap-epuise"' : '') + '><span>' + esc(it.nom) + (it.epuise ? ' <em>Épuisé</em>' : '') + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
+      return '<li' + (it.epuise ? ' class="ap-epuise"' : '') + '><span>' + esc(it.nom) + (it.epuise ? ' <em>Épuisé</em>' : '') + acc + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
         (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
     }).join('');
     return '<div class="ap-evt' + (cl.clair ? ' ap-clair' : '') + '" style="--f:' + cl.fond + ';--t:' + cl.texte + ';--a:' + cl.accent + '">' +
@@ -493,14 +498,14 @@
           (it.prix ? '<p class="formule-info">' + ico('ok') + '<span><b>Formule tout compris</b> : le client commande « ' + esc(it.nom || 'cette catégorie') + ' » en entier à ' + esc(it.prix) + '. Les produits en dessous sont son contenu.</span></p>' : '');
         var pi = p + '.items.' + j, nf = (it.formats || []).length, nc = it.option ? it.option.choix.length : 0, ouvert = varOuverts[pi];
         if (prixCatEvt(e.items, j)) return '<div class="item-groupe"><div class="item-ligne item-inclus"><input class="fort" data-p="' + pi + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Foie gras maison" aria-label="Produit inclus">' +
-          '<span class="prix-formats prix-cat" title="Inclus dans la formule de la catégorie">Inclus<small>formule</small></span>' + boutonsOrdre(p + '.items', j, ni) + '</div></div>';
+          '<span class="prix-formats prix-cat" title="Inclus dans la formule de la catégorie">Inclus<small>formule</small></span>' + boutonsOrdre(p + '.items', j, ni) + '</div>' + ligneAccomp(it, pi) + '</div>';
         var resume = [nf ? pluriel(nf, 'format') : '', nc ? pluriel(nc, 'choix', 'choix') : ''].filter(Boolean).join(' · ');
         return '<div class="item-groupe' + (ouvert ? ' ouvert' : '') + '"><div class="item-ligne"><input class="fort" data-p="' + pi + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Foie gras maison, Huîtres n°3…" aria-label="Produit">' +
           (nf ? '<span class="prix-formats" title="Les prix sont dans les formats">' + pluriel(nf, 'prix', 'prix') + '</span>' :
             prixCatEvt(e.items, j) ? '<span class="prix-formats prix-cat" title="Prix fixé par la catégorie : modifiez-le sur la ligne de la catégorie">' + esc(prixCatEvt(e.items, j)) + '<small>catégorie</small></span>' :
             '<input class="prix" data-p="' + pi + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="' + esc(prixEvt(e.items, j) || '17.00 €') + '" inputmode="decimal" aria-label="Prix"' + (prixEvt(e.items, j) ? ' title="Vide : prix de la catégorie"' : '') + '>') +
           '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + pi + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
-          boutonsOrdre(p + '.items', j, ni) + '</div>' +
+          boutonsOrdre(p + '.items', j, ni) + '</div>' + ligneAccomp(it, pi) +
           '<button type="button" class="var-btn' + (resume ? ' actif' : '') + '" data-act="var-ouvrir" data-p="' + pi + '" aria-expanded="' + !!ouvert + '">' + ico(ouvert ? 'haut' : 'bas') +
             (resume ? esc(resume) + (it.desc ? ' · précision' : '') : 'Formats, choix, précision' + (it.desc ? ' · précision ✓' : '')) + '</button>' +
           (ouvert ? panneauVariantes(it, pi, prixEvt(e.items, j)) : '') + '</div>';

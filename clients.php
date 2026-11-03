@@ -519,7 +519,7 @@ function commande_evts($d) {
         if (!$jours) continue;
         $items = [];
         foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
-            'desc' => $it['desc'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => evt_variantes($e['items'], $k), 'contenu' => $it['cat'] && $it['prix'] !== '' ? evt_contenu($e['items'], $k) : [],
+            'desc' => $it['desc'] ?? '', 'accomp' => $it['accomp'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => evt_variantes($e['items'], $k), 'contenu' => $it['cat'] && $it['prix'] !== '' ? evt_contenu($e['items'], $k) : [],
             'forte' => !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
         $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
     }
