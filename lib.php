@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.53 · 3 novembre 2026';
+const VERSION = '1.54 · 3 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -123,7 +123,16 @@ function evenement_clean($e) {
     foreach (liste($e['items'] ?? []) as $p) {
         // « cat » : un titre de catégorie (Entrées, Plats, Desserts…) et non un produit
         $p = !empty($p['cat']) ? ['nom' => txt($p['nom'] ?? '', 60), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => false, 'cat' => true]
-                               : ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']), 'cat' => false];
+                               : ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']), 'cat' => false,
+                                  'desc' => txt($p['desc'] ?? '', 160),
+                                  // formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) : chacun son prix ; « kg » = prix au kilo, le client choisit un poids
+                                  'formats' => array_slice(array_values(array_filter(array_map(function ($f) {
+                                      return ['nom' => txt($f['nom'] ?? '', 40), 'prix' => txt($f['prix'] ?? '', 30), 'kg' => !empty($f['kg'])];
+                                  }, liste($p['formats'] ?? [])), function ($f) { return $f['nom'] !== '' || $f['kg']; })), 0, 8),
+                                  // un choix à faire (ex. Huîtres : Ouvertes / Fermées), avec un supplément éventuel
+                                  'option' => ['titre' => txt($p['option']['titre'] ?? '', 40), 'choix' => array_slice(array_values(array_filter(array_map(function ($c) {
+                                      return ['nom' => txt($c['nom'] ?? '', 40), 'prix' => txt($c['prix'] ?? '', 30)];
+                                  }, liste($p['option']['choix'] ?? [])), function ($c) { return $c['nom'] !== ''; })), 0, 6)]];
         if ($p['nom'] !== '') $items[] = $p;
     }
     $r = is_array($e['reservation'] ?? null) ? $e['reservation'] : [];

@@ -28,7 +28,7 @@
   function get(p) { return p.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, site); }
   function set(p, v) { var k = p.split('.'), last = k.pop(); (k.length ? get(k.join('.')) : site)[last] = v; }
   function sale(part) { return JSON.stringify(site[part]) !== JSON.stringify(saved[part]); }
-  function pluriel(n, s) { return n + ' ' + s + (n > 1 ? 's' : ''); }
+  function pluriel(n, s, pl) { return n + ' ' + (n > 1 ? pl || s + 's' : s); }
 
   // ---------- Prix : « 9,5 » devient « 9.50 € » ----------
   function formatPrix(v) {
@@ -79,7 +79,7 @@
     cat: function () { return { titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }; },
     carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
-    item: function () { return { nom: '', prix: '', epuise: false, cat: false }; },
+    item: function () { return { nom: '', prix: '', epuise: false, cat: false, desc: '', formats: [], option: { titre: '', choix: [] } }; },
     catEvt: function () { return { nom: '', prix: '', epuise: false, cat: true }; },
     faq: function () { return { q: '', r: '' }; },
     evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', date_fin: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
@@ -405,16 +405,60 @@
     if (e.reservation.active && e.reservation.date && e.reservation.date < t) return ['orange', 'En ligne · réservations closes'];
     return ['vert', 'En ligne sur le site'];
   }
+  // Formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) et un choix (Ouvertes / Fermées…) pour un produit d'événement
+  var varOuverts = {};
+  var PRESETS_FORMATS = { entier: ['Entier', 'Demi', 'Tranche'], douzaine: ['Douzaine', 'Demi-douzaine'], kg: ['Au kilo'], piece: ['À la pièce'], format: [''] };
+  var PRESETS_CHOIX = { ouvertes: ['Ouvertes', 'Fermées'], cuisson: ['Cuit', 'Cru'], choix: [''] };
+  function panneauVariantes(it, pi, prixCat) {
+    var fs = it.formats || [], ch = it.option ? it.option.choix : [];
+    var lf = fs.map(function (f, k) {
+      return '<div class="var-ligne"><input data-p="' + pi + '.formats.' + k + '.nom" value="' + esc(f.nom) + '" placeholder="' + (f.kg ? 'Au kilo' : 'ex. Entier, Demi, Tranche…') + '" aria-label="Format">' +
+        '<span class="var-prix"><input class="prix" data-p="' + pi + '.formats.' + k + '.prix" data-prix value="' + esc(f.prix) + '" placeholder="' + esc(prixCat || (f.kg ? '79.00 €' : '12.00 €')) + '" inputmode="decimal" aria-label="Prix">' + (f.kg ? '<i>/kg</i>' : '') + '</span>' +
+        '<label class="interrupteur petit" title="Prix au kilo : le client choisit le poids (par 100 g)"><input type="checkbox" data-p="' + pi + '.formats.' + k + '.kg"' + (f.kg ? ' checked' : '') + '><span></span>Au kilo</label>' +
+        boutonsOrdre(pi + '.formats', k, fs.length) + '</div>';
+    }).join('');
+    var lc = ch.map(function (c, k) {
+      return '<div class="var-ligne var-ligne-choix"><input data-p="' + pi + '.option.choix.' + k + '.nom" value="' + esc(c.nom) + '" placeholder="ex. Ouvertes" aria-label="Choix">' +
+        '<span class="var-prix"><i>+</i><input class="prix" data-p="' + pi + '.option.choix.' + k + '.prix" data-prix value="' + esc(c.prix) + '" placeholder="0.00 €" inputmode="decimal" aria-label="Supplément"></span>' +
+        boutonsOrdre(pi + '.option.choix', k, ch.length) + '</div>';
+    }).join('');
+    function puce(type, cle, txt) { return '<button type="button" class="var-puce" data-act="var-ajout" data-p="' + pi + '" data-t="' + type + '" data-k="' + cle + '">' + ico('plus') + txt + '</button>'; }
+    return '<div class="var-panneau">' +
+      '<div class="var-bloc"><p class="var-titre">Formats de vente <small>Chaque format a son prix. « Au kilo » : le client choisit le poids, le prix exact se fait à la pesée.</small></p>' + lf +
+        '<div class="var-puces">' + puce('f', 'entier', 'Entier · Demi · Tranche') + puce('f', 'douzaine', 'Douzaine · Demi-douzaine') + puce('f', 'kg', 'Au kilo') + puce('f', 'piece', 'À la pièce') + puce('f', 'format', 'Autre format') + '</div></div>' +
+      '<div class="var-bloc"><p class="var-titre">Choix pour le client <small>ex. huîtres ouvertes ou fermées. Supplément facultatif, ajouté au prix de chaque format.</small></p>' +
+        (ch.length ? '<input class="var-question" data-p="' + pi + '.option.titre" value="' + esc(it.option.titre) + '" placeholder="Intitulé du choix (facultatif), ex. Ouverture" aria-label="Intitulé du choix">' : '') + lc +
+        '<div class="var-puces">' + puce('c', 'ouvertes', 'Ouvertes · Fermées') + puce('c', 'cuisson', 'Cuit · Cru') + puce('c', 'choix', 'Autre choix') + '</div></div>' +
+      '<label class="champ var-desc"><span>Précision <em>facultatif</em></span><input data-p="' + pi + '.desc" value="' + esc(it.desc || '') + '" placeholder="ex. Pièce d’environ 1 kg · fait maison · pour 6 personnes"></label>' +
+      apercuVariantes(it, prixCat) + '</div>';
+  }
+  // Ce que le client verra (une ligne par façon de commander), pour vérifier d'un coup d'œil
+  function apercuVariantes(it, prixCat) {
+    var fs = (it.formats || []).length ? it.formats : [null], os = it.option && it.option.choix.length ? it.option.choix : [null];
+    if (fs[0] === null && os[0] === null) return '';
+    var l = [];
+    os.forEach(function (o) { fs.forEach(function (f) {
+      var px = prixNum(f && f.prix ? f.prix : (it.prix || prixCat)) + (o ? prixNum(o.prix) : 0);
+      l.push('<li><span>' + esc([f ? (f.nom || (f.kg ? 'Au kilo' : 'Format')) : '', o ? o.nom || 'Choix' : ''].filter(Boolean).join(' · ')) + '</span><b>' + (px ? euros(px) + (f && f.kg ? '/kg' : '') : '<em>prix ?</em>') + '</b></li>');
+    }); });
+    return '<div class="var-apercu"><p>Le client pourra commander :</p><ul>' + l.join('') + '</ul></div>';
+  }
   function vueEvenements() {
     var liste = site.evenements.map(function (e, i) {
       var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
       var items = e.items.map(function (it, j) {
         if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">Catégorie</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' +
           '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="ex. 9.00 €" inputmode="decimal" aria-label="Prix de la catégorie" title="Prix appliqué à chaque produit de la catégorie qui n’a pas son propre prix">' + boutonsOrdre(p + '.items', j, ni) + '</div>';
-        return '<div class="item-ligne"><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Plateau de charcuterie et fromage pour deux" aria-label="Produit">' +
-          '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="' + esc(prixEvt(e.items, j) || '17.00 €') + '" inputmode="decimal" aria-label="Prix"' + (prixEvt(e.items, j) ? ' title="Vide : prix de la catégorie"' : '') + '>' +
-          '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + p + '.items.' + j + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
-          boutonsOrdre(p + '.items', j, ni) + '</div>';
+        var pi = p + '.items.' + j, nf = (it.formats || []).length, nc = it.option ? it.option.choix.length : 0, ouvert = varOuverts[pi];
+        var resume = [nf ? pluriel(nf, 'format') : '', nc ? pluriel(nc, 'choix', 'choix') : ''].filter(Boolean).join(' · ');
+        return '<div class="item-groupe' + (ouvert ? ' ouvert' : '') + '"><div class="item-ligne"><input class="fort" data-p="' + pi + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Foie gras maison, Huîtres n°3…" aria-label="Produit">' +
+          (nf ? '<span class="prix-formats" title="Les prix sont dans les formats">' + pluriel(nf, 'prix', 'prix') + '</span>' :
+            '<input class="prix" data-p="' + pi + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="' + esc(prixEvt(e.items, j) || '17.00 €') + '" inputmode="decimal" aria-label="Prix"' + (prixEvt(e.items, j) ? ' title="Vide : prix de la catégorie"' : '') + '>') +
+          '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + pi + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
+          boutonsOrdre(p + '.items', j, ni) + '</div>' +
+          '<button type="button" class="var-btn' + (resume ? ' actif' : '') + '" data-act="var-ouvrir" data-p="' + pi + '" aria-expanded="' + !!ouvert + '">' + ico(ouvert ? 'haut' : 'bas') +
+            (resume ? esc(resume) + (it.desc ? ' · précision' : '') : 'Formats, choix, précision' + (it.desc ? ' · précision ✓' : '')) + '</button>' +
+          (ouvert ? panneauVariantes(it, pi, prixEvt(e.items, j)) : '') + '</div>';
       }).join('');
       var themes = THEMES.map(function (t) {
         return '<button type="button" class="pastille-couleur' + (e.couleur === t[1] ? ' choisie' : '') + '" data-act="couleur" data-p="' + p + '.couleur" data-c="' + t[1] + '" aria-pressed="' + (e.couleur === t[1]) + '"><span style="background:' + t[1] + '"></span>' + t[0] + '</button>';
@@ -823,6 +867,22 @@
     for (var i = k; i >= 0; i--) if (items[i].cat) return items[i].prix || '';
     return '';
   }
+  // Façons de commander un produit d'événement (format × choix), comme sur le site
+  function evtVariantes(items, k) {
+    var it = items[k], base = prixEvt(items, k), fs = (it.formats || []).length ? it.formats : [null], os = it.option && it.option.choix.length ? it.option.choix : [null], out = [];
+    os.forEach(function (o, oi) { fs.forEach(function (f, fi) {
+      var fnom = f ? (f.nom || 'Au kilo') : '', px = prixNum(f && f.prix ? f.prix : base) + (o ? prixNum(o.prix) : 0);
+      var detail = [fnom, o ? o.nom : ''].filter(Boolean).join(' · ');
+      out.push({ cle: k + ':' + (f ? fi : -1) + ':' + (o ? oi : -1), kg: !!(f && f.kg), prix: px ? euros(px) : '', detail: detail, label: it.nom + (detail ? ' · ' + detail : '') });
+    }); });
+    return out;
+  }
+  function poidsTxt(g) { return g >= 1000 ? String(+(g / 1000).toFixed(2)).replace('.', ',') + ' kg' : g + ' g'; }
+  // ligne de réservation pour une variante (au kilo : prix selon le poids)
+  function ligneVariante(it, v, poids) {
+    if (v.kg) { poids = poids || 500; return { type: 'evenement', nom: v.label + ' · ' + poidsTxt(poids), prix: v.prix ? euros(Math.round(prixNum(v.prix) * poids / 10) / 100) : '', qte: 1, article: it.nom, poids: poids, pkg: v.prix, base: v.label }; }
+    return { type: 'evenement', nom: v.label, prix: v.prix, qte: 1, article: it.nom };
+  }
   function aProduits(e) { return e.items.some(function (it) { return !it.cat; }); }
   function evtsAVenir(date) {
     return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) {
@@ -835,7 +895,7 @@
   // Parts réservées d'une offre (offre spéciale ou produit d'événement) à une date
   function offreParts(type, nom, date) {
     return (R.data ? R.data.resas : []).reduce(function (t, r) {
-      return r.date !== date ? t : t + r.lignes.reduce(function (u, l) { return u + (l.type === type && l.nom === nom ? l.qte : 0); }, 0);
+      return r.date !== date ? t : t + r.lignes.reduce(function (u, l) { return u + (l.type === type && (l.article || l.nom) === nom ? l.qte : 0); }, 0);
     }, 0);
   }
   function getJSON(q) {
@@ -1125,7 +1185,10 @@
   function ligneVide(date, type) {
     // « jour:2026-10-28 » : le plat d'un jour précédent, à mettre de côté ce jour-là
     if (String(type).indexOf('jour:') === 0) { var j = type.slice(5), pj = menuDu(j).plat; if (pj && !pj.epuise) return { type: 'plat', nom: pj.nom, prix: pj.prix, qte: 1, jour: j }; }
-    if (String(type).indexOf('evt:') === 0) { var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]]; if (it) return { type: 'evenement', nom: it.nom, prix: prixEvt(ev.items, +pe[2]), qte: 1 }; }
+    if (String(type).indexOf('evt:') === 0) {
+      var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]];
+      if (it && !it.cat) { var vs = evtVariantes(ev.items, +pe[2]), cle = pe.length > 3 ? pe.slice(2).join(':') : vs[0].cle; return ligneVariante(it, vs.filter(function (x) { return x.cle === cle; })[0] || vs[0]); }
+    }
     var m = menuDu(date);
     if (type !== 'autre' && type !== 'special' && String(type).indexOf('evt:') !== 0 && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
     if (type === 'special' && m.special && !m.special.epuise) return { type: 'special', nom: m.special.nom, prix: m.special.prix, qte: 1 };
@@ -1182,14 +1245,15 @@
       var evts = evtsAVenir(f.date).map(function (x) {
         return { label: x.e.titre + (x.e.date ? ' · ' + evtQuand(x.e) : ''), o: x.e.items.map(function (it, k) {
           if (it.cat) return ['cat:' + k, '— ' + it.nom + (it.prix ? ' · ' + it.prix : '') + ' —', true];
-          var px = prixEvt(x.e.items, k);
-          return ['evt:' + x.i + ':' + k, it.nom + (px ? ' · ' + px : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && l.nom === it.nom)];
-        }) };
+          return evtVariantes(x.e.items, k).map(function (v) {
+            return ['evt:' + x.i + ':' + v.cle, v.label + (v.prix ? ' · ' + v.prix + (v.kg ? '/kg' : '') : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && (l.article || l.nom) === it.nom)];
+          });
+        }).reduce(function (a, x) { return a.concat(Array.isArray(x[0]) ? x : [x]); }, []) };
       });
-      if (l.type === 'evenement' && !evts.some(function (g) { return g.o.some(function (x) { return x[1].indexOf(l.nom) === 0; }); })) o.push(['evt:-', 'Événement · ' + l.nom]);
+      if (l.type === 'evenement' && !evts.some(function (g) { return g.o.some(function (x) { return x[1].indexOf(l.base || l.nom) === 0; }); })) o.push(['evt:-', 'Événement · ' + l.nom]);
       // plats des 6 jours précédents (pour un client qui veut le plat de mercredi le vendredi)
       var avant = [], v = l.jour ? 'jour:' + l.jour : l.type;
-      if (l.type === 'evenement') { v = 'evt:-'; evtsAVenir(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { if (it.nom === l.nom) v = 'evt:' + x.i + ':' + k; }); }); }
+      if (l.type === 'evenement') { v = 'evt:-'; evtsAVenir(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { if (it.cat) return; evtVariantes(x.e.items, k).forEach(function (vr) { if (l.nom === vr.label || (vr.kg && l.nom.indexOf(vr.label + ' · ') === 0 && l.poids)) v = 'evt:' + x.i + ':' + vr.cle; }); }); }); }
       for (var k = 6; k >= 1; k--) {
         var dj = plus(f.date, -k), pj = menuDu(dj).plat;
         if (pj || dj === l.jour) avant.push(['jour:' + dj, jourNom(dj) + ' ' + dateFr(dj) + ' · ' + (dj === l.jour ? l.nom : pj.nom) + ((dj === l.jour ? l.prix : pj.prix) ? ' · ' + (dj === l.jour ? l.prix : pj.prix) : '') + (pj && pj.epuise ? ' · ÉPUISÉ' : ''), pj && pj.epuise && dj !== l.jour]);
@@ -1207,7 +1271,8 @@
         return '<div class="fr-ligne' + (l.type === 'autre' ? ' autre' : '') + '">' +
           '<select data-l="' + i + '" data-k="type" aria-label="Plat">' + optionsLigne(l) + '</select>' +
           (l.type === 'autre' ? '<input data-l="' + i + '" data-k="nom" value="' + esc(l.nom) + '" placeholder="Quoi ? ex. Quiche lorraine" aria-label="Quoi ?"><input class="prix" data-l="' + i + '" data-k="prix" value="' + esc(l.prix) + '" placeholder="Prix" inputmode="decimal" aria-label="Prix à l’unité">' : '') +
-          '<div class="qte"><button type="button" data-f="moins" data-i="' + i + '" aria-label="Un de moins">−</button><input type="number" min="1" max="99" data-l="' + i + '" data-k="qte" value="' + l.qte + '" aria-label="Quantité"><button type="button" data-f="plus" data-i="' + i + '" aria-label="Un de plus">+</button></div>' +
+          (l.pkg ? '<label class="fr-poids"><input type="number" min="50" max="20000" step="50" data-l="' + i + '" data-k="poids" value="' + l.poids + '" aria-label="Poids en grammes"><span>g</span></label>' :
+          '<div class="qte"><button type="button" data-f="moins" data-i="' + i + '" aria-label="Un de moins">−</button><input type="number" min="1" max="99" data-l="' + i + '" data-k="qte" value="' + l.qte + '" aria-label="Quantité"><button type="button" data-f="plus" data-i="' + i + '" aria-label="Un de plus">+</button></div>') +
           (f.lignes.length > 1 ? '<button type="button" class="ib ib-suppr" data-f="retirer" data-i="' + i + '" title="Retirer" aria-label="Retirer">' + ico('suppr') + '</button>' : '') + '</div>' +
           (l.jour ? '<p class="fr-cote">' + ico('note') + 'Plat du ' + jourNom(l.jour).toLowerCase() + ' ' + dateFr(l.jour) + ' : il sera noté « à mettre de côté » ce jour-là.</p>' : '');
       }).join('');
@@ -1257,15 +1322,20 @@
       } else if (t.dataset.l != null) {
         var l = f.lignes[+t.dataset.l];
         if (t.dataset.k === 'qte') l.qte = Math.max(1, Math.min(99, parseInt(t.value, 10) || 1));
+        else if (t.dataset.k === 'poids') {   // au kilo : le prix suit le poids
+          l.poids = Math.max(0, Math.min(20000, parseInt(t.value, 10) || 0));
+          if (!l.base) l.base = l.nom.replace(/ · [\d,]+ k?g$/, '');
+          l.nom = l.base + ' · ' + poidsTxt(l.poids); l.prix = l.pkg ? euros(Math.round(prixNum(l.pkg) * l.poids / 10) / 100) : '';
+        }
         else if (t.dataset.k !== 'type') l[t.dataset.k] = t.value;
-        if (t.dataset.k === 'prix' || t.dataset.k === 'qte') { var tt = d.querySelector('.fr-total'); var s = f.lignes.reduce(function (a, x) { return a + prixNum(x.prix) * x.qte; }, 0); if (tt) tt.innerHTML = 'Total <b>' + euros(s) + '</b>'; else if (s) part('fr-lignes', htmlLignes()); }
+        if (t.dataset.k === 'prix' || t.dataset.k === 'qte' || t.dataset.k === 'poids') { var tt = d.querySelector('.fr-total'); var s = f.lignes.reduce(function (a, x) { return a + prixNum(x.prix) * x.qte; }, 0); if (tt) tt.innerHTML = 'Total <b>' + euros(s) + '</b>'; else if (s) part('fr-lignes', htmlLignes()); }
       } else if ('n' in t.dataset) f.note = t.value;
     });
     d.addEventListener('change', function (e) {
       var t = e.target;
       if (t.dataset.k === 'type') {
         var i = +t.dataset.l, nv = ligneVide(f.date, t.value);
-        nv.qte = f.lignes[i].qte; f.lignes[i] = nv;
+        if (!nv.pkg) nv.qte = f.lignes[i].qte; f.lignes[i] = nv;
         if (t.value.indexOf('evt:') === 0) {
           var ev = saved.evenements[+t.value.split(':')[1]];
           if (ev && ev.date && !evtDans(ev, f.date)) {
@@ -1942,6 +2012,10 @@
     if (/\.titre$/.test(p) && onglet === 'menus') {
       var r = t.closest('details'); if (r) r.querySelector('.cat-resume strong').textContent = v || 'Catégorie sans nom';
     }
+    // formats / choix d'un produit d'événement : l'aperçu « Le client pourra commander » suit la saisie
+    var mv = /^(evenements\.(\d+)\.items\.(\d+))\.(formats|option)\./.exec(p);
+    if (mv) { var ap = t.closest('.var-panneau') && t.closest('.var-panneau').querySelector('.var-apercu'), ev0 = site.evenements[+mv[2]];
+      if (ap) ap.outerHTML = apercuVariantes(get(mv[1]), prixEvt(ev0.items, +mv[3])) || '<div class="var-apercu" hidden></div>'; }
     apresSaisie();
   });
   app.addEventListener('change', function (e) {
@@ -2156,6 +2230,18 @@
       importClients();
     } else if (a === 'client-fiche') {
       ficheClient(b.dataset.id ? CL.filter(function (c) { return c.id === b.dataset.id; })[0] : null);
+    } else if (a === 'var-ouvrir') {
+      varOuverts[p] = !varOuverts[p]; render(true);
+    } else if (a === 'var-ajout') {
+      var itv = get(p);
+      if (!itv.formats) itv.formats = [];
+      if (!itv.option) itv.option = { titre: '', choix: [] };
+      if (b.dataset.t === 'f') PRESETS_FORMATS[b.dataset.k].forEach(function (n) { itv.formats.push({ nom: n === 'Au kilo' ? '' : n, prix: '', kg: n === 'Au kilo' }); });
+      else PRESETS_CHOIX[b.dataset.k].forEach(function (n) { itv.option.choix.push({ nom: n, prix: '' }); });
+      render(true);
+      var vide = app.querySelectorAll('[data-p^="' + p + (b.dataset.t === 'f' ? '.formats.' : '.option.choix.') + '"][data-p$=".nom"]');
+      for (var vi = 0; vi < vide.length; vi++) if (!vide[vi].value) { vide[vi].focus(); break; }
+      if (b.dataset.k !== 'format' && b.dataset.k !== 'choix') { var px1 = app.querySelector('[data-p="' + p + (b.dataset.t === 'f' ? '.formats.' + (itv.formats.length - PRESETS_FORMATS[b.dataset.k].length) : '.option.choix.' + (itv.option.choix.length - PRESETS_CHOIX[b.dataset.k].length)) + '.prix"]'); if (px1) px1.focus(); }
     } else if (a === 'photo-suppr') {
       supprimerPhoto(b.dataset.nom);
     } else if (a.indexOf('smtp-') === 0) {

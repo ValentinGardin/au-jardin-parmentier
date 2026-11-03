@@ -116,7 +116,9 @@ function resa_clean($in, $ancien, $qui) {
         $l = ['type' => in_array($l['type'] ?? '', ['plat', 'special', 'evenement', 'autre'], true) ? $l['type'] : 'autre',
               'nom' => txt($l['nom'] ?? '', 120), 'prix' => txt($l['prix'] ?? '', 20), 'qte' => max(1, min(99, (int)($l['qte'] ?? 1))),
               // plat d'un autre jour (ex. le plat de mercredi réservé pour vendredi) : à mettre de côté ce jour-là
-              'jour' => date_ok($l['jour'] ?? '')];
+              'jour' => date_ok($l['jour'] ?? ''),
+              // produit d'événement avec format/option : « article » = le produit (pour compter les parts), « poids » en grammes et prix au kilo
+              'article' => txt($l['article'] ?? '', 140), 'poids' => max(0, min(20000, (int)($l['poids'] ?? 0))), 'pkg' => txt($l['pkg'] ?? '', 20)];
         if ($l['nom'] !== '') $lignes[] = $l;
     }
     $r = [
@@ -409,6 +411,32 @@ function date_du_jour($s, $nom) {
 }
 
 // ---- Statistiques des ventes (réservations) sur $n jours jusqu'à aujourd'hui, comparées à la période d'avant ----
+function prix_txt($n) { return number_format($n, 2, '.', '') . ' €'; }
+function poids_txt($g) { return $g >= 1000 ? rtrim(rtrim(number_format($g / 1000, 2, ',', ''), '0'), ',') . ' kg' : $g . ' g'; }
+// Toutes les façons de commander un produit d'événement : une ligne par choix × format.
+// Sans format ni choix, une seule ligne (le produit à son prix, ou au prix de sa catégorie).
+function evt_variantes($items, $k) {
+    $it = $items[$k]; $base = evt_prix($items, $k);
+    $fs = $it['formats'] ?? []; $os = $it['option']['choix'] ?? [];
+    $out = [];
+    foreach ($os ?: [null] as $oi => $o) foreach ($fs ?: [null] as $fi => $f) {
+        $kg = $f && $f['kg'];
+        $px = prix_nombre($f && $f['prix'] !== '' ? $f['prix'] : $base) + ($o ? prix_nombre($o['prix']) : 0);
+        $fnom = $f ? ($f['nom'] !== '' ? $f['nom'] : 'Au kilo') : '';
+        $out[] = ['cle' => $k . ':' . ($f ? $fi : -1) . ':' . ($o ? $oi : -1), 'format' => $fnom, 'choix' => $o ? $o['nom'] : '',
+                  'sup' => $o && prix_nombre($o['prix']) ? '+' . prix_txt(prix_nombre($o['prix'])) : '',
+                  'prix' => $px ? prix_txt($px) : '', 'kg' => $kg,
+                  'detail' => implode(' · ', array_filter([$fnom, $o ? $o['nom'] : '']))];
+    }
+    return $out;
+}
+// Ligne de réservation pour une variante (q = quantité, ou poids en grammes pour le prix au kilo)
+function evt_ligne($it, $v, $q) {
+    $nom = $it['nom'] . ($v['detail'] !== '' ? ' · ' . $v['detail'] : '');
+    if ($v['kg']) return ['type' => 'evenement', 'nom' => $nom . ' · ' . poids_txt($q), 'prix' => $v['prix'] ? prix_txt(round(prix_nombre($v['prix']) * $q / 1000, 2)) : '', 'qte' => 1,
+                          'article' => $it['nom'], 'poids' => $q, 'pkg' => $v['prix']];
+    return ['type' => 'evenement', 'nom' => $nom, 'prix' => $v['prix'], 'qte' => $q, 'article' => $it['nom']];
+}
 function prix_nombre($p) { return preg_match('/\d+(?:[.,]\d+)?/', (string)$p, $m) ? (float)str_replace(',', '.', $m[0]) : 0.0; }
 function ventes_synthese($n) {
     $n = max(1, min(400, (int)$n));
@@ -436,7 +464,7 @@ function ventes_synthese($n) {
         $jours[$r['date']]['commandes']++; $jours[$r['date']]['ca'] += $ca; $jours[$r['date']]['parts'] += $parts;
         $semaine[(int)date('N', strtotime($r['date'])) - 1] += $parts;
         foreach ($r['lignes'] as $l) {
-            $k = trim($l['nom']) ?: 'Autre';
+            $k = trim(($l['article'] ?? '') ?: $l['nom']) ?: 'Autre';
             if (!isset($plats[$k])) $plats[$k] = ['nom' => $k, 'parts' => 0, 'ca' => 0, 'commandes' => 0, 'jours' => [], 'epuise' => 0, 'type' => $l['type']];
             $plats[$k]['parts'] += $l['qte']; $plats[$k]['ca'] += prix_nombre($l['prix']) * $l['qte']; $plats[$k]['commandes']++;
             $plats[$k]['jours'][($l['jour'] ?? '') !== '' ? $l['jour'] : $r['date']] = 1;
@@ -470,7 +498,7 @@ function ventes_synthese($n) {
 function offre_parts($type, $nom, $du, $au) {
     static $resas = null; $resas = $resas ?? resas_charger();
     $n = 0;
-    foreach ($resas as $r) if ($r['date'] >= $du && $r['date'] <= $au) foreach ($r['lignes'] as $l) if ($l['type'] === $type && $l['nom'] === $nom) $n += (int)$l['qte'];
+    foreach ($resas as $r) if ($r['date'] >= $du && $r['date'] <= $au) foreach ($r['lignes'] as $l) if ($l['type'] === $type && (($l['article'] ?? '') ?: $l['nom']) === $nom) $n += (int)$l['qte'];
     return $n;
 }
 // Événements réservables en ligne : activés, avec une date à partir de demain (la veille jusqu'à l'heure limite),
@@ -487,6 +515,7 @@ function commande_evts($d) {
         if (!$jours) continue;
         $items = [];
         foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
+            'desc' => $it['desc'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => $it['cat'] ? [] : evt_variantes($e['items'], $k),
             'forte' => !$it['cat'] && !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
         $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
     }

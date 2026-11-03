@@ -25,12 +25,17 @@ if (isset($in['evt'])) {
     // jour de retrait choisi parmi les jours de l'événement (ex. 24 ou 25 décembre)
     $jour = ['date' => in_array($in['date'] ?? '', array_column($evt['jours'], 'date'), true) ? $in['date'] : $evt['date']];
     $lignes = [];
+    $choix = is_array($in['items'] ?? null) ? $in['items'] : [];
     foreach ($evt['items'] as $it) {
         if ($it['cat']) continue;
-        $q = max(0, min(20, (int)($in['items'][$it['k']] ?? 0)));
-        if (!$q) continue;
-        if ($it['epuise']) fin(400, ['erreur' => '« ' . $it['nom'] . ' » vient d’être épuisé, désolé ! Retirez-le de votre commande.']);
-        $lignes[] = ['type' => 'evenement', 'nom' => $it['nom'], 'prix' => $it['prix'], 'qte' => $q];
+        foreach ($it['v'] as $v) {
+            $q = (int)($choix[$v['cle']] ?? 0);
+            // au kilo : un poids en grammes (par 50 g, 5 kg au plus) ; sinon une quantité (20 au plus)
+            $q = $v['kg'] ? max(0, min(5000, intdiv($q, 50) * 50)) : max(0, min(20, $q));
+            if (!$q) continue;
+            if ($it['epuise']) fin(400, ['erreur' => '« ' . $it['nom'] . ' » vient d’être épuisé, désolé ! Retirez-le de votre commande.']);
+            $lignes[] = evt_ligne($it, $v, $q);
+        }
     }
 } else {
     // Le jour choisi doit encore être réservable

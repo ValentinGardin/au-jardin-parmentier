@@ -127,9 +127,14 @@
     // Mode « événement » : les produits de l'événement, à récupérer le jour de l'événement
     function evt() { return etat.evt === null ? null : (D.evts || []).filter(function (e) { return e.i === etat.evt; })[0]; }
     function evtJour() { var e = evt(); return e ? (e.jours.filter(function (x) { return x.date === etat.evtDate; })[0] || e.jours[0]) : null; }
+    // Produits d'événement : une ligne par façon de commander (format × choix) ; « kg » : la quantité est un poids en grammes
+    function vars() { var l = []; evt().items.forEach(function (it) { (it.v || []).forEach(function (v) { l.push({ it: it, v: v }); }); }); return l; }
+    function trouve(cle) { var e = evt(); return e ? vars().filter(function (x) { return x.v.cle === cle; })[0] : null; }
+    function poids(g) { return g >= 1000 ? String(+(g / 1000).toFixed(2)).replace('.', ',') + ' kg' : g + ' g'; }
+    function montant(x, q) { return x.v.kg ? num(x.v.prix) * q / 1000 : num(x.v.prix) * q; }
     function total() { var j = jour(), e = evt();
-      if (e) return e.items.reduce(function (t, it) { return t + (it.cat ? 0 : num(it.prix) * (etat.items[it.k] || 0)); }, 0); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
-    function nb() { if (evt()) return Object.keys(etat.items).reduce(function (t, k) { return t + etat.items[k]; }, 0); return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
+      if (e) return vars().reduce(function (t, x) { return t + montant(x, etat.items[x.v.cle] || 0); }, 0); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
+    function nb() { if (evt()) return Object.keys(etat.items).filter(function (k) { return etat.items[k] > 0; }).length; return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
     function getQ(k) { return k.indexOf('e:') === 0 ? (etat.items[k.slice(2)] || 0) : k.indexOf('a:') === 0 ? (etat.autres[k.slice(2)] || 0) : etat[k]; }
     function setQ(k, v) { if (k.indexOf('e:') === 0) etat.items[k.slice(2)] = v; else if (k.indexOf('a:') === 0) etat.autres[k.slice(2)] = v; else etat[k] = v; }
     function court(d) { var x = new Date(d + 'T12:00:00'); return { j: x.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''), n: x.getDate(), m: x.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') }; }
@@ -153,15 +158,36 @@
         '<p class="rs-evt-quand" style="--c:' + esc(e.couleur) + '">' + '<b>À récupérer ' + esc(jr.libelle) + '</b><span>à la boutique, 9 place Parmentier</span></p>' +
         '<p class="rs-q">Votre commande</p>' + e.items.map(function (it) {
           if (it.cat) return '<p class="rs-cat">' + esc(it.nom) + (it.prix ? ' <span>· ' + esc(it.prix) + '</span>' : '') + '</p>';
-          var q = etat.items[it.k] || 0;
+          if (!it.v || !it.v.length) return '';
+          var v0 = it.v[0];
+          if (it.v.length > 1 || v0.kg || v0.format || v0.choix) return article(it);
+          var q = etat.items[v0.cle] || 0;
           return '<div class="rs-plat' + (q ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-plat-txt">' +
             (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +
-            '<strong>' + esc(it.nom) + '</strong></div><div class="rs-plat-fin">' + (it.prix ? '<span class="rs-px">' + esc(it.prix) + '</span>' : '') +
-            (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : qte('e:' + it.k, q, 0)) + '</div></div>';
+            '<strong>' + esc(it.nom) + '</strong>' + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + '</div><div class="rs-plat-fin">' + (it.prix ? '<span class="rs-px">' + esc(it.prix) + '</span>' : '') +
+            (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : qte('e:' + v0.cle, q, 0)) + '</div></div>';
         }).join('') +
         '<p class="rs-info">Une question ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p>';
       pied.innerHTML = '<div class="rs-total"><span>Total</span><b>' + (total() ? euros(total()) : '–') + '</b><small>à régler sur place</small></div>' +
         '<button type="button" class="btn btn-violet btn-lg" data-rs="suite"' + (nb() ? '' : ' disabled') + '>Continuer</button>';
+    }
+    // Produit avec formats et/ou choix : une carte, avec une ligne par façon de le commander, regroupées par choix
+    function article(it) {
+      var choisi = it.v.some(function (v) { return etat.items[v.cle] > 0; }), dernier = null;
+      return '<div class="rs-art' + (choisi ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-art-tete">' +
+        (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : it.forte ? '<span class="rs-tag"><em class="rs-forte">Forte demande · réservez vite</em></span>' : '') +
+        '<strong>' + esc(it.nom) + '</strong>' + (it.desc ? '<small>' + esc(it.desc) + '</small>' : '') + (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : '') + '</div>' +
+        (it.epuise ? '' : it.v.map(function (v) {
+          var q = etat.items[v.cle] || 0, t = '';
+          if (v.choix && v.choix !== dernier) { dernier = v.choix; t = '<p class="rs-var-t">' + (it.titreChoix ? esc(it.titreChoix) + ' : ' : '') + '<b>' + esc(v.choix) + '</b>' + (v.sup ? ' <span>' + esc(v.sup) + '</span>' : '') + '</p>'; }
+          return t + '<div class="rs-var' + (q ? ' choisi' : '') + '"><span class="rs-var-nom">' + esc(v.format || (v.choix ? 'Quantité' : it.nom)) + '</span>' +
+            (v.prix ? '<span class="rs-px">' + esc(v.prix) + (v.kg ? '<small>/kg</small>' : '') + '</span>' : '') +
+            (v.kg ? qteKg('e:' + v.cle, q) : qte('e:' + v.cle, q, 0)) + '</div>' +
+            (v.kg && q && v.prix ? '<p class="rs-var-kg">≈ ' + euros(num(v.prix) * q / 1000) + ' · prix exact à la pesée</p>' : '');
+        }).join('')) + '</div>';
+    }
+    function qteKg(nom, g) {
+      return '<div class="rs-qte rs-qte-kg" role="group" aria-label="Poids"><button type="button" data-rs="moins" data-q="' + nom + '" aria-label="100 g de moins"' + (g <= 0 ? ' disabled' : '') + '>−</button><output aria-live="polite">' + (g ? poids(g) : '0') + '</output><button type="button" data-rs="plus" data-q="' + nom + '" aria-label="100 g de plus"' + (g >= 5000 ? ' disabled' : '') + '>+</button></div>';
     }
     function etape1() {
       if (evt()) return etape1Evt(evt());
@@ -201,7 +227,10 @@
     }
     function recap() {
       var j = jour(), l = [], e = evt();
-      if (e) return e.items.filter(function (it) { return !it.cat && etat.items[it.k]; }).map(function (it) { return etat.items[it.k] + ' × ' + it.nom; });
+      if (e) return vars().filter(function (x) { return etat.items[x.v.cle] > 0; }).map(function (x) {
+        var q = etat.items[x.v.cle], d = x.v.detail && !x.v.kg ? ' (' + x.v.detail + ')' : x.v.choix && x.v.kg ? ' (' + x.v.choix + ')' : '';
+        return x.v.kg ? poids(q) + ' de ' + x.it.nom + d : q + ' × ' + x.it.nom + d;
+      });
       if (etat.plat) l.push(etat.plat + ' × ' + j.plat.nom);
       if (j.special && etat.special) l.push(etat.special + ' × ' + j.special.nom);
       autres().forEach(function (a) { l.push(etat.autres[a.date] + ' × ' + a.plat.nom + ' (plat du ' + a.jour.toLowerCase() + ')'); });
@@ -281,7 +310,7 @@
         etat.items = {};
         var e = evt(), dispo = e ? e.items.filter(function (it) { return !it.epuise && !it.cat; }) : [];
         etat.evtDate = e ? e.jours[0].date : '';
-        if (dispo.length === 1) etat.items[dispo[0].k] = 1;   // un seul produit : déjà dans la commande
+        if (dispo.length === 1 && dispo[0].v.length === 1 && !dispo[0].v[0].kg) etat.items[dispo[0].v[0].cle] = 1;   // un seul produit : déjà dans la commande
       }
       if (offre) { etat.plat = 0; etat.special = 1; }
       etat.date = date && D.jours.some(function (j) { return j.date === date; }) ? date : (etat.date || (D.jours[0] ? D.jours[0].date : ''));
@@ -311,7 +340,8 @@
         Object.keys(etat.autres).forEach(function (k) { if (k >= etat.date) delete etat.autres[k]; });
         if (!nb()) etat.plat = 1; etape1(); corps.querySelector('[data-d="' + etat.date + '"]').focus(); }
       else if (a === 'plus' || a === 'moins') {
-        setQ(b.dataset.q, Math.max(0, Math.min(20, getQ(b.dataset.q) + (a === 'plus' ? 1 : -1))));
+        var xk = b.dataset.q.indexOf('e:') === 0 && evt() ? trouve(b.dataset.q.slice(2)) : null, kg = xk && xk.v.kg;
+        setQ(b.dataset.q, Math.max(0, Math.min(kg ? 5000 : 20, getQ(b.dataset.q) + (a === 'plus' ? 1 : -1) * (kg ? 100 : 1))));
         var y = corps.scrollTop; etape1(); corps.scrollTop = y;
         var n = corps.querySelector('[data-rs="' + a + '"][data-q="' + b.dataset.q + '"]'); if (n && !n.disabled) n.focus();
       }

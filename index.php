@@ -208,7 +208,11 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <?php foreach ($e['items'] as $k => $it):
       if ($it['cat']): ?>          <li class="evt-cat"><span><?= h($it['nom']) ?></span><?php if ($it['prix'] !== ''): ?><b><?= h($it['prix']) ?></b><?php endif; ?></li>
 <?php continue; endif;
-      $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></span><?php if ($it['prix'] !== ''): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+      $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></span><?php if ($it['prix'] !== '' && !$it['formats'] && !$it['option']['choix']): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?>
+<?php if ($it['desc'] !== '' || $it['formats'] || $it['option']['choix']): ?>            <small class="evt-var"><?php if ($it['desc'] !== ''): ?><span class="evt-desc"><?= h($it['desc']) ?></span><?php endif;
+          foreach ($it['formats'] as $f): $px = $f['prix'] !== '' ? $f['prix'] : evt_prix($e['items'], $k); ?><span><?= h($f['nom'] !== '' ? $f['nom'] : 'Au kilo') ?><?php if ($px !== ''): ?> <b><?= h($px) ?><?= $f['kg'] ? '/kg' : '' ?></b><?php endif; ?></span><?php endforeach;
+          if ($it['option']['choix']): ?><span class="evt-choix"><?= h(($it['option']['titre'] !== '' ? $it['option']['titre'] . ' : ' : '') . implode(' ou ', array_map(function ($c) { return $c['nom'] . ($c['prix'] !== '' ? ' (+' . $c['prix'] . ')' : ''); }, $it['option']['choix']))) ?></span><?php endif; ?></small>
+<?php endif; ?></li>
 <?php endforeach; ?>        </ul>
 <?php endif; foreach ($e['lignes'] as $l): ?>        <p class="evt-ligne"><?= h($l) ?></p>
 <?php endforeach; ?>
