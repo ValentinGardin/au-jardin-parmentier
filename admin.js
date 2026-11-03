@@ -443,6 +443,13 @@
     }); });
     return '<div class="var-apercu"><p>Le client pourra commander :</p><ul>' + l.join('') + '</ul></div>';
   }
+  // Événements repliables : replié, on ne voit que l'en-tête (activé, statut, nom, date). Choix gardé pendant la session.
+  // Par défaut : déplié s'il n'y a qu'un événement, replié sinon.
+  function evtOuvert(i, v) {
+    var o = {}; try { o = JSON.parse(lire('evtOuverts') || '{}'); } catch (e) {}
+    if (v === undefined) return i in o ? o[i] : site.evenements.length < 2;
+    o[i] = v; ecrire('evtOuverts', JSON.stringify(o));
+  }
   function vueEvenements() {
     var liste = site.evenements.map(function (e, i) {
       var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
@@ -464,11 +471,15 @@
         return '<button type="button" class="pastille-couleur' + (e.couleur === t[1] ? ' choisie' : '') + '" data-act="couleur" data-p="' + p + '.couleur" data-c="' + t[1] + '" aria-pressed="' + (e.couleur === t[1]) + '"><span style="background:' + t[1] + '"></span>' + t[0] + '</button>';
       }).join('') + '<label class="pastille-couleur perso' + (THEMES.some(function (t) { return t[1] === e.couleur; }) ? '' : ' choisie') + '" title="Choisir n’importe quelle couleur"><input type="color" data-p="' + p + '.couleur" value="' + esc(e.couleur) + '"><span class="arc"></span>Autre couleur…</label>';
       var photos = photosChoix(p + '.photo', 'photo-' + i, e.photo, true);
-      return '<section class="bloc evt-bloc" style="border-top-color:' + esc(e.couleur) + '">' +
-        '<div class="evt-bloc-tete"><label class="interrupteur grand"><input type="checkbox" data-p="' + p + '.actif"' + (e.actif ? ' checked' : '') + '><span></span><b>' + (e.actif ? 'Activé' : 'Désactivé') + '</b></label>' +
+      var ouv = evtOuvert(i), nbp = e.items.filter(function (x) { return !x.cat; }).length;
+      var tete = '<div class="evt-bloc-tete"><label class="interrupteur grand"><input type="checkbox" data-p="' + p + '.actif"' + (e.actif ? ' checked' : '') + '><span></span><b>' + (e.actif ? 'Activé' : 'Désactivé') + '</b></label>' +
           '<span class="statut statut-' + st[0] + '">' + st[1] + '</span>' +
           '<div class="evt-bloc-actions"><button type="button" class="ib" data-act="dup-evt" data-i="' + i + '" title="Dupliquer (ex. pour l’an prochain)" aria-label="Dupliquer">' + ico('copie') + '</button>' +
-          '<button type="button" class="ib ib-suppr" data-act="del" data-p="evenements" data-i="' + i + '" data-quoi="l’événement « ' + esc(e.titre) + ' »" title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div></div>' +
+          '<button type="button" class="ib ib-suppr" data-act="del" data-p="evenements" data-i="' + i + '" data-quoi="l’événement « ' + esc(e.titre) + ' »" title="Supprimer" aria-label="Supprimer">' + ico('suppr') + '</button></div>' +
+          '<button type="button" class="evt-plier" data-act="evt-plier" data-i="' + i + '" aria-expanded="' + ouv + '"><span class="evt-plier-txt"><strong>' + esc(e.titre || 'Événement sans nom') + '</strong><small>' +
+            esc([e.date ? evtQuand(e) : 'Pas de date', pluriel(nbp, 'produit')].join(' · ')) + '</small></span><span class="evt-plier-ico">' + ico(ouv ? 'haut' : 'bas') + (ouv ? 'Replier' : 'Déplier') + '</span></button></div>';
+      if (!ouv) return '<section class="bloc evt-bloc ferme" style="border-top-color:' + esc(e.couleur) + '">' + tete + '</section>';
+      return '<section class="bloc evt-bloc" style="border-top-color:' + esc(e.couleur) + '">' + tete +
         champ('Nom de l’événement', p + '.titre', { ph: 'ex. Beaujolais nouveau, Menu de Noël…' }) +
         '<div class="grille-2">' + champ('Date de l’événement', p + '.date', { type: 'date' }) + champ('Dernier jour', p + '.date_fin', { type: 'date', opt: true, aide: 'Seulement s’il dure plusieurs jours (ex. Noël : 24 → 25 décembre). Les clients choisissent leur jour de retrait.' }) + '</div>' +
         champ('Petit texte d’accroche', p + '.accroche', { zone: true, rows: 2, opt: true, ph: 'ex. On fête l’arrivée du Beaujolais nouveau !' }) +
@@ -488,6 +499,7 @@
     return tete('Événements et menus spéciaux', 'Beaujolais nouveau, Noël, Pâques… Un événement activé apparaît en grand en haut du site, avec une annonce dans le haut de page.',
         '<a class="btn btn-discret" href="./#evenements" target="_blank" rel="noopener">' + ico('oeil') + 'Voir sur le site</a>' +
         '<button type="button" class="btn btn-violet" data-act="add" data-p="evenements" data-tpl="evenement">' + ico('plus') + 'Nouvel événement</button>') +
+      (site.evenements.length > 1 ? '<p class="evt-tout"><button type="button" class="lien" data-act="evt-tout" data-v="1">Tout déplier</button><button type="button" class="lien" data-act="evt-tout" data-v="0">Tout replier</button></p>' : '') +
       (liste || '<p class="vide">Aucun événement. Créez-en un pour Noël, Pâques, le Beaujolais nouveau…</p>');
   }
 
@@ -2094,6 +2106,7 @@
       if (b.dataset.tpl === 'carte') { carteOuverte = arr.length - 1; catsOuvertes[carteOuverte + '-0'] = true; render(); }
       else {
         if (b.dataset.tpl === 'cat') catsOuvertes[carteOuverte + '-' + (arr.length - 1)] = true;
+        if (b.dataset.tpl === 'evenement') evtOuvert(arr.length - 1, true);
         render(true);
         var champs = app.querySelectorAll('[data-p^="' + p + '.' + (arr.length - 1) + '."]:not([type=radio]):not([type=checkbox])');
         var cible = Array.prototype.filter.call(champs, function (x) { return x.tagName !== 'SELECT'; })[0] || champs[0];
@@ -2167,7 +2180,12 @@
         .then(function () { b.textContent = txt; carteV.classList.remove('en-cours'); app.querySelectorAll('[data-act=video],[data-act=video-apercu]').forEach(function (x) { x.disabled = false; }); });
     } else if (a === 'periodeStats') {
       periodeStats = i; ecrire('periodeStats', String(i)); render(true);
+    } else if (a === 'evt-plier') {
+      evtOuvert(i, !evtOuvert(i)); render(true);
+    } else if (a === 'evt-tout') {
+      site.evenements.forEach(function (e, k) { evtOuvert(k, b.dataset.v === '1'); }); render(true);
     } else if (a === 'dup-evt') {
+      evtOuvert(i + 1, true);
       var ce = clone(site.evenements[i]); ce.titre += ' (copie)'; ce.actif = false;
       site.evenements.splice(i + 1, 0, ce); render(true);
     } else if (a === 'sem') {

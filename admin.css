@@ -977,3 +977,13 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
   .var-ligne .ordre{grid-column:2;justify-self:end}
   .var-ligne-choix .ordre{grid-column:1 / -1}
 }
+/* Événements repliables */
+.evt-plier{order:-1;flex-basis:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0;border:0;background:transparent;text-align:left;cursor:pointer;font:inherit;color:var(--encre)}
+.evt-plier-txt{display:grid;min-width:0}
+.evt-plier-txt strong{font:700 1.15rem/1.2 var(--titre);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evt-plier-txt small{color:var(--gris);font-size:.82rem}
+.evt-plier-ico{flex:none;display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;border-radius:99px;background:var(--fond);font-size:.8rem;font-weight:600;color:var(--gris)}
+.evt-plier-ico .ico{width:15px;height:15px}
+.evt-plier:hover .evt-plier-ico{background:var(--violet-pale);color:var(--violet)}
+.evt-bloc.ferme .evt-bloc-tete{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.evt-tout{display:flex;gap:1rem;justify-content:flex-end;margin:0 0 .6rem}
