@@ -454,9 +454,14 @@
     var liste = site.evenements.map(function (e, i) {
       var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
       var items = e.items.map(function (it, j) {
-        if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">Catégorie</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' +
-          '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="ex. 9.00 €" inputmode="decimal" aria-label="Prix de la catégorie" title="Prix appliqué à chaque produit de la catégorie qui n’a pas son propre prix">' + boutonsOrdre(p + '.items', j, ni) + '</div>';
+        if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">' + (it.prix ? 'Formule' : 'Catégorie') + '</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' +
+          '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="Prix formule" inputmode="decimal" aria-label="Prix de la formule" title="Avec un prix, la catégorie devient une formule tout compris : le client la commande en entier">' +
+          (it.prix ? '<label class="interrupteur petit epuise" title="La formule reste affichée mais ne peut plus être réservée"><input type="checkbox" data-p="' + p + '.items.' + j + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' : '') +
+          boutonsOrdre(p + '.items', j, ni) + '</div>' +
+          (it.prix ? '<p class="formule-info">' + ico('ok') + '<span><b>Formule tout compris</b> : le client commande « ' + esc(it.nom || 'cette catégorie') + ' » en entier à ' + esc(it.prix) + '. Les produits en dessous sont son contenu.</span></p>' : '');
         var pi = p + '.items.' + j, nf = (it.formats || []).length, nc = it.option ? it.option.choix.length : 0, ouvert = varOuverts[pi];
+        if (prixCatEvt(e.items, j)) return '<div class="item-groupe"><div class="item-ligne item-inclus"><input class="fort" data-p="' + pi + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Foie gras maison" aria-label="Produit inclus">' +
+          '<span class="prix-formats prix-cat" title="Inclus dans la formule de la catégorie">Inclus<small>formule</small></span>' + boutonsOrdre(p + '.items', j, ni) + '</div></div>';
         var resume = [nf ? pluriel(nf, 'format') : '', nc ? pluriel(nc, 'choix', 'choix') : ''].filter(Boolean).join(' · ');
         return '<div class="item-groupe' + (ouvert ? ' ouvert' : '') + '"><div class="item-ligne"><input class="fort" data-p="' + pi + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Foie gras maison, Huîtres n°3…" aria-label="Produit">' +
           (nf ? '<span class="prix-formats" title="Les prix sont dans les formats">' + pluriel(nf, 'prix', 'prix') + '</span>' :
@@ -881,6 +886,8 @@
   // Façons de commander un produit d'événement (format × choix), comme sur le site
   function evtVariantes(items, k) {
     var it = items[k], base = prixEvt(items, k), fs = (it.formats || []).length ? it.formats : [null], os = it.option && it.option.choix.length ? it.option.choix : [null], out = [];
+    if (it.cat) return it.prix ? [{ cle: k + ':-1:-1', kg: false, prix: euros(prixNum(it.prix)), detail: '', label: it.nom }] : [];   // formule
+    if (prixCatEvt(items, k)) return [];   // inclus dans une formule
     os.forEach(function (o, oi) { fs.forEach(function (f, fi) {
       var fnom = f ? (f.nom || 'Au kilo') : '', px = prixNum(f && f.prix ? f.prix : base) + (o ? prixNum(o.prix) : 0);
       var detail = [fnom, o ? o.nom : ''].filter(Boolean).join(' · ');
@@ -1009,7 +1016,9 @@
     if (m.special) h += '<p class="r-offre">Offre spéciale : <b' + (m.special.epuise ? ' class="raye"' : '') + '>' + esc(m.special.nom) + '</b>' + etat(m.special.epuise, offreParts('special', m.special.nom, R.date), E.forteOffre) + bouton('data-quoi="special"', m.special.epuise) + '</p>';
     evtsDu(R.date).forEach(function (x) {
       h += '<div class="r-offre r-evt" style="--c:' + esc(x.e.couleur) + '"><b>' + esc(x.e.titre) + '</b><ul>' + x.e.items.map(function (it, k) {
-        if (it.cat) return '<li class="r-evt-cat">' + esc(it.nom) + (it.prix ? ' · ' + esc(it.prix) : '') + '</li>';
+        if (it.cat && it.prix) return '<li class="r-evt-cat r-evt-formule"><span' + (it.epuise ? ' class="raye"' : '') + '>Formule ' + esc(it.nom) + ' · ' + esc(it.prix) + '</span>' + etat(it.epuise, offreParts('evenement', it.nom, R.date), E.forteOffre) + bouton('data-quoi="evenement" data-e="' + x.i + '" data-k="' + k + '"', it.epuise) + '</li>';
+        if (it.cat) return '<li class="r-evt-cat">' + esc(it.nom) + '</li>';
+        if (prixCatEvt(x.e.items, k)) return '<li class="r-evt-inclus">' + esc(it.nom) + '</li>';
         return '<li><span' + (it.epuise ? ' class="raye"' : '') + '>' + esc(it.nom) + '</span>' + etat(it.epuise, offreParts('evenement', it.nom, R.date), E.forteOffre) + bouton('data-quoi="evenement" data-e="' + x.i + '" data-k="' + k + '"', it.epuise) + '</li>';
       }).join('') + '</ul></div>';
     });
@@ -1198,7 +1207,8 @@
     if (String(type).indexOf('jour:') === 0) { var j = type.slice(5), pj = menuDu(j).plat; if (pj && !pj.epuise) return { type: 'plat', nom: pj.nom, prix: pj.prix, qte: 1, jour: j }; }
     if (String(type).indexOf('evt:') === 0) {
       var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]];
-      if (it && !it.cat) { var vs = evtVariantes(ev.items, +pe[2]), cle = pe.length > 3 ? pe.slice(2).join(':') : vs[0].cle; return ligneVariante(it, vs.filter(function (x) { return x.cle === cle; })[0] || vs[0]); }
+      var vs0 = it ? evtVariantes(ev.items, +pe[2]) : [];
+      if (vs0.length) { var vs = vs0, cle = pe.length > 3 ? pe.slice(2).join(':') : vs[0].cle; return ligneVariante(it, vs.filter(function (x) { return x.cle === cle; })[0] || vs[0]); }
     }
     var m = menuDu(date);
     if (type !== 'autre' && type !== 'special' && String(type).indexOf('evt:') !== 0 && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
@@ -1255,16 +1265,17 @@
       // produits des événements à venir (un groupe par événement) : on peut les choisir depuis n'importe quel jour
       var evts = evtsAVenir(f.date).map(function (x) {
         return { label: x.e.titre + (x.e.date ? ' · ' + evtQuand(x.e) : ''), o: x.e.items.map(function (it, k) {
-          if (it.cat) return ['cat:' + k, '— ' + it.nom + (it.prix ? ' · ' + it.prix : '') + ' —', true];
-          return evtVariantes(x.e.items, k).map(function (v) {
-            return ['evt:' + x.i + ':' + v.cle, v.label + (v.prix ? ' · ' + v.prix + (v.kg ? '/kg' : '') : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && (l.article || l.nom) === it.nom)];
+          var vs = evtVariantes(x.e.items, k);
+          if (it.cat && !vs.length) return [['cat:' + k, '— ' + it.nom + ' —', true]];
+          return vs.map(function (v) {
+            return ['evt:' + x.i + ':' + v.cle, (it.cat ? 'Formule ' : '') + v.label + (v.prix ? ' · ' + v.prix + (v.kg ? '/kg' : '') : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && (l.article || l.nom) === it.nom)];
           });
-        }).reduce(function (a, x) { return a.concat(Array.isArray(x[0]) ? x : [x]); }, []) };
+        }).reduce(function (a, x) { return a.concat(x); }, []) };
       });
       if (l.type === 'evenement' && !evts.some(function (g) { return g.o.some(function (x) { return x[1].indexOf(l.base || l.nom) === 0; }); })) o.push(['evt:-', 'Événement · ' + l.nom]);
       // plats des 6 jours précédents (pour un client qui veut le plat de mercredi le vendredi)
       var avant = [], v = l.jour ? 'jour:' + l.jour : l.type;
-      if (l.type === 'evenement') { v = 'evt:-'; evtsAVenir(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { if (it.cat) return; evtVariantes(x.e.items, k).forEach(function (vr) { if (l.nom === vr.label || (vr.kg && l.nom.indexOf(vr.label + ' · ') === 0 && l.poids)) v = 'evt:' + x.i + ':' + vr.cle; }); }); }); }
+      if (l.type === 'evenement') { v = 'evt:-'; evtsAVenir(f.date).forEach(function (x) { x.e.items.forEach(function (it, k) { evtVariantes(x.e.items, k).forEach(function (vr) { if (l.nom === vr.label || (vr.kg && l.nom.indexOf(vr.label + ' · ') === 0 && l.poids)) v = 'evt:' + x.i + ':' + vr.cle; }); }); }); }
       for (var k = 6; k >= 1; k--) {
         var dj = plus(f.date, -k), pj = menuDu(dj).plat;
         if (pj || dj === l.jour) avant.push(['jour:' + dj, jourNom(dj) + ' ' + dateFr(dj) + ' · ' + (dj === l.jour ? l.nom : pj.nom) + ((dj === l.jour ? l.prix : pj.prix) ? ' · ' + (dj === l.jour ? l.prix : pj.prix) : '') + (pj && pj.epuise ? ' · ÉPUISÉ' : ''), pj && pj.epuise && dj !== l.jour]);
@@ -2227,7 +2238,7 @@
     } else if (a === 'resa-nouvelle') {
       formResa(null);
     } else if (a === 'resa-evt') {
-      var ev = saved.evenements[+b.dataset.e], k0 = ev.items.map(function (it) { return !it.epuise && !it.cat; }).indexOf(true), dj = evtPremierJour(ev);
+      var ev = saved.evenements[+b.dataset.e], k0 = ev.items.map(function (it, k) { return !it.epuise && evtVariantes(ev.items, k).length > 0; }).indexOf(true), dj = evtPremierJour(ev);
       formResa(null, null, { date: dj, lignes: [k0 >= 0 ? ligneVide(dj, 'evt:' + b.dataset.e + ':' + k0) : ligneVide(dj, 'autre')] });
     } else if (a === 'resa-modif') {
       formResa(resaParId(b.dataset.id));

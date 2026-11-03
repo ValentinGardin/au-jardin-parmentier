@@ -27,8 +27,7 @@ if (isset($in['evt'])) {
     $lignes = [];
     $choix = is_array($in['items'] ?? null) ? $in['items'] : [];
     foreach ($evt['items'] as $it) {
-        if ($it['cat']) continue;
-        foreach ($it['v'] as $v) {
+        foreach ($it['v'] as $v) {   // produits, et formules (catégories à prix) ; le contenu d'une formule n'a pas de variante
             $q = (int)($choix[$v['cle']] ?? 0);
             // au kilo : un poids en grammes (par 50 g, 5 kg au plus) ; sinon une quantité (20 au plus)
             $q = $v['kg'] ? max(0, min(5000, intdiv($q, 50) * 50)) : max(0, min(20, $q));

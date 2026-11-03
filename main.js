@@ -157,7 +157,14 @@
         }).join('') + '</div>' : '') +
         '<p class="rs-evt-quand" style="--c:' + esc(e.couleur) + '">' + '<b>À récupérer ' + esc(jr.libelle) + '</b><span>à la boutique, 9 place Parmentier</span></p>' +
         '<p class="rs-q">Votre commande</p>' + e.items.map(function (it) {
-          if (it.cat) return '<p class="rs-cat">' + esc(it.nom) + (it.prix ? ' <span>· ' + esc(it.prix) + '</span>' : '') + '</p>';
+          if (it.cat && it.v && it.v.length) {   // formule « tout compris » : on commande la catégorie entière
+            var qf = etat.items[it.v[0].cle] || 0;
+            return '<div class="rs-plat rs-formule' + (qf ? ' choisi' : '') + (it.epuise ? ' rs-epuise' : '') + '"><div class="rs-plat-txt">' +
+              (it.epuise ? '<span class="rs-tag rs-tag-epuise">Épuisé</span>' : '<span class="rs-tag">Formule tout compris' + (it.forte ? ' <em class="rs-forte">Forte demande</em>' : '') + '</span>') +
+              '<strong>' + esc(it.nom) + '</strong>' + (it.contenu.length ? '<ul class="rs-compo">' + it.contenu.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' : '') + '</div>' +
+              '<div class="rs-plat-fin"><span class="rs-px">' + esc(it.v[0].prix) + '</span>' + (it.epuise ? '<span class="rs-plus-dispo">Plus disponible</span>' : qte('e:' + it.v[0].cle, qf, 0)) + '</div></div>';
+          }
+          if (it.cat) return '<p class="rs-cat">' + esc(it.nom) + '</p>';
           if (!it.v || !it.v.length) return '';
           var v0 = it.v[0];
           if (it.v.length > 1 || v0.kg || v0.format || v0.choix) return article(it);
@@ -308,7 +315,7 @@
       etat.evt = iEvt === undefined ? null : iEvt;
       if (etat.evt !== null) {
         etat.items = {};
-        var e = evt(), dispo = e ? e.items.filter(function (it) { return !it.epuise && !it.cat; }) : [];
+        var e = evt(), dispo = e ? e.items.filter(function (it) { return !it.epuise && it.v && it.v.length; }) : [];
         etat.evtDate = e ? e.jours[0].date : '';
         if (dispo.length === 1 && dispo[0].v.length === 1 && !dispo[0].v[0].kg) etat.items[dispo[0].v[0].cle] = 1;   // un seul produit : déjà dans la commande
       }

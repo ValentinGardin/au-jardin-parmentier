@@ -989,3 +989,11 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .evt-tout{display:flex;gap:1rem;justify-content:flex-end;margin:0 0 .6rem}
 .prix-cat{grid-template-rows:auto auto;align-content:center;gap:0;line-height:1.15;font-size:.88rem;color:var(--encre);background:var(--fond);border:1px dashed var(--trait)}
 .prix-cat small{font-size:.66rem;font-weight:600;color:var(--gris);text-transform:uppercase;letter-spacing:.06em}
+/* Formule tout compris (catégorie avec un prix) */
+.item-ligne.item-cat:has(.epuise){grid-template-columns:auto minmax(0,1fr) 110px auto auto}
+.formule-info{display:flex;gap:.45rem;align-items:flex-start;margin:-.1rem 0 .2rem;padding:.5rem .7rem;border-radius:10px;background:var(--violet-pale);font-size:.8rem;color:var(--violet)}
+.formule-info .ico{flex:none;width:15px;height:15px;margin-top:.1rem}
+.item-ligne.item-inclus{grid-template-columns:minmax(0,1fr) 110px auto;padding-left:1.1rem;position:relative}
+.item-ligne.item-inclus::before{content:"";position:absolute;left:.35rem;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--violet)}
+.r-evt-inclus{padding-left:.8rem;color:var(--gris);font-size:.85rem}
+.r-evt-formule{text-transform:none!important;letter-spacing:0!important;font-size:.88rem!important;color:var(--encre)!important}

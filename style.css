@@ -732,3 +732,11 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .rs-qte-kg output{min-width:3.6rem}
 .rs-var-kg{margin:-.2rem 0 .35rem;font-size:.8rem;color:var(--violet);text-align:right}
 @media (max-width:640px){.rs-var{gap:.5rem}.rs-var-nom{font-size:.92rem}}
+/* Formule « tout compris » (catégorie avec un prix) */
+.evt-items li.evt-formule .evt-tout{font-style:normal;font-weight:600;letter-spacing:.06em;text-transform:none;font-size:.72rem;opacity:.8;margin-left:.3rem}
+.evt-items li.evt-formule.epuise b{text-decoration:line-through;opacity:.6}
+.evt-items li.evt-inclus{font-weight:500;padding:.55rem 0 .55rem .9rem;font-size:.98rem;flex-wrap:wrap}
+.evt-items li.evt-inclus::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent-evt);margin:0 .35rem 0 -.85rem;align-self:center;flex:none}
+/* Réservation : formule */
+.rs-formule .rs-compo{margin:.2rem 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:.25rem .4rem;font-size:.86rem;color:var(--gris)}
+.rs-formule .rs-compo li:not(:last-child)::after{content:"·";margin-left:.4rem}

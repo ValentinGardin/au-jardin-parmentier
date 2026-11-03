@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.56 · 3 novembre 2026';
+const VERSION = '1.57 · 3 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -112,6 +112,7 @@ function couleurs_evt($hex) {
     $m = function ($t) use ($r, $g, $b) { return sprintf('#%02x%02x%02x', $r + ($t - $r) * .72, $g + ($t - $g) * .72, $b + ($t - $b) * .72); };
     return ['fond' => $hex, 'texte' => $clair ? '#1d171b' : '#ffffff', 'accent' => $clair ? $m(0) : $m(255), 'clair' => $clair];
 }
+// Catégorie avec un prix = une formule « tout compris » : le client commande la catégorie, ses produits sont le contenu.
 // Prix de la catégorie d'un produit d'événement ('' si la catégorie n'a pas de prix)
 function evt_prix_cat($items, $k) {
     for ($i = $k; $i >= 0; $i--) if ($items[$i]['cat']) return $items[$i]['prix'];
@@ -122,11 +123,17 @@ function evt_prix($items, $k) {
     $c = $items[$k]['cat'] ? $items[$k]['prix'] : evt_prix_cat($items, $k);
     return $c !== '' ? $c : $items[$k]['prix'];
 }
+// Contenu d'une formule (les produits sous une catégorie à prix)
+function evt_contenu($items, $k) {
+    $l = [];
+    for ($i = $k + 1; $i < count($items) && !$items[$i]['cat']; $i++) $l[] = $items[$i]['nom'];
+    return $l;
+}
 function evenement_clean($e) {
     $items = [];
     foreach (liste($e['items'] ?? []) as $p) {
         // « cat » : un titre de catégorie (Entrées, Plats, Desserts…) et non un produit
-        $p = !empty($p['cat']) ? ['nom' => txt($p['nom'] ?? '', 60), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => false, 'cat' => true]
+        $p = !empty($p['cat']) ? ['nom' => txt($p['nom'] ?? '', 60), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']) && trim((string)($p['prix'] ?? '')) !== '', 'cat' => true]
                                : ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']), 'cat' => false,
                                   'desc' => txt($p['desc'] ?? '', 160),
                                   // formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) : chacun son prix ; « kg » = prix au kilo, le client choisit un poids

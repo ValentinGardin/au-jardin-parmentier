@@ -417,6 +417,10 @@ function poids_txt($g) { return $g >= 1000 ? rtrim(rtrim(number_format($g / 1000
 // Sans format ni choix, une seule ligne (le produit à son prix, ou au prix de sa catégorie).
 function evt_variantes($items, $k) {
     $it = $items[$k]; $base = evt_prix($items, $k);
+    // formule (catégorie à prix) : une seule façon de la commander
+    if ($it['cat']) return $it['prix'] === '' ? [] : [['cle' => $k . ':-1:-1', 'format' => '', 'choix' => '', 'sup' => '', 'prix' => prix_txt(prix_nombre($it['prix'])), 'kg' => false, 'detail' => '']];
+    // produit d'une formule : inclus, pas commandable seul
+    if (evt_prix_cat($items, $k) !== '') return [];
     $fs = $it['formats'] ?? []; $os = $it['option']['choix'] ?? [];
     $out = [];
     foreach ($os ?: [null] as $oi => $o) foreach ($fs ?: [null] as $fi => $f) {
@@ -508,15 +512,15 @@ function commande_evts($d) {
     $demain = date('Y-m-d', strtotime('tomorrow'));
     foreach ($d['evenements'] as $i => $e) {
         if (!$e['actif'] || $e['date'] === '' || !reservation_ouverte($e)) continue;
-        if (!array_filter($e['items'], function ($it) { return !$it['cat']; })) continue;
+        if (!array_filter(array_keys($e['items']), function ($k) use ($e) { return evt_variantes($e['items'], $k); })) continue;
         // jours de retrait possibles : ceux de l'événement, à partir de demain (la veille jusqu'à l'heure limite)
         $jours = [];
         foreach (evt_jours($e) as $j) if ($j > $demain || ($j === $demain && date('H:i') < $c['limite'])) $jours[] = ['date' => $j, 'libelle' => date_fr($j, true)];
         if (!$jours) continue;
         $items = [];
         foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
-            'desc' => $it['desc'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => $it['cat'] ? [] : evt_variantes($e['items'], $k),
-            'forte' => !$it['cat'] && !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
+            'desc' => $it['desc'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => evt_variantes($e['items'], $k), 'contenu' => $it['cat'] && $it['prix'] !== '' ? evt_contenu($e['items'], $k) : [],
+            'forte' => !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
         $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
     }
     return $out;
