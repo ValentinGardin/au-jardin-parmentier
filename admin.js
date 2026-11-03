@@ -1696,7 +1696,12 @@
       b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante')));
     });
     var actif = document.querySelector('.onglets [aria-selected="true"], .onglets .plus-btn.actif');
-    if (actif && window.innerWidth <= 1180) actif.scrollIntoView({ block: 'nearest', inline: 'center' });
+    // centre l'onglet actif en ne faisant défiler QUE la barre d'onglets (scrollIntoView décalait toute la page sur iPhone)
+    var nav = actif && actif.closest('.onglets');
+    if (nav && window.innerWidth <= 1180) {
+      var rn = nav.getBoundingClientRect(), ra = actif.getBoundingClientRect();
+      nav.scrollLeft += (ra.left - rn.left) - (rn.width - ra.width) / 2;
+    }
     // « Plus » : affiché en violet (avec le nom de la rubrique) quand on est dans l'un de ses onglets
     var dansPlus = document.querySelector('#plus-liste [data-onglet="' + onglet + '"]');
     document.getElementById('plus-btn').classList.toggle('actif', !!dansPlus);
