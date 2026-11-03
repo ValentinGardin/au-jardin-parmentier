@@ -987,3 +987,5 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .evt-plier:hover .evt-plier-ico{background:var(--violet-pale);color:var(--violet)}
 .evt-bloc.ferme .evt-bloc-tete{margin-bottom:0;padding-bottom:0;border-bottom:0}
 .evt-tout{display:flex;gap:1rem;justify-content:flex-end;margin:0 0 .6rem}
+.prix-cat{grid-template-rows:auto auto;align-content:center;gap:0;line-height:1.15;font-size:.88rem;color:var(--encre);background:var(--fond);border:1px dashed var(--trait)}
+.prix-cat small{font-size:.66rem;font-weight:600;color:var(--gris);text-transform:uppercase;letter-spacing:.06em}

@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.55 · 3 novembre 2026';
+const VERSION = '1.56 · 3 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -112,11 +112,15 @@ function couleurs_evt($hex) {
     $m = function ($t) use ($r, $g, $b) { return sprintf('#%02x%02x%02x', $r + ($t - $r) * .72, $g + ($t - $g) * .72, $b + ($t - $b) * .72); };
     return ['fond' => $hex, 'texte' => $clair ? '#1d171b' : '#ffffff', 'accent' => $clair ? $m(0) : $m(255), 'clair' => $clair];
 }
-// Prix d'un produit d'événement : le sien, sinon celui de sa catégorie (ex. « Entrées · 9.00 € » : chaque entrée à 9 €)
-function evt_prix($items, $k) {
-    if (!$items[$k]['cat'] && $items[$k]['prix'] !== '') return $items[$k]['prix'];
+// Prix de la catégorie d'un produit d'événement ('' si la catégorie n'a pas de prix)
+function evt_prix_cat($items, $k) {
     for ($i = $k; $i >= 0; $i--) if ($items[$i]['cat']) return $items[$i]['prix'];
     return '';
+}
+// Prix d'un produit d'événement : celui de sa catégorie s'il y en a un (ex. « Entrées · 9.00 € » : chaque entrée à 9 €), sinon le sien
+function evt_prix($items, $k) {
+    $c = $items[$k]['cat'] ? $items[$k]['prix'] : evt_prix_cat($items, $k);
+    return $c !== '' ? $c : $items[$k]['prix'];
 }
 function evenement_clean($e) {
     $items = [];

@@ -438,7 +438,7 @@
     if (fs[0] === null && os[0] === null) return '';
     var l = [];
     os.forEach(function (o) { fs.forEach(function (f) {
-      var px = prixNum(f && f.prix ? f.prix : (it.prix || prixCat)) + (o ? prixNum(o.prix) : 0);
+      var px = prixNum(f && f.prix ? f.prix : prixCat) + (o ? prixNum(o.prix) : 0);
       l.push('<li><span>' + esc([f ? (f.nom || (f.kg ? 'Au kilo' : 'Format')) : '', o ? o.nom || 'Choix' : ''].filter(Boolean).join(' · ')) + '</span><b>' + (px ? euros(px) + (f && f.kg ? '/kg' : '') : '<em>prix ?</em>') + '</b></li>');
     }); });
     return '<div class="var-apercu"><p>Le client pourra commander :</p><ul>' + l.join('') + '</ul></div>';
@@ -460,6 +460,7 @@
         var resume = [nf ? pluriel(nf, 'format') : '', nc ? pluriel(nc, 'choix', 'choix') : ''].filter(Boolean).join(' · ');
         return '<div class="item-groupe' + (ouvert ? ' ouvert' : '') + '"><div class="item-ligne"><input class="fort" data-p="' + pi + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Foie gras maison, Huîtres n°3…" aria-label="Produit">' +
           (nf ? '<span class="prix-formats" title="Les prix sont dans les formats">' + pluriel(nf, 'prix', 'prix') + '</span>' :
+            prixCatEvt(e.items, j) ? '<span class="prix-formats prix-cat" title="Prix fixé par la catégorie : modifiez-le sur la ligne de la catégorie">' + esc(prixCatEvt(e.items, j)) + '<small>catégorie</small></span>' :
             '<input class="prix" data-p="' + pi + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="' + esc(prixEvt(e.items, j) || '17.00 €') + '" inputmode="decimal" aria-label="Prix"' + (prixEvt(e.items, j) ? ' title="Vide : prix de la catégorie"' : '') + '>') +
           '<label class="interrupteur petit epuise" title="Tout est parti : le produit reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + pi + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' +
           boutonsOrdre(p + '.items', j, ni) + '</div>' +
@@ -874,11 +875,9 @@
   // premier jour de retrait encore possible (aujourd'hui au plus tôt)
   function evtPremierJour(e) { return !e.date ? '' : e.date >= E.aujourdhui ? e.date : evtFin(e) >= E.aujourdhui ? E.aujourdhui : e.date; }
   // Prix d'un produit d'événement : le sien, sinon celui de sa catégorie
-  function prixEvt(items, k) {
-    if (!items[k].cat && items[k].prix) return items[k].prix;
-    for (var i = k; i >= 0; i--) if (items[i].cat) return items[i].prix || '';
-    return '';
-  }
+  function prixCatEvt(items, k) { for (var i = k; i >= 0; i--) if (items[i].cat) return items[i].prix || ''; return ''; }
+  // prix de la catégorie s'il y en a un (il s'impose à tous ses produits), sinon celui du produit
+  function prixEvt(items, k) { return (items[k].cat ? items[k].prix : prixCatEvt(items, k)) || items[k].prix || ''; }
   // Façons de commander un produit d'événement (format × choix), comme sur le site
   function evtVariantes(items, k) {
     var it = items[k], base = prixEvt(items, k), fs = (it.formats || []).length ? it.formats : [null], os = it.option && it.option.choix.length ? it.option.choix : [null], out = [];
@@ -2063,7 +2062,9 @@
       return;
     }
     if (t.type === 'file' && t.dataset.envoi) { envoyerPhoto(t); return; }
-    if ('prix' in t.dataset && t.dataset.p) { var f = formatPrix(t.value); if (f !== t.value) { t.value = f; set(t.dataset.p, f); apresSaisie(); } }
+    if ('prix' in t.dataset && t.dataset.p) { var f = formatPrix(t.value); if (f !== t.value) { t.value = f; set(t.dataset.p, f); apresSaisie(); }
+      // prix d'une catégorie d'événement : les produits en dessous se mettent à jour (prix verrouillé)
+      var mc = /^(evenements\.\d+\.items\.\d+)\.prix$/.exec(t.dataset.p); if (mc && get(mc[1]).cat) render(true); }
     if (t.dataset.p && /^semaine(_suivante)?\.(du|au)$/.test(t.dataset.p)) {
       var st = statutSemaine(site[SEM]), el = document.getElementById('statut-sem');
       if (el) { el.className = 'statut statut-' + st[0]; el.textContent = st[1]; }
