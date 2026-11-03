@@ -489,10 +489,10 @@
     ].map(function (t) { return '<div class="tuile"><p>' + t[0] + '</p><strong>' + t[1] + '</strong><small>' + t[2] + '</small></div>'; }).join('');
     var max = V.plats.length ? V.plats[0].parts : 1;
     var palmares = '<div class="bloc stats-large"><div class="bloc-tete"><h2>Vos plats stars</h2><span class="compte">classés par parts vendues</span></div>' +
-      (V.plats.length ? '<table class="palmares"><thead><tr><th>#</th><th>Plat</th><th class="n">Parts</th><th class="n">Chiffre d’affaires</th><th class="n">Servi</th><th></th></tr></thead><tbody>' + V.plats.map(function (p, i) {
+      (V.plats.length ? '<div class="pal-tab"><table class="palmares"><thead><tr><th>#</th><th>Plat</th><th class="n">Parts</th><th class="n">Chiffre d’affaires</th><th class="n">Servi</th><th></th></tr></thead><tbody>' + V.plats.map(function (p, i) {
         return '<tr><td class="rang' + (i < 3 ? ' podium' : '') + '">' + (i + 1) + '</td><td><b>' + esc(p.nom) + '</b>' + (p.epuise ? ' <span class="r-badge-epuise">épuisé ' + (p.epuise > 1 ? p.epuise + ' fois' : '1 fois') + '</span>' : '') + (p.type === 'special' ? ' <span class="r-orig">offre</span>' : p.type === 'evenement' ? ' <span class="r-orig">événement</span>' : '') +
           '<span class="pal-piste"><span style="width:' + (p.parts / max * 100) + '%"></span></span></td><td class="n"><b>' + p.parts + '</b></td><td class="n">' + euro(p.ca) + '</td><td class="n">' + (p.type === 'autre' ? '–' : pluriel(p.jours, 'jour')) + '</td><td class="n petit">' + (p.type !== 'autre' && p.jours ? (Math.round(p.parts / p.jours * 10) / 10).toString().replace('.', ',') + ' / jour' : '') + '</td></tr>';
-      }).join('') + '</tbody></table>' : '<p class="aide petit">Pas de réservation sur cette période.</p>') + '</div>';
+      }).join('') + '</tbody></table></div>' : '<p class="aide petit">Pas de réservation sur cette période.</p>') + '</div>';
     var C = V.clients, L = V.lettre;
     var clientsBloc = '<div class="bloc"><h2>Vos clients</h2><div class="mini-tuiles"><div><strong>' + C.uniques + '</strong><small>clients</small></div><div><strong>' + C.nouveaux + '</strong><small>nouveaux</small></div><div><strong>' + C.fideles + '</strong><small>déjà venus avant</small></div></div>' +
       (C.top.length ? '<p class="aide petit">Les plus fidèles sur la période</p><ol class="top-clients">' + C.top.map(function (c) { return '<li><span>' + esc(c.nom) + '</span><b>' + pluriel(c.n, 'commande') + '</b><small>' + euro(c.ca) + '</small></li>'; }).join('') + '</ol>' : '') + '</div>';
@@ -1695,6 +1695,8 @@
       b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
       b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante')));
     });
+    var actif = document.querySelector('.onglets [aria-selected="true"], .onglets .plus-btn.actif');
+    if (actif && window.innerWidth <= 1180) actif.scrollIntoView({ block: 'nearest', inline: 'center' });
     // « Plus » : affiché en violet (avec le nom de la rubrique) quand on est dans l'un de ses onglets
     var dansPlus = document.querySelector('#plus-liste [data-onglet="' + onglet + '"]');
     document.getElementById('plus-btn').classList.toggle('actif', !!dansPlus);
