@@ -450,6 +450,38 @@
     if (v === undefined) return i in o ? o[i] : site.evenements.length < 2;
     o[i] = v; ecrire('evtOuverts', JSON.stringify(o));
   }
+  // Aperçu de la carte de l'événement telle qu'elle apparaît sur le site (couleurs, plats, formules, formats)
+  function couleursEvt(hex) {
+    var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '') || [0, '70', '09', '54'];
+    var c = [1, 2, 3].map(function (k) { return parseInt(m[k], 16); });
+    var lin = function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+    var clair = .2126 * lin(c[0]) + .7152 * lin(c[1]) + .0722 * lin(c[2]) > .35, t = clair ? 0 : 255;
+    var mix = 'rgb(' + c.map(function (v) { return Math.round(v + (t - v) * .72); }).join(',') + ')';
+    return { fond: '#' + m[1] + m[2] + m[3], texte: clair ? '#1d171b' : '#fff', accent: mix, clair: clair };
+  }
+  function apercuEvt(e) {
+    var cl = couleursEvt(e.couleur), ph = E.photos.filter(function (x) { return x.nom === e.photo; })[0];
+    var quand = e.date ? evtQuand(e) : '';
+    var items = e.items.map(function (it, k) {
+      if (!it.nom) return '';
+      if (it.cat) return '<li class="ap-cat"><span>' + esc(it.nom) + (it.prix ? ' <i>tout compris</i>' : '') + (it.prix && it.epuise ? ' <em>Épuisé</em>' : '') + '</span>' + (it.prix ? '<b>' + esc(it.prix) + '</b>' : '') + '</li>';
+      if (prixCatEvt(e.items, k)) return '<li class="ap-inclus">' + esc(it.nom) + '</li>';
+      var fs = it.formats || [], ch = it.option ? it.option.choix : [];
+      var chips = fs.map(function (f) { var px = f.prix || prixEvt(e.items, k); return '<span>' + esc(f.nom || 'Au kilo') + (px ? ' <b>' + esc(px) + (f.kg ? '/kg' : '') + '</b>' : '') + '</span>'; }).join('') +
+        (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (c) { return c.nom + (c.prix ? ' (+' + c.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
+      return '<li' + (it.epuise ? ' class="ap-epuise"' : '') + '><span>' + esc(it.nom) + (it.epuise ? ' <em>Épuisé</em>' : '') + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
+        (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
+    }).join('');
+    return '<div class="ap-evt' + (cl.clair ? ' ap-clair' : '') + '" style="--f:' + cl.fond + ';--t:' + cl.texte + ';--a:' + cl.accent + '">' +
+      (ph ? '<img src="' + esc(ph.url) + '" alt="">' : '') +
+      (quand ? '<span class="ap-quand">' + esc(quand.charAt(0).toUpperCase() + quand.slice(1)) + '</span>' : '<span class="ap-quand ap-vide">Pas encore de date</span>') +
+      '<h3>' + esc(e.titre || 'Nom de l’événement') + '</h3>' + (e.accroche ? '<p class="ap-accroche">' + esc(e.accroche) + '</p>' : '') +
+      (items ? '<ul>' + items + '</ul>' : '<p class="ap-vide">Ajoutez des plats ou produits…</p>') +
+      (Array.isArray(e.lignes) ? e.lignes : String(e.lignes || '').split('\n')).filter(Boolean).map(function (l) { return '<p class="ap-ligne">' + esc(l) + '</p>'; }).join('') +
+      (e.cta ? '<p class="ap-cta">' + esc(e.cta) + '</p>' : '') + '<span class="ap-btn">Réserver en ligne</span>' +
+      (e.actif ? '' : '<p class="ap-off">Désactivé : non visible sur le site</p>') + '</div>';
+  }
+  function majApercuEvt(i) { var z = document.getElementById('ap-evt-' + i); if (z && site.evenements[i]) z.innerHTML = apercuEvt(site.evenements[i]); }
   function vueEvenements() {
     var liste = site.evenements.map(function (e, i) {
       var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
@@ -485,7 +517,7 @@
           '<button type="button" class="evt-plier" data-act="evt-plier" data-i="' + i + '" aria-expanded="' + ouv + '"><span class="evt-plier-txt"><strong>' + esc(e.titre || 'Événement sans nom') + '</strong><small>' +
             esc([e.date ? evtQuand(e) : 'Pas de date', pluriel(nbp, 'produit')].join(' · ')) + '</small></span><span class="evt-plier-ico">' + ico(ouv ? 'haut' : 'bas') + (ouv ? 'Replier' : 'Déplier') + '</span></button></div>';
       if (!ouv) return '<section class="bloc evt-bloc ferme" style="border-top-color:' + esc(e.couleur) + '">' + tete + '</section>';
-      return '<section class="bloc evt-bloc" style="border-top-color:' + esc(e.couleur) + '">' + tete +
+      return '<section class="bloc evt-bloc" style="border-top-color:' + esc(e.couleur) + '">' + tete + '<div class="evt-edition"><div class="evt-form">' +
         champ('Nom de l’événement', p + '.titre', { ph: 'ex. Beaujolais nouveau, Menu de Noël…' }) +
         '<div class="grille-2">' + champ('Date de l’événement', p + '.date', { type: 'date' }) + champ('Dernier jour', p + '.date_fin', { type: 'date', opt: true, aide: 'Seulement s’il dure plusieurs jours (ex. Noël : 24 → 25 décembre). Les clients choisissent leur jour de retrait.' }) + '</div>' +
         champ('Petit texte d’accroche', p + '.accroche', { zone: true, rows: 2, opt: true, ph: 'ex. On fête l’arrivée du Beaujolais nouveau !' }) +
@@ -500,6 +532,8 @@
         '<div class="champ"><span>Photo <em>facultatif</em></span>' + photos + '</div>' +
         '<label class="case"><input type="checkbox" data-p="' + p + '.popup"' + (e.popup ? ' checked' : '') + '> Afficher en fenêtre (pop-up) à l’arrivée des visiteurs sur le site</label>' +
         '<label class="case"><input type="checkbox" data-p="' + p + '.masquer_apres"' + (e.masquer_apres ? ' checked' : '') + '> Retirer automatiquement du site le lendemain de l’événement</label>' +
+        '</div><aside class="evt-apercu"><p class="evt-apercu-t">Aperçu sur le site <small>mis à jour en direct</small></p><div id="ap-evt-' + i + '">' + apercuEvt(e) + '</div>' +
+          '<a class="lien evt-apercu-lien" href="./#evenements" target="_blank" rel="noopener">' + ico('oeil') + 'Voir la page en vrai (après enregistrement)</a></aside></div>' +
         '</section>';
     }).join('');
     return tete('Événements et menus spéciaux', 'Beaujolais nouveau, Noël, Pâques… Un événement activé apparaît en grand en haut du site, avec une annonce dans le haut de page.',
@@ -2034,6 +2068,7 @@
     if (/\.titre$/.test(p) && onglet === 'menus') {
       var r = t.closest('details'); if (r) r.querySelector('.cat-resume strong').textContent = v || 'Catégorie sans nom';
     }
+    var me = /^evenements\.(\d+)\./.exec(p); if (me) majApercuEvt(+me[1]);
     // formats / choix d'un produit d'événement : l'aperçu « Le client pourra commander » suit la saisie
     var mv = /^(evenements\.(\d+)\.items\.(\d+))\.(formats|option)\./.exec(p);
     if (mv) { var ap = t.closest('.var-panneau') && t.closest('.var-panneau').querySelector('.var-apercu'), ev0 = site.evenements[+mv[2]];
