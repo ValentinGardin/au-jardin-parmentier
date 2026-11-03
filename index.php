@@ -193,7 +193,8 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
     $quand = $dans === null ? '' : ($enCoursEvt ? 'C’est aujourd’hui !' : ($dans < 0 ? '' : ($dans === 1 ? 'C’est demain !' : 'Dans ' . $dans . ' jours')));
     $ph = photo($e['photo']); ?>
     <?php $cl = couleurs_evt($e['couleur']); ?>
-    <article class="evt<?= $cl['clair'] ? ' evt-clair' : '' ?><?= $ph ? ' avec-photo' : '' ?> reveal" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
+    <?php $nbProduits = count(array_filter($e['items'], function ($x) { return !$x['cat']; })); ?>
+    <article class="evt<?= $cl['clair'] ? ' evt-clair' : '' ?><?= $ph ? ' avec-photo' : '' ?><?= $nbProduits >= 4 ? ' evt-large' : '' ?> reveal" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
       <img class="evt-sym" src="img/logo/symbole-<?= $cl['clair'] ? 'violet' : 'blanc' ?>.svg" alt="" width="164" height="244">
 <?php if ($ph): ?>      <img class="evt-photo" <?= img_attrs(photo_fichier($e['photo']), '(max-width: 900px) 90vw, 320px') ?> alt="<?= h(alt_photo($e['titre'])) ?>" loading="lazy" width="1000" height="750">
 <?php endif; ?>

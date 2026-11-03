@@ -740,3 +740,11 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 /* Réservation : formule */
 .rs-formule .rs-compo{margin:.2rem 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:.25rem .4rem;font-size:.86rem;color:var(--gris)}
 .rs-formule .rs-compo li:not(:last-child)::after{content:"·";margin-left:.4rem}
+/* Événement avec beaucoup de plats : le titre en haut, les plats sur deux colonnes en dessous */
+.evt.evt-large{grid-template-columns:minmax(0,1fr);align-items:start;row-gap:1.6rem}
+.evt.evt-large.avec-photo{grid-template-columns:minmax(0,.55fr) minmax(0,1.45fr);grid-template-areas:"photo tete" "corps corps"}
+.evt.evt-large.avec-photo .evt-photo{min-height:0;aspect-ratio:4/3;height:auto}
+.evt-large .evt-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:clamp(1.5rem,4vw,3rem);align-items:start}
+.evt-large .evt-items li.evt-cat{grid-column:1/-1}
+@media (max-width:760px){.evt-large .evt-items{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px){.evt.evt-large.avec-photo{grid-template-columns:1fr;grid-template-areas:"photo" "tete" "corps"}}
