@@ -1178,6 +1178,37 @@
       '</tbody>' + (jour.length ? '<tfoot><tr><td>Total</td><td class="n">' + qte + '</td><td></td><td></td><td class="n">' + euros(total) + '</td></tr></tfoot>' : '') + '</table></div>' +
       (jour.length ? '<p class="r-recap-pied"><span>Encaissé <b>' + euros(encaisse) + '</b></span><span>Reste à encaisser <b>' + euros(total - encaisse) + '</b></span></p>' : '') + '</section>';
   }
+  // Impression de la journée : une feuille compacte (récap en une ligne + tableau serré), pour économiser le papier
+  function imprimerJour() {
+    var jour = (resasDuJour() || []).slice().sort(function (a, b) { return (a.num || 0) - (b.num || 0); });
+    var recap = {}, ordre = [], parts = 0, total = 0, encaisse = 0;
+    jour.forEach(function (r) { r.lignes.forEach(function (l) {
+      var nom = (l.nom.trim() || 'Autre') + (l.jour && l.jour !== r.date ? ' (plat du ' + jourNom(l.jour).toLowerCase() + ')' : '');
+      if (!recap[nom]) { recap[nom] = 0; ordre.push(nom); }
+      recap[nom] += l.qte; parts += l.qte; total += prixNum(l.prix) * l.qte; if (r.paye) encaisse += prixNum(l.prix) * l.qte;
+    }); });
+    ordre.sort(function (a, b) { return recap[b] - recap[a]; });
+    var cote = {}; lignesDeCote().forEach(function (x) { cote[x.l.nom] = (cote[x.l.nom] || 0) + x.l.qte; });
+    var maintenant = new Date();
+    var h = '<div class="imp-tete"><b>Réservations · ' + esc(dateLongue(R.date)) + '</b><span>' + pluriel(jour.length, 'commande') + ' · ' + pluriel(parts, 'part') + (total ? ' · ' + euros(total) + ' (encaissé ' + euros(encaisse) + ')' : '') + '</span>' +
+      '<small>Au Jardin Parmentier · imprimé le ' + maintenant.toLocaleDateString('fr-FR') + ' à ' + maintenant.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
+      (ordre.length ? '<p class="imp-recap"><b>À préparer :</b> ' + ordre.map(function (n) { return '<span><b>' + recap[n] + '</b> × ' + esc(n) + '</span>'; }).join(' · ') + '</p>' : '') +
+      (Object.keys(cote).length ? '<p class="imp-recap"><b>À mettre de côté (autre jour) :</b> ' + Object.keys(cote).map(function (n) { return '<span><b>' + cote[n] + '</b> × ' + esc(n) + '</span>'; }).join(' · ') + '</p>' : '') +
+      (jour.length ? '<table class="imp-table"><thead><tr><th>Récup.</th><th>N°</th><th>Client</th><th>Commande</th><th class="n">Total</th><th>Payé</th></tr></thead><tbody>' + jour.map(function (r) {
+        var t = r.lignes.reduce(function (s, l) { return s + prixNum(l.prix) * l.qte; }, 0);
+        return '<tr><td class="c">' + (r.recupere ? '✓' : '☐') + '</td><td>' + (r.num || '') + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
+          '<td>' + r.lignes.map(function (l) { return '<b>' + l.qte + '</b>× ' + esc(l.nom); }).join(' · ') + (r.note ? ' <i>— ' + esc(r.note) + '</i>' : '') + '</td>' +
+          '<td class="n">' + (t ? euros(t) : '') + '</td><td class="c">' + (r.paye ? '✓' : '☐') + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p>Aucune réservation ce jour-là.</p>');
+    imprimerCompact(h);
+  }
+  function imprimerCompact(h) {
+    var z = document.getElementById('impression') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'impression' }));
+    z.innerHTML = h;
+    document.body.classList.add('impression-compacte');
+    window.print();
+  }
+  window.addEventListener('afterprint', function () { document.body.classList.remove('impression-compacte'); });
   function resasListe() {
     var jour = resasDuJour() || [];
     if (!jour.length && numCherche(R.q)) return '<p class="vide">Aucune réservation ce jour-là.<br><button type="button" class="btn btn-violet" data-act="r-num" data-n="' + numCherche(R.q) + '">Chercher la commande n° ' + numCherche(R.q) + ' sur tous les jours</button></p>';
@@ -1305,7 +1336,19 @@
       if (b) {
         if (b.dataset.h === 'fermer') fin();
         else if (b.dataset.h === 'effacer') { H.jour = ''; H.client = ''; d.querySelector('#h-jour').value = ''; d.querySelector('#h-client').value = ''; dessiner(); }
-        else if (b.dataset.h === 'imprimer') { document.body.classList.add('impression-histo'); window.print(); }
+        else if (b.dataset.h === 'imprimer') {
+          // feuille compacte : une ligne par commande, police réduite
+          var l = filtrees(), tot = 0, enc = 0;
+          l.forEach(function (r) { var t = totalResa(r); tot += t; if (r.paye) enc += t; });
+          var maint = new Date();
+          imprimerCompact('<div class="imp-tete"><b>Historique des commandes</b><span>' + esc(d.querySelector('#h-resume').textContent) + '</span><small>Au Jardin Parmentier · imprimé le ' + maint.toLocaleDateString('fr-FR') + '</small></div>' +
+            '<table class="imp-table imp-histo"><colgroup><col style="width:5%"><col style="width:6%"><col style="width:25%"><col><col style="width:8%"><col style="width:5%"><col style="width:5%"></colgroup><thead><tr><th>N°</th><th>Retrait</th><th>Client</th><th>Commande</th><th class="n">Total</th><th>Payé</th><th>Récup.</th></tr></thead><tbody>' + l.map(function (r) {
+              var t = totalResa(r);
+              return '<tr><td>' + (r.num || '') + '</td><td class="nw">' + r.date.slice(8, 10) + '/' + r.date.slice(5, 7) + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
+                '<td>' + r.lignes.map(function (x) { return '<b>' + x.qte + '</b>× ' + esc(x.nom); }).join(' · ') + (r.note ? ' <i>— ' + esc(r.note) + '</i>' : '') + '</td>' +
+                '<td class="n">' + (t ? euros(t) : '') + '</td><td class="c">' + (r.paye ? '✓' : '☐') + '</td><td class="c">' + (r.recupere ? '✓' : '☐') + '</td></tr>';
+            }).join('') + '</tbody></table>');
+        }
         return;
       }
       var tr = e.target.closest('tr[data-d]');
@@ -2386,7 +2429,7 @@
     } else if (a === 'r-historique') {
       historique();
     } else if (a === 'r-imprimer') {
-      window.print();
+      imprimerJour();
     } else if (a === 'cl-filtre') {
       clFiltre = b.dataset.f; majClients();
     } else if (a === 'clients-import') {
