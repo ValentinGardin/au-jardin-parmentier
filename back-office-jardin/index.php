@@ -99,7 +99,7 @@ if ($api !== '') {
         api_garde();
         $in = entree();
         $part = $in['part'] ?? '';
-        if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis', 'faq'], true)) repondre(400, ['erreur' => 'Données invalides.']);
+        if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'commandes', 'mots', 'avis', 'faq'], true)) repondre(400, ['erreur' => 'Données invalides.']);
         $d = site_load();
         $ancien = $d[$part] ?? null;
         $d[$part] = $in['data'] ?? null;
@@ -727,6 +727,7 @@ if ($logged) {
     <span class="sep" aria-hidden="true"></span>
     <button role="tab" data-onglet="semaine" aria-selected="false"><svg class="ico"><use href="#i-cal"/></svg>Menu de la semaine</button>
     <button role="tab" data-onglet="menus" aria-selected="false"><svg class="ico"><use href="#i-livre"/></svg>Cartes traiteur</button>
+    <button role="tab" data-onglet="commandes" aria-selected="false"><svg class="ico"><use href="#i-sac"/></svg>Sur commande</button>
     <button role="tab" data-onglet="evenements" aria-selected="false"><svg class="ico"><use href="#i-fete"/></svg>Événements</button>
     <span class="sep" aria-hidden="true"></span>
     <button type="button" class="plus-btn" id="plus-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-liste"><span id="plus-txt">Plus</span><svg class="ico fleche"><use href="#i-bas"/></svg></button>

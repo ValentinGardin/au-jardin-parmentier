@@ -1,4 +1,7 @@
 <?php require __DIR__ . '/lib.php'; require __DIR__ . '/stats.php'; require __DIR__ . '/google.php'; require __DIR__ . '/clients.php'; require __DIR__ . '/sms.php'; $s = site_load();
+// Cartes traiteur et commandes spéciales : seules celles mises « En ligne » dans le back-office sont affichées
+$s['menus'] = array_values(array_filter($s['menus'], function ($c) { return $c['actif']; }));
+$surCommande = array_values(array_filter($s['commandes'], function ($c) { return $c['actif'] && $c['items']; }));
 lettre_auto($s);   // envoi du menu aux inscrits le lundi (si activé dans le back-office)
 sms_auto();        // rappel SMS des commandes non récupérées (si activé)
 stats_vue();
@@ -106,7 +109,8 @@ foreach ($ld as $bloc): ?>
     <nav id="menu" class="menu" aria-label="Navigation principale">
 <?php if ($aSemaine): ?>      <a href="#semaine">Menu de la semaine</a>
 <?php endif; ?>      <a href="#traiteur">Traiteur</a>
-      <a href="#boutique">La boutique</a>
+<?php if ($surCommande): ?>      <a href="#sur-commande">Sur commande</a>
+<?php endif; ?>      <a href="#boutique">La boutique</a>
       <a href="#maison">Qui sommes-nous</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -231,7 +235,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <?php continue; endif;
       $forte = !$it['epuise'] && $e['date'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE; ?>          <li<?= $it['epuise'] ? ' class="epuise"' : '' ?>><span><?= h($it['nom']) ?><?php if ($it['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($forte): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?><?php if ($it['accomp'] !== ''): ?><small class="evt-accomp"><?= h($it['accomp']) ?></small><?php endif; ?></span><?php if ($it['prix'] !== '' && evt_prix_cat($e['items'], $k) === '' && !$it['formats'] && !$it['option']['choix']): ?><i aria-hidden="true"></i><b><?= h($it['prix']) ?></b><?php endif; ?>
 <?php if ($it['desc'] !== '' || $it['formats'] || $it['option']['choix']): ?>            <small class="evt-var"><?php if ($it['desc'] !== ''): ?><span class="evt-desc"><?= h($it['desc']) ?></span><?php endif;
-          foreach ($it['formats'] as $f): $px = $f['prix'] !== '' ? $f['prix'] : evt_prix($e['items'], $k); ?><span><?= h($f['nom'] !== '' ? $f['nom'] : 'Au kilo') ?><?php if ($px !== ''): ?> <b><?= h($px) ?><?= $f['kg'] ? '/kg' : '' ?></b><?php endif; ?></span><?php endforeach;
+          foreach ($it['formats'] as $f): $px = $f['prix'] !== '' ? $f['prix'] : evt_prix($e['items'], $k); ?><span><?= h(format_nom($f)) ?><?php if ($px !== ''): ?> <b><?= h($px) ?><?= h(format_suffixe($f)) ?></b><?php endif; ?></span><?php endforeach;
           if ($it['option']['choix']): ?><span class="evt-choix"><?= h(($it['option']['titre'] !== '' ? $it['option']['titre'] . ' : ' : '') . implode(' ou ', array_map(function ($c) { return $c['nom'] . ($c['prix'] !== '' ? ' (+' . $c['prix'] . ')' : ''); }, $it['option']['choix']))) ?></span><?php endif; ?></small>
 <?php endif; ?></li>
 <?php endforeach; ?>        </ul>
@@ -428,6 +432,45 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 <?php endforeach; endif; ?>
   </div>
 </section>
+
+<?php if ($surCommande): ?>
+<!-- ============ Sur commande (raclette, corbeilles, plateaux… : onglet « Sur commande » du back-office) ============ -->
+<section id="sur-commande" class="section sur-commande">
+  <div class="wrap">
+    <div class="tete reveal">
+      <div>
+        <p class="eyebrow">Sur commande</p>
+        <h2>À commander à l’avance.</h2>
+      </div>
+      <p class="tete-txt">Préparé pour vous, à récupérer à la boutique. Un coup de fil suffit : <a href="<?= $telHref ?>"><?= h($tel) ?></a>.</p>
+    </div>
+    <div class="sc-grille">
+<?php foreach ($surCommande as $c): $ph = photo($c['photo']); ?>
+      <article class="sc reveal">
+<?php if ($ph): ?>        <img <?= img_attrs(photo_fichier($c['photo']), '(max-width: 760px) 92vw, 560px') ?> alt="<?= h(alt_photo($c['titre'])) ?>" loading="lazy" width="1000" height="750">
+<?php endif; ?>        <div class="sc-corps">
+<?php if ($c['delai'] !== ''): ?>          <span class="sc-delai"><?= h($c['delai']) ?></span>
+<?php endif; ?>          <h3><?= h($c['titre']) ?></h3>
+<?php if ($c['accroche'] !== ''): ?>          <p class="sc-accroche"><?= h($c['accroche']) ?></p>
+<?php endif; ?>          <ul class="sc-items">
+<?php foreach ($c['items'] as $k => $it):
+        if ($it['cat']): ?>            <li class="sc-cat"><span><?= h($it['nom']) ?><?php if ($it['prix'] !== ''): ?> <i>tout compris</i><?php endif; ?></span><?php if ($it['prix'] !== ''): ?><b><?= h($it['prix']) ?></b><?php endif; ?></li>
+<?php continue; endif;
+        $dans = evt_prix_cat($c['items'], $k) !== ''; ?>            <li<?= $dans ? ' class="sc-inclus"' : ($it['epuise'] ? ' class="epuise"' : '') ?>><span><?= h($it['nom']) ?><?php if ($it['epuise'] && !$dans): ?> <em class="etiq etiq-epuise">Épuisé</em><?php endif; if ($it['accomp'] !== ''): ?><small><?= h($it['accomp']) ?></small><?php endif; ?></span><?php
+        if (!$dans && $it['prix'] !== '' && !$it['formats'] && !$it['option']['choix']): ?><b><?= h($it['prix']) ?></b><?php endif;
+        if (!$dans && ($it['desc'] !== '' || $it['formats'] || $it['option']['choix'])): ?><span class="sc-var"><?php if ($it['desc'] !== ''): ?><span class="sc-desc"><?= h($it['desc']) ?></span><?php endif;
+          foreach ($it['formats'] as $f): $px = $f['prix'] !== '' ? $f['prix'] : evt_prix($c['items'], $k); ?><span><?= h(format_nom($f)) ?><?php if ($px !== ''): ?> <b><?= h($px) ?><?= h(format_suffixe($f)) ?></b><?php endif; ?></span><?php endforeach;
+          if ($it['option']['choix']): ?><span class="sc-choix"><?= h(($it['option']['titre'] !== '' ? $it['option']['titre'] . ' : ' : '') . implode(' ou ', array_map(function ($x) { return $x['nom'] . ($x['prix'] !== '' ? ' (+' . $x['prix'] . ')' : ''); }, $it['option']['choix']))) ?></span><?php endif; ?></span><?php endif; ?></li>
+<?php endforeach; ?>          </ul>
+<?php if ($c['note'] !== ''): ?>          <p class="sc-note"><?= h($c['note']) ?></p>
+<?php endif; ?>          <a class="btn btn-violet" href="<?= $telHref ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Commander · <?= h($tel) ?></a>
+        </div>
+      </article>
+<?php endforeach; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- ============ La boutique ============ -->
 <section id="boutique" class="section boutique">

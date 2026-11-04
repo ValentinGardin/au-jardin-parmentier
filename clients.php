@@ -418,18 +418,18 @@ function poids_txt($g) { return $g >= 1000 ? rtrim(rtrim(number_format($g / 1000
 function evt_variantes($items, $k) {
     $it = $items[$k]; $base = evt_prix($items, $k);
     // formule (catégorie à prix) : une seule façon de la commander
-    if ($it['cat']) return $it['prix'] === '' ? [] : [['cle' => $k . ':-1:-1', 'format' => '', 'choix' => '', 'sup' => '', 'prix' => prix_txt(prix_nombre($it['prix'])), 'kg' => false, 'detail' => '']];
+    if ($it['cat']) return $it['prix'] === '' ? [] : [['cle' => $k . ':-1:-1', 'format' => '', 'choix' => '', 'sup' => '', 'prix' => prix_txt(prix_nombre($it['prix'])), 'kg' => false, 'par' => 1000, 'suffixe' => '', 'detail' => '']];
     // produit d'une formule : inclus, pas commandable seul
     if (evt_prix_cat($items, $k) !== '') return [];
     $fs = $it['formats'] ?? []; $os = $it['option']['choix'] ?? [];
     $out = [];
     foreach ($os ?: [null] as $oi => $o) foreach ($fs ?: [null] as $fi => $f) {
-        $kg = $f && $f['kg'];
+        $kg = $f && $f['kg']; $u = $f ? unite_de($f) : '';
         $px = prix_nombre($f && $f['prix'] !== '' ? $f['prix'] : $base) + ($o ? prix_nombre($o['prix']) : 0);
-        $fnom = $f ? ($f['nom'] !== '' ? $f['nom'] : 'Au kilo') : '';
+        $fnom = $f ? format_nom($f) : '';
         $out[] = ['cle' => $k . ':' . ($f ? $fi : -1) . ':' . ($o ? $oi : -1), 'format' => $fnom, 'choix' => $o ? $o['nom'] : '',
                   'sup' => $o && prix_nombre($o['prix']) ? '+' . prix_txt(prix_nombre($o['prix'])) : '',
-                  'prix' => $px ? prix_txt($px) : '', 'kg' => $kg,
+                  'prix' => $px ? prix_txt($px) : '', 'kg' => $kg, 'par' => $u === '500g' ? 500 : 1000, 'suffixe' => $f ? format_suffixe($f) : '',
                   'detail' => implode(' · ', array_filter([$fnom, $o ? $o['nom'] : '']))];
     }
     return $out;
@@ -437,8 +437,9 @@ function evt_variantes($items, $k) {
 // Ligne de réservation pour une variante (q = quantité, ou poids en grammes pour le prix au kilo)
 function evt_ligne($it, $v, $q) {
     $nom = $it['nom'] . ($v['detail'] !== '' ? ' · ' . $v['detail'] : '');
-    if ($v['kg']) return ['type' => 'evenement', 'nom' => $nom . ' · ' . poids_txt($q), 'prix' => $v['prix'] ? prix_txt(round(prix_nombre($v['prix']) * $q / 1000, 2)) : '', 'qte' => 1,
-                          'article' => $it['nom'], 'poids' => $q, 'pkg' => $v['prix']];
+    // au poids : le prix suit le poids choisi ; « pkg » garde le prix au kilo (500 g à 16 € → 32 €/kg)
+    if ($v['kg']) return ['type' => 'evenement', 'nom' => $nom . ' · ' . poids_txt($q), 'prix' => $v['prix'] ? prix_txt(round(prix_nombre($v['prix']) * $q / $v['par'], 2)) : '', 'qte' => 1,
+                          'article' => $it['nom'], 'poids' => $q, 'pkg' => $v['prix'] ? prix_txt(prix_nombre($v['prix']) * 1000 / $v['par']) : ''];
     return ['type' => 'evenement', 'nom' => $nom, 'prix' => $v['prix'], 'qte' => $q, 'article' => $it['nom']];
 }
 function prix_nombre($p) { return preg_match('/\d+(?:[.,]\d+)?/', (string)$p, $m) ? (float)str_replace(',', '.', $m[0]) : 0.0; }

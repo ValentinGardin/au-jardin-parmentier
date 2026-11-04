@@ -1047,3 +1047,36 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .sim-bloc > div{display:grid;gap:.15rem;flex:1 1 260px}
 .sim-bloc small{color:var(--gris);font-size:.8rem}
 .sim-bloc .btn{color:#c2410c;border-color:#f0a46b}
+/* Cartes traiteur : en ligne ou non */
+.carte-enligne{font-size:.78rem;white-space:nowrap;margin-right:.3rem}
+.carte-item.hors-ligne .carte-ouvrir{opacity:.6}
+.carte-item.hors-ligne .carte-ouvrir strong::after{content:"Pas en ligne";margin-left:.5rem;padding:.08rem .45rem;border-radius:6px;background:var(--fond);color:var(--gris);font:600 .68rem var(--texte);vertical-align:middle}
+.tete .aide .carte-enligne{display:inline-flex;margin-left:.4rem;vertical-align:middle}
+/* Sur commande */
+.cmd-bloc{border-top-color:var(--violet)}
+.cmd-etat{display:flex;align-items:center;gap:.4rem;margin:0 0 .8rem;font-size:.85rem;color:var(--gris)}
+.cmd-etat .ico{width:16px;height:16px;color:var(--vert)}
+.ap-cmd{overflow:hidden;border:1px solid var(--trait);border-radius:18px;background:var(--blanc);box-shadow:0 18px 36px -26px rgba(29,23,27,.45);max-height:calc(100vh - 160px);overflow-y:auto}
+.ap-cmd img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}
+.ap-cmd-corps{padding:1.1rem 1.1rem 1.2rem;--l:var(--trait);--a:var(--violet);--t:var(--encre);--f:var(--violet)}
+.ap-cmd-delai{display:inline-block;padding:.2rem .6rem;border-radius:99px;background:var(--violet-pale);color:var(--violet);font-size:.7rem;font-weight:700}
+.ap-cmd h3{margin:.5rem 0 .3rem;font:700 1.35rem/1.1 var(--titre)}
+.ap-cmd .ap-accroche{color:var(--gris);opacity:1}
+.ap-cmd ul{list-style:none;margin:.4rem 0 .6rem;padding:0}
+.ap-cmd li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.2rem .6rem;padding:.45rem 0;border-bottom:1px solid var(--trait);font-size:.85rem;font-weight:600}
+.ap-cmd li b{color:var(--violet);white-space:nowrap}
+.ap-cmd li small{flex-basis:100%;display:flex;flex-wrap:wrap;gap:.2rem .3rem;font-weight:400;font-size:.7rem;color:var(--gris)}
+.ap-cmd li small span{padding:.06rem .4rem;border:1px solid var(--trait);border-radius:99px}
+.ap-cmd li small .ap-desc{flex-basis:100%;border:0;padding:0;font-style:italic}
+.ap-cmd li .ap-accomp{display:block;font-weight:400;font-size:.74rem;color:var(--gris);margin-top:.1rem}
+.ap-cmd li.ap-cat{padding-top:.8rem;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--violet)}
+.ap-cmd li.ap-cat i{font-style:normal;letter-spacing:.03em;text-transform:none;color:var(--gris)}
+.ap-cmd li.ap-inclus{justify-content:flex-start;font-weight:500;padding-left:.7rem;position:relative}
+.ap-cmd li.ap-inclus::before{content:"";position:absolute;left:0;top:.95rem;width:4px;height:4px;border-radius:50%;background:var(--violet)}
+.ap-cmd-note{margin:0 0 .6rem;font-size:.78rem;color:var(--gris)}
+.ap-cmd .ap-btn{background:var(--violet);color:#fff}
+.ap-cmd .ap-off{background:var(--fond);color:var(--gris)}
+@media (max-width:1180px){.ap-cmd{max-height:none}}
+.var-ligne{grid-template-columns:minmax(0,1fr) 120px 140px auto}
+.var-unite{padding:.55rem .5rem;font-size:.84rem}
+@media (max-width:640px){.var-ligne{grid-template-columns:minmax(0,1fr) 110px}.var-ligne .var-unite{grid-column:1}.var-ligne .ordre{grid-column:2;justify-self:end}}

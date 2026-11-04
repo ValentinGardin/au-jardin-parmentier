@@ -9,9 +9,9 @@
   var saved = clone(site);
   var app = document.getElementById('app');
   var JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', semaine_suivante: 'le menu de la semaine suivante', menus: 'les cartes traiteur', mots: 'les mots défilants', avis: 'les avis', faq: 'les questions fréquentes' };
+  var NOMS = { evenements: 'les événements', semaine: 'le menu de la semaine', semaine_suivante: 'le menu de la semaine suivante', menus: 'les cartes traiteur', commandes: 'les commandes spéciales', mots: 'les mots défilants', avis: 'les avis', faq: 'les questions fréquentes' };
   var onglet = lire('onglet') || 'resas';
-  var PARTS = ['evenements', 'semaine', 'semaine_suivante', 'menus', 'mots', 'avis', 'faq'];
+  var PARTS = ['evenements', 'semaine', 'semaine_suivante', 'menus', 'commandes', 'mots', 'avis', 'faq'];
   var SEM = lire('sem') === 'semaine_suivante' ? 'semaine_suivante' : 'semaine';   // semaine affichée dans l'onglet Menu de la semaine
   function partActive() { return onglet === 'semaine' ? SEM : onglet; }
   function aSpecial(s) { return !!(s.special.nom || s.special.lignes.length || s.special.titre); }
@@ -77,7 +77,8 @@
     },
     plat: function () { return { nom: '', desc: '', prix: '' }; },
     cat: function () { return { titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }; },
-    carte: function () { return { titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
+    commande: function () { return { actif: false, titre: '', accroche: '', delai: '', photo: '', items: [{ nom: '', prix: '', epuise: false, cat: false, desc: '', accomp: '', formats: [], option: { titre: '', choix: [] } }], note: '' }; },
+    carte: function () { return { actif: false, titre: 'Nouvelle carte', photo: '', intro: '', prix: '', cats: [{ titre: '', desc: '', prix: '', plats: [{ nom: '', desc: '', prix: '' }] }], note: '', encart: [] }; },
     avis: function () { return { nom: '', note: 5, texte: '' }; },
     item: function () { return { nom: '', prix: '', epuise: false, cat: false, desc: '', accomp: '', formats: [], option: { titre: '', choix: [] } }; },
     catEvt: function () { return { nom: '', prix: '', epuise: false, cat: true }; },
@@ -235,16 +236,17 @@
     var liste = site.menus.map(function (c, i) {
       var nb = c.cats.reduce(function (t, k) { return t + k.plats.length; }, 0);
       var ph = E.photos.filter(function (x) { return x.nom === c.photo; })[0];
-      return '<article class="carte-item">' +
+      return '<article class="carte-item' + (c.actif ? '' : ' hors-ligne') + '">' +
         '<button type="button" class="carte-ouvrir" data-act="ouvrir" data-i="' + i + '">' +
           (ph ? '<img src="' + esc(ph.url) + '" alt="">' : '<span class="carte-vignette">' + esc((c.titre || '?').charAt(0)) + '</span>') +
           '<span class="carte-item-txt"><strong>' + esc(c.titre) + '</strong><small>' + pluriel(c.cats.length, 'catégorie') + ' · ' + pluriel(nb, 'plat') + (c.prix ? ' · ' + esc(c.prix) : '') + '</small></span>' +
           '<span class="carte-modifier">' + ico('crayon') + 'Modifier</span></button>' +
-        '<div class="carte-item-actions"><button type="button" class="ib" data-act="imprimer-carte" data-i="' + i + '" title="Imprimer ou télécharger en PDF" aria-label="Imprimer la carte ' + esc(c.titre) + '">' + ico('imprim') + '</button>' +
+        '<div class="carte-item-actions"><label class="interrupteur petit carte-enligne" title="' + (c.actif ? 'Visible sur le site' : 'Invisible sur le site') + '"><input type="checkbox" data-p="menus.' + i + '.actif"' + (c.actif ? ' checked' : '') + '><span></span>' + (c.actif ? 'En ligne' : 'Pas en ligne') + '</label>' +
+        '<button type="button" class="ib" data-act="imprimer-carte" data-i="' + i + '" title="Imprimer ou télécharger en PDF" aria-label="Imprimer la carte ' + esc(c.titre) + '">' + ico('imprim') + '</button>' +
         '<button type="button" class="ib" data-act="dup" data-i="' + i + '" title="Dupliquer" aria-label="Dupliquer">' + ico('copie') + '</button>' +
         boutonsOrdre('menus', i, n, { quoi: 'la carte « ' + c.titre + ' » et tous ses plats' }) + '</div></article>';
     }).join('');
-    return tete('Cartes traiteur', 'Chaque carte devient un onglet sur le site, dans cet ordre. Cliquez sur une carte pour modifier ses plats.',
+    return tete('Cartes traiteur', 'Chaque carte en ligne devient un onglet sur le site, dans cet ordre. L’interrupteur « En ligne » l’affiche ou la masque. Cliquez sur une carte pour modifier ses plats.',
         '<button type="button" class="btn btn-ligne" data-act="imprimer-carte" data-i="tout">' + ico('imprim') + 'Imprimer toutes les cartes</button>' +
         '<button type="button" class="btn btn-violet" data-act="add" data-p="menus" data-tpl="carte">' + ico('plus') + 'Nouvelle carte</button>') +
       '<div class="cartes-liste">' + (liste || '<p class="vide">Aucune carte pour le moment.</p>') + '</div>';
@@ -277,7 +279,7 @@
         '</div></details>';
     }).join('');
     return '<button type="button" class="retour" data-act="retour">' + ico('retour') + 'Toutes les cartes</button>' +
-      tete(esc(c.titre || 'Carte sans nom'), 'Les modifications apparaissent sur le site après « Enregistrer ».',
+      tete(esc(c.titre || 'Carte sans nom'), (c.actif ? 'En ligne sur le site.' : 'Pas en ligne : cette carte est invisible sur le site.') + ' Les modifications apparaissent après « Enregistrer ». <label class="interrupteur petit carte-enligne"><input type="checkbox" data-p="menus.' + ci + '.actif"' + (c.actif ? ' checked' : '') + '><span></span>En ligne</label>',
         '<button type="button" class="btn btn-ligne" data-act="imprimer-carte" data-i="' + ci + '">' + ico('imprim') + 'Imprimer / PDF</button>') +
       '<section class="bloc"><div class="bloc-tete"><h2>Présentation</h2></div>' +
         '<div class="grille-2">' + champ('Nom de la carte', base + '.titre', { ph: 'ex. Plats cuisinés' }) + champ('Prix unique', base + '.prix', { opt: true, ph: 'ex. 17.90 € par personne' }) + '</div>' +
@@ -407,14 +409,21 @@
   }
   // Formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) et un choix (Ouvertes / Fermées…) pour un produit d'événement
   var varOuverts = {};
+  // unité du prix d'un format : [libellé par défaut, suffixe, choix du sélecteur]
+  var UNITES = { '': ['Format', '', 'À l’unité'], kg: ['Au kilo', '/kg', 'Prix au kilo'], '500g': ['Les 500 g', '/500 g', 'Les 500 g'], portion: ['La portion', '/portion', 'La portion'], pers: ['Par personne', '/pers.', 'Par personne'] };
+  function uniteDe(f) { return f ? (f.unite != null && UNITES[f.unite] ? f.unite : f.kg ? 'kg' : '') : ''; }
+  function formatNom(f) { return f.nom || UNITES[uniteDe(f)][0]; }
+  function formatSuffixe(f) { return UNITES[uniteDe(f)][1]; }
   var PRESETS_FORMATS = { entier: ['Entier', 'Demi', 'Tranche'], douzaine: ['Douzaine', 'Demi-douzaine'], kg: ['Au kilo'], piece: ['À la pièce'], format: [''] };
   var PRESETS_CHOIX = { ouvertes: ['Ouvertes', 'Fermées'], cuisson: ['Cuit', 'Cru'], choix: [''] };
   function panneauVariantes(it, pi, prixCat) {
     var fs = it.formats || [], ch = it.option ? it.option.choix : [];
     var lf = fs.map(function (f, k) {
-      return '<div class="var-ligne"><input data-p="' + pi + '.formats.' + k + '.nom" value="' + esc(f.nom) + '" placeholder="' + (f.kg ? 'Au kilo' : 'ex. Entier, Demi, Tranche…') + '" aria-label="Format">' +
-        '<span class="var-prix"><input class="prix" data-p="' + pi + '.formats.' + k + '.prix" data-prix value="' + esc(f.prix) + '" placeholder="' + esc(prixCat || (f.kg ? '79.00 €' : '12.00 €')) + '" inputmode="decimal" aria-label="Prix">' + (f.kg ? '<i>/kg</i>' : '') + '</span>' +
-        '<label class="interrupteur petit" title="Prix au kilo : le client choisit le poids (par 100 g)"><input type="checkbox" data-p="' + pi + '.formats.' + k + '.kg"' + (f.kg ? ' checked' : '') + '><span></span>Au kilo</label>' +
+      var u = uniteDe(f);
+      return '<div class="var-ligne"><input data-p="' + pi + '.formats.' + k + '.nom" value="' + esc(f.nom) + '" placeholder="' + (u ? UNITES[u][0] : 'ex. Entier, Demi, Tranche…') + '" aria-label="Format">' +
+        '<span class="var-prix"><input class="prix" data-p="' + pi + '.formats.' + k + '.prix" data-prix value="' + esc(f.prix) + '" placeholder="' + esc(prixCat || (u === 'kg' ? '79.00 €' : '12.00 €')) + '" inputmode="decimal" aria-label="Prix"></span>' +
+        '<select class="var-unite" data-p="' + pi + '.formats.' + k + '.unite" aria-label="Le prix est…" title="Au kilo et les 500 g : le client choisit le poids (par 100 g), le prix exact se fait à la pesée">' +
+          Object.keys(UNITES).map(function (x) { return '<option value="' + x + '"' + (x === u ? ' selected' : '') + '>' + UNITES[x][2] + '</option>'; }).join('') + '</select>' +
         boutonsOrdre(pi + '.formats', k, fs.length) + '</div>';
     }).join('');
     var lc = ch.map(function (c, k) {
@@ -424,7 +433,7 @@
     }).join('');
     function puce(type, cle, txt) { return '<button type="button" class="var-puce" data-act="var-ajout" data-p="' + pi + '" data-t="' + type + '" data-k="' + cle + '">' + ico('plus') + txt + '</button>'; }
     return '<div class="var-panneau">' +
-      '<div class="var-bloc"><p class="var-titre">Formats de vente <small>Chaque format a son prix. « Au kilo » : le client choisit le poids, le prix exact se fait à la pesée.</small></p>' + lf +
+      '<div class="var-bloc"><p class="var-titre">Formats de vente <small>Chaque format a son prix, et le menu à droite dit à quoi il correspond : à l’unité, au kilo, les 500 g, la portion ou par personne. Au kilo et les 500 g : le client choisit le poids, le prix exact se fait à la pesée.</small></p>' + lf +
         '<div class="var-puces">' + puce('f', 'entier', 'Entier · Demi · Tranche') + puce('f', 'douzaine', 'Douzaine · Demi-douzaine') + puce('f', 'kg', 'Au kilo') + puce('f', 'piece', 'À la pièce') + puce('f', 'format', 'Autre format') + '</div></div>' +
       '<div class="var-bloc"><p class="var-titre">Choix pour le client <small>ex. huîtres ouvertes ou fermées. Supplément facultatif, ajouté au prix de chaque format.</small></p>' +
         (ch.length ? '<input class="var-question" data-p="' + pi + '.option.titre" value="' + esc(it.option.titre) + '" placeholder="Intitulé du choix (facultatif), ex. Ouverture" aria-label="Intitulé du choix">' : '') + lc +
@@ -439,7 +448,7 @@
     var l = [];
     os.forEach(function (o) { fs.forEach(function (f) {
       var px = prixNum(f && f.prix ? f.prix : prixCat) + (o ? prixNum(o.prix) : 0);
-      l.push('<li><span>' + esc([f ? (f.nom || (f.kg ? 'Au kilo' : 'Format')) : '', o ? o.nom || 'Choix' : ''].filter(Boolean).join(' · ')) + '</span><b>' + (px ? euros(px) + (f && f.kg ? '/kg' : '') : '<em>prix ?</em>') + '</b></li>');
+      l.push('<li><span>' + esc([f ? formatNom(f) : '', o ? o.nom || 'Choix' : ''].filter(Boolean).join(' · ')) + '</span><b>' + (px ? euros(px) + (f ? formatSuffixe(f) : '') : '<em>prix ?</em>') + '</b></li>');
     }); });
     return '<div class="var-apercu"><p>Le client pourra commander :</p><ul>' + l.join('') + '</ul></div>';
   }
@@ -472,7 +481,7 @@
       var acc = it.accomp ? '<small class="ap-accomp">' + esc(it.accomp) + '</small>' : '';
       if (prixCatEvt(e.items, k)) return '<li class="ap-inclus"><span>' + esc(it.nom) + acc + '</span></li>';
       var fs = it.formats || [], ch = it.option ? it.option.choix : [];
-      var chips = fs.map(function (f) { var px = f.prix || prixEvt(e.items, k); return '<span>' + esc(f.nom || 'Au kilo') + (px ? ' <b>' + esc(px) + (f.kg ? '/kg' : '') + '</b>' : '') + '</span>'; }).join('') +
+      var chips = fs.map(function (f) { var px = f.prix || prixEvt(e.items, k); return '<span>' + esc(formatNom(f)) + (px ? ' <b>' + esc(px) + formatSuffixe(f) + '</b>' : '') + '</span>'; }).join('') +
         (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (c) { return c.nom + (c.prix ? ' (+' + c.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
       return '<li' + (it.epuise ? ' class="ap-epuise"' : '') + '><span>' + esc(it.nom) + (it.epuise ? ' <em>Épuisé</em>' : '') + acc + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
         (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
@@ -487,10 +496,10 @@
       (e.actif ? '' : '<p class="ap-off">Désactivé : non visible sur le site</p>') + '</div>';
   }
   function majApercuEvt(i) { var z = document.getElementById('ap-evt-' + i); if (z && site.evenements[i]) z.innerHTML = apercuEvt(site.evenements[i]); }
-  function vueEvenements() {
-    var liste = site.evenements.map(function (e, i) {
-      var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
-      var items = e.items.map(function (it, j) {
+  // Éditeur de la liste de produits (événements et commandes spéciales) : catégories, formules, produits, formats et choix
+  function editeurItems(p, e) {
+    var ni = e.items.length;
+    return e.items.map(function (it, j) {
         if (it.cat) return '<div class="item-ligne item-cat"><span class="item-cat-tag">' + (it.prix ? 'Formule' : 'Catégorie') + '</span><input class="fort" data-p="' + p + '.items.' + j + '.nom" value="' + esc(it.nom) + '" placeholder="ex. Entrées, Plats, Desserts" aria-label="Catégorie">' +
           '<input class="prix" data-p="' + p + '.items.' + j + '.prix" data-prix value="' + esc(it.prix) + '" placeholder="Prix formule" inputmode="decimal" aria-label="Prix de la formule" title="Avec un prix, la catégorie devient une formule tout compris : le client la commande en entier">' +
           (it.prix ? '<label class="interrupteur petit epuise" title="La formule reste affichée mais ne peut plus être réservée"><input type="checkbox" data-p="' + p + '.items.' + j + '.epuise"' + (it.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' : '') +
@@ -510,6 +519,11 @@
             (resume ? esc(resume) + (it.desc ? ' · précision' : '') : 'Formats, choix, précision' + (it.desc ? ' · précision ✓' : '')) + '</button>' +
           (ouvert ? panneauVariantes(it, pi, prixEvt(e.items, j)) : '') + '</div>';
       }).join('');
+  }
+  function vueEvenements() {
+    var liste = site.evenements.map(function (e, i) {
+      var p = 'evenements.' + i, st = statutEvt(e), ni = e.items.length;
+      var items = editeurItems(p, e);
       var themes = THEMES.map(function (t) {
         return '<button type="button" class="pastille-couleur' + (e.couleur === t[1] ? ' choisie' : '') + '" data-act="couleur" data-p="' + p + '.couleur" data-c="' + t[1] + '" aria-pressed="' + (e.couleur === t[1]) + '"><span style="background:' + t[1] + '"></span>' + t[0] + '</button>';
       }).join('') + '<label class="pastille-couleur perso' + (THEMES.some(function (t) { return t[1] === e.couleur; }) ? '' : ' choisie') + '" title="Choisir n’importe quelle couleur"><input type="color" data-p="' + p + '.couleur" value="' + esc(e.couleur) + '"><span class="arc"></span>Autre couleur…</label>';
@@ -548,6 +562,66 @@
         '<button type="button" class="btn btn-violet" data-act="add" data-p="evenements" data-tpl="evenement">' + ico('plus') + 'Nouvel événement</button>') +
       (site.evenements.length > 1 ? '<p class="evt-tout"><button type="button" class="lien" data-act="evt-tout" data-v="1">Tout déplier</button><button type="button" class="lien" data-act="evt-tout" data-v="0">Tout replier</button></p>' : '') +
       (liste || '<p class="vide">Aucun événement. Créez-en un pour Noël, Pâques, le Beaujolais nouveau…</p>');
+  }
+
+  // =============== Sur commande (raclette, corbeilles de fruits, plateaux de fromages…) ===============
+  function plierOuvert(cle, i, v) {
+    var o = {}; try { o = JSON.parse(lire(cle + 'Ouverts') || '{}'); } catch (e) {}
+    if (v === undefined) return i in o ? o[i] : (site.commandes || []).length < 2;
+    o[i] = v; ecrire(cle + 'Ouverts', JSON.stringify(o));
+  }
+  function apercuCmd(c) {
+    var ph = E.photos.filter(function (x) { return x.nom === c.photo; })[0];
+    var items = c.items.map(function (it, k) {
+      if (!it.nom) return '';
+      var acc = it.accomp ? '<small class="ap-accomp">' + esc(it.accomp) + '</small>' : '';
+      if (it.cat) return '<li class="ap-cat"><span>' + esc(it.nom) + (it.prix ? ' <i>tout compris</i>' : '') + '</span>' + (it.prix ? '<b>' + esc(it.prix) + '</b>' : '') + '</li>';
+      if (prixCatEvt(c.items, k)) return '<li class="ap-inclus"><span>' + esc(it.nom) + acc + '</span></li>';
+      var fs = it.formats || [], ch = it.option ? it.option.choix : [];
+      var chips = fs.map(function (f) { var px = f.prix || prixEvt(c.items, k); return '<span>' + esc(formatNom(f)) + (px ? ' <b>' + esc(px) + formatSuffixe(f) + '</b>' : '') + '</span>'; }).join('') +
+        (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (x) { return x.nom + (x.prix ? ' (+' + x.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
+      return '<li><span>' + esc(it.nom) + acc + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
+        (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
+    }).join('');
+    return '<div class="ap-cmd">' + (ph ? '<img src="' + esc(ph.url) + '" alt="">' : '') + '<div class="ap-cmd-corps">' +
+      (c.delai ? '<span class="ap-cmd-delai">' + esc(c.delai) + '</span>' : '') +
+      '<h3>' + esc(c.titre || 'Nom de l’offre') + '</h3>' + (c.accroche ? '<p class="ap-accroche">' + esc(c.accroche) + '</p>' : '') +
+      (items ? '<ul>' + items + '</ul>' : '<p class="ap-vide">Ajoutez des produits…</p>') +
+      (c.note ? '<p class="ap-cmd-note">' + esc(c.note) + '</p>' : '') + '<span class="ap-btn">Commander · 09 50 17 39 62</span>' +
+      (c.actif ? '' : '<p class="ap-off">Pas en ligne : invisible sur le site</p>') + '</div></div>';
+  }
+  function majApercuCmd(i) { var z = document.getElementById('ap-cmd-' + i); if (z && site.commandes[i]) z.innerHTML = apercuCmd(site.commandes[i]); }
+  function vueCommandes() {
+    if (!site.commandes) site.commandes = [];
+    var nbEnLigne = site.commandes.filter(function (c) { return c.actif; }).length;
+    var liste = site.commandes.map(function (c, i) {
+      var p = 'commandes.' + i, ouv = plierOuvert('cmd', i), nbp = c.items.filter(function (x) { return !x.cat; }).length;
+      var tete = '<div class="evt-bloc-tete"><label class="interrupteur grand"><input type="checkbox" data-p="' + p + '.actif"' + (c.actif ? ' checked' : '') + '><span></span><b>' + (c.actif ? 'En ligne' : 'Pas en ligne') + '</b></label>' +
+          '<span class="statut statut-' + (c.actif ? 'vert' : 'gris') + '">' + (c.actif ? 'Visible sur le site' : 'Brouillon : invisible sur le site') + '</span>' +
+          '<div class="evt-bloc-actions"><button type="button" class="ib" data-act="dup-cmd" data-i="' + i + '" title="Dupliquer" aria-label="Dupliquer">' + ico('copie') + '</button>' +
+          boutonsOrdre('commandes', i, site.commandes.length, { quoi: '« ' + (c.titre || 'cette offre') + ' »' }) + '</div>' +
+          '<button type="button" class="evt-plier" data-act="cmd-plier" data-i="' + i + '" aria-expanded="' + ouv + '"><span class="evt-plier-txt"><strong>' + esc(c.titre || 'Offre sans nom') + '</strong><small>' +
+            esc([pluriel(nbp, 'produit'), c.delai].filter(Boolean).join(' · ')) + '</small></span><span class="evt-plier-ico">' + ico(ouv ? 'haut' : 'bas') + (ouv ? 'Replier' : 'Déplier') + '</span></button></div>';
+      if (!ouv) return '<section class="bloc evt-bloc cmd-bloc ferme">' + tete + '</section>';
+      return '<section class="bloc evt-bloc cmd-bloc">' + tete + '<div class="evt-edition"><div class="evt-form">' +
+        champ('Nom de l’offre', p + '.titre', { ph: 'ex. Soirée raclette, Corbeille de fruits, Plateau de fromages…' }) +
+        champ('Petit texte de présentation', p + '.accroche', { zone: true, rows: 2, opt: true, ph: 'ex. Tout pour une raclette réussie : fromage au lait cru, charcuterie et pommes de terre.' }) +
+        champ('Délai pour commander', p + '.delai', { opt: true, ph: 'ex. À commander 48 h à l’avance' }) +
+        '<div class="champ"><span>Ce que vous proposez</span><div class="items-liste">' + editeurItems(p, c) + '</div>' +
+          '<div class="ajouts"><button type="button" class="btn-ajout" data-act="add" data-p="' + p + '.items" data-tpl="item">' + ico('plus') + 'Ajouter un produit</button>' +
+          '<button type="button" class="btn-ajout discret" data-act="add" data-p="' + p + '.items" data-tpl="catEvt">' + ico('plus') + 'Ajouter une catégorie ou une formule</button></div>' +
+          '<small>Astuce : une catégorie avec un prix devient une formule tout compris (ex. « Raclette pour 4 · 60 € »). Les formats servent pour « par personne », « pour 4 », « au kilo »…</small></div>' +
+        champ('Information en bas', p + '.note', { opt: true, ph: 'ex. Appareil à raclette prêté contre caution' }) +
+        '<div class="champ"><span>Photo <em>facultatif</em></span>' + photosChoix(p + '.photo', 'photo-cmd-' + i, c.photo, true) + '</div>' +
+        '</div><aside class="evt-apercu"><p class="evt-apercu-t">Aperçu sur le site <small>mis à jour en direct</small></p><div id="ap-cmd-' + i + '">' + apercuCmd(c) + '</div>' +
+          '<a class="lien evt-apercu-lien" href="./#sur-commande" target="_blank" rel="noopener">' + ico('oeil') + 'Voir la page en vrai (une fois en ligne)</a></aside></div></section>';
+    }).join('');
+    return tete('Sur commande', 'Raclette, corbeilles de fruits, plateaux de fromages… Préparez vos offres ici : elles n’apparaissent sur le site qu’une fois passées « En ligne », dans une rubrique « Sur commande ».',
+        (nbEnLigne ? '<a class="btn btn-discret" href="./#sur-commande" target="_blank" rel="noopener">' + ico('oeil') + 'Voir sur le site</a>' : '') +
+        '<button type="button" class="btn btn-violet" data-act="add" data-p="commandes" data-tpl="commande">' + ico('plus') + 'Nouvelle offre</button>') +
+      '<p class="cmd-etat">' + (nbEnLigne ? ico('ok') + pluriel(nbEnLigne, 'offre') + ' en ligne sur le site' : 'Rien n’est en ligne pour l’instant : la rubrique « Sur commande » n’apparaît pas encore sur le site.') + '</p>' +
+      (site.commandes.length > 1 ? '<p class="evt-tout"><button type="button" class="lien" data-act="cmd-tout" data-v="1">Tout déplier</button><button type="button" class="lien" data-act="cmd-tout" data-v="0">Tout replier</button></p>' : '') +
+      (liste || '<p class="vide">Aucune offre pour l’instant. Créez-en une : soirée raclette, corbeille de fruits, plateau de fromages…</p>');
   }
 
   // =============== Tableau de bord ===============
@@ -927,19 +1001,19 @@
   // Façons de commander un produit d'événement (format × choix), comme sur le site
   function evtVariantes(items, k) {
     var it = items[k], base = prixEvt(items, k), fs = (it.formats || []).length ? it.formats : [null], os = it.option && it.option.choix.length ? it.option.choix : [null], out = [];
-    if (it.cat) return it.prix ? [{ cle: k + ':-1:-1', kg: false, prix: euros(prixNum(it.prix)), detail: '', label: it.nom }] : [];   // formule
+    if (it.cat) return it.prix ? [{ cle: k + ':-1:-1', kg: false, par: 1000, suffixe: '', prix: euros(prixNum(it.prix)), detail: '', label: it.nom }] : [];   // formule
     if (prixCatEvt(items, k)) return [];   // inclus dans une formule
     os.forEach(function (o, oi) { fs.forEach(function (f, fi) {
-      var fnom = f ? (f.nom || 'Au kilo') : '', px = prixNum(f && f.prix ? f.prix : base) + (o ? prixNum(o.prix) : 0);
+      var fnom = f ? formatNom(f) : '', u = uniteDe(f), px = prixNum(f && f.prix ? f.prix : base) + (o ? prixNum(o.prix) : 0);
       var detail = [fnom, o ? o.nom : ''].filter(Boolean).join(' · ');
-      out.push({ cle: k + ':' + (f ? fi : -1) + ':' + (o ? oi : -1), kg: !!(f && f.kg), prix: px ? euros(px) : '', detail: detail, label: it.nom + (detail ? ' · ' + detail : '') });
+      out.push({ cle: k + ':' + (f ? fi : -1) + ':' + (o ? oi : -1), kg: u === 'kg' || u === '500g', par: u === '500g' ? 500 : 1000, suffixe: f ? formatSuffixe(f) : '', prix: px ? euros(px) : '', detail: detail, label: it.nom + (detail ? ' · ' + detail : '') });
     }); });
     return out;
   }
   function poidsTxt(g) { return g >= 1000 ? String(+(g / 1000).toFixed(2)).replace('.', ',') + ' kg' : g + ' g'; }
   // ligne de réservation pour une variante (au kilo : prix selon le poids)
   function ligneVariante(it, v, poids) {
-    if (v.kg) { poids = poids || 500; return { type: 'evenement', nom: v.label + ' · ' + poidsTxt(poids), prix: v.prix ? euros(Math.round(prixNum(v.prix) * poids / 10) / 100) : '', qte: 1, article: it.nom, poids: poids, pkg: v.prix, base: v.label }; }
+    if (v.kg) { poids = poids || 500; var pkg = v.prix ? euros(prixNum(v.prix) * 1000 / v.par) : ''; return { type: 'evenement', nom: v.label + ' · ' + poidsTxt(poids), prix: pkg ? euros(Math.round(prixNum(pkg) * poids / 10) / 100) : '', qte: 1, article: it.nom, poids: poids, pkg: pkg, base: v.label }; }
     return { type: 'evenement', nom: v.label, prix: v.prix, qte: 1, article: it.nom };
   }
   function aProduits(e) { return e.items.some(function (it) { return !it.cat; }); }
@@ -1309,7 +1383,7 @@
           var vs = evtVariantes(x.e.items, k);
           if (it.cat && !vs.length) return [['cat:' + k, '— ' + it.nom + ' —', true]];
           return vs.map(function (v) {
-            return ['evt:' + x.i + ':' + v.cle, (it.cat ? 'Formule ' : '') + v.label + (v.prix ? ' · ' + v.prix + (v.kg ? '/kg' : '') : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && (l.article || l.nom) === it.nom)];
+            return ['evt:' + x.i + ':' + v.cle, (it.cat ? 'Formule ' : '') + v.label + (v.prix ? ' · ' + v.prix + v.suffixe : '') + (it.epuise ? ' · ÉPUISÉ' : ''), it.epuise && !(l.type === 'evenement' && (l.article || l.nom) === it.nom)];
           });
         }).reduce(function (a, x) { return a.concat(x); }, []) };
       });
@@ -1851,7 +1925,7 @@
   }
 
   // =============== Affichage ===============
-  var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, faq: vueFaq, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, mots: vueMots, avis: vueAvis };
+  var VUES = { comptes: vueComptes, stats: vueStats, resas: vueResas, clients: vueClients, faq: vueFaq, evenements: vueEvenements, semaine: vueSemaine, menus: vueCartes, commandes: vueCommandes, mots: vueMots, avis: vueAvis };
   function render(garderScroll) {
     var y = window.scrollY;
     document.querySelectorAll('[data-onglet]').forEach(function (b) {
@@ -2076,9 +2150,10 @@
       var r = t.closest('details'); if (r) r.querySelector('.cat-resume strong').textContent = v || 'Catégorie sans nom';
     }
     var me = /^evenements\.(\d+)\./.exec(p); if (me) majApercuEvt(+me[1]);
+    var mcs = /^commandes\.(\d+)\./.exec(p); if (mcs) majApercuCmd(+mcs[1]);
     // formats / choix d'un produit d'événement : l'aperçu « Le client pourra commander » suit la saisie
-    var mv = /^(evenements\.(\d+)\.items\.(\d+))\.(formats|option)\./.exec(p);
-    if (mv) { var ap = t.closest('.var-panneau') && t.closest('.var-panneau').querySelector('.var-apercu'), ev0 = site.evenements[+mv[2]];
+    var mv = /^((evenements|commandes)\.(\d+)\.items\.(\d+))\.(formats|option)\./.exec(p);
+    if (mv) { var ap = t.closest('.var-panneau') && t.closest('.var-panneau').querySelector('.var-apercu'), ev0 = site[mv[2]][+mv[3]]; mv[3] = mv[4];
       if (ap) ap.outerHTML = apercuVariantes(get(mv[1]), prixEvt(ev0.items, +mv[3])) || '<div class="var-apercu" hidden></div>'; }
     apresSaisie();
   });
@@ -2086,6 +2161,8 @@
     var t = e.target;
     if (t.id === 'cl-tri') { clTri = t.value; ecrire('clTri', clTri); majClientsListe(); return; }
     if (t.id === 'r-cal') { if (t.value) { R.date = t.value; render(true); } return; }
+    // unité du prix d'un format (à l'unité, au kilo, les 500 g, la portion, par personne)
+    if (t.classList.contains('var-unite')) { set(t.dataset.p, t.value); set(t.dataset.p.replace(/unite$/, 'kg'), t.value === 'kg' || t.value === '500g'); apresSaisie(); render(true); return; }
     if (t.dataset.sms) {
       var o = {}; o[t.dataset.sms] = t.type === 'checkbox' ? t.checked : t.value;
       api('sms-options', o).then(function (j) { SMS = j; majSms(); R.charge = ''; toast(t.dataset.sms === 'auto' ? (t.checked ? 'Rappel automatique activé : chaque jour à ' + j.heure.replace(':', 'h') + '.' : 'Rappel automatique désactivé.') : 'Réglage enregistré.'); })
@@ -2117,7 +2194,7 @@
     if (t.type === 'file' && t.dataset.envoi) { envoyerPhoto(t); return; }
     if ('prix' in t.dataset && t.dataset.p) { var f = formatPrix(t.value); if (f !== t.value) { t.value = f; set(t.dataset.p, f); apresSaisie(); }
       // prix d'une catégorie d'événement : les produits en dessous se mettent à jour (prix verrouillé)
-      var mc = /^(evenements\.\d+\.items\.\d+)\.prix$/.exec(t.dataset.p); if (mc && get(mc[1]).cat) render(true); }
+      var mc = /^((?:evenements|commandes)\.\d+\.items\.\d+)\.prix$/.exec(t.dataset.p); if (mc && get(mc[1]).cat) render(true); }
     if (t.dataset.p && /^semaine(_suivante)?\.(du|au)$/.test(t.dataset.p)) {
       var st = statutSemaine(site[SEM]), el = document.getElementById('statut-sem');
       if (el) { el.className = 'statut statut-' + st[0]; el.textContent = st[1]; }
@@ -2161,6 +2238,7 @@
       else {
         if (b.dataset.tpl === 'cat') catsOuvertes[carteOuverte + '-' + (arr.length - 1)] = true;
         if (b.dataset.tpl === 'evenement') evtOuvert(arr.length - 1, true);
+        if (b.dataset.tpl === 'commande') plierOuvert('cmd', arr.length - 1, true);
         render(true);
         var champs = app.querySelectorAll('[data-p^="' + p + '.' + (arr.length - 1) + '."]:not([type=radio]):not([type=checkbox])');
         var cible = Array.prototype.filter.call(champs, function (x) { return x.tagName !== 'SELECT'; })[0] || champs[0];
@@ -2240,6 +2318,13 @@
       fs.method = 'post'; fs.action = './?simulation=' + i; fs.target = '_blank'; fs.hidden = true;
       var champ = document.createElement('input'); champ.name = 'evt'; champ.value = JSON.stringify(site.evenements[i]);
       fs.appendChild(champ); document.body.appendChild(fs); fs.submit(); fs.remove();
+    } else if (a === 'cmd-plier') {
+      plierOuvert('cmd', i, !plierOuvert('cmd', i)); render(true);
+    } else if (a === 'cmd-tout') {
+      site.commandes.forEach(function (x, k) { plierOuvert('cmd', k, b.dataset.v === '1'); }); render(true);
+    } else if (a === 'dup-cmd') {
+      var cc = clone(site.commandes[i]); cc.titre += ' (copie)'; cc.actif = false;
+      site.commandes.splice(i + 1, 0, cc); plierOuvert('cmd', i + 1, true); render(true);
     } else if (a === 'evt-plier') {
       evtOuvert(i, !evtOuvert(i)); render(true);
     } else if (a === 'evt-tout') {
@@ -2314,7 +2399,7 @@
       var itv = get(p);
       if (!itv.formats) itv.formats = [];
       if (!itv.option) itv.option = { titre: '', choix: [] };
-      if (b.dataset.t === 'f') PRESETS_FORMATS[b.dataset.k].forEach(function (n) { itv.formats.push({ nom: n === 'Au kilo' ? '' : n, prix: '', kg: n === 'Au kilo' }); });
+      if (b.dataset.t === 'f') PRESETS_FORMATS[b.dataset.k].forEach(function (n) { itv.formats.push({ nom: n === 'Au kilo' ? '' : n, prix: '', unite: n === 'Au kilo' ? 'kg' : '', kg: n === 'Au kilo' }); });
       else PRESETS_CHOIX[b.dataset.k].forEach(function (n) { itv.option.choix.push({ nom: n, prix: '' }); });
       render(true);
       var vide = app.querySelectorAll('[data-p^="' + p + (b.dataset.t === 'f' ? '.formats.' : '.option.choix.') + '"][data-p$=".nom"]');

@@ -5,7 +5,7 @@ require __DIR__ . '/lib.php';
 header('X-Robots-Tag: noindex');
 $menus = site_load()['menus'];
 $c = $_GET['c'] ?? 'tout';
-$cartes = $c === 'tout' ? $menus : (isset($menus[(int)$c]) ? [$menus[(int)$c]] : []);
+$cartes = $c === 'tout' ? array_values(array_filter($menus, function ($x) { return $x['actif']; })) : (isset($menus[(int)$c]) ? [$menus[(int)$c]] : []);
 $titrePage = count($cartes) === 1 ? $cartes[0]['titre'] : 'Cartes traiteur';
 ?>
 <!doctype html>

@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.61 · 4 novembre 2026';
+const VERSION = '1.63 · 4 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -59,6 +59,8 @@ function carte_clean($c) {
     }
     $photo = preg_replace('/[^a-z0-9-]/', '', (string)($c['photo'] ?? ''));
     return [
+        // « actif » : carte en ligne sur le site (les cartes d'avant cette option restent en ligne)
+        'actif' => !array_key_exists('actif', $c) || !empty($c['actif']),
         'titre' => txt($c['titre'] ?? '', 60) ?: 'Menu', 'photo' => $photo, 'intro' => txt($c['intro'] ?? '', 300),
         'prix' => txt($c['prix'] ?? '', 40), 'cats' => $cats, 'note' => txt($c['note'] ?? '', 300), 'encart' => liste_txt($c['encart'] ?? [], 200),
     ];
@@ -123,15 +125,21 @@ function evt_prix($items, $k) {
     $c = $items[$k]['cat'] ? $items[$k]['prix'] : evt_prix_cat($items, $k);
     return $c !== '' ? $c : $items[$k]['prix'];
 }
+// Unités de prix d'un format : libellé par défaut et suffixe du prix (ex. « 32.00 €/kg »)
+const UNITES = ['' => ['Format', ''], 'kg' => ['Au kilo', '/kg'], '500g' => ['Les 500 g', '/500 g'], 'portion' => ['La portion', '/portion'], 'pers' => ['Par personne', '/pers.']];
+function unite_de($f) { return $f['unite'] ?? (!empty($f['kg']) ? 'kg' : ''); }
+function format_nom($f) { return $f['nom'] !== '' ? $f['nom'] : UNITES[unite_de($f)][0]; }
+function format_suffixe($f) { return UNITES[unite_de($f)][1]; }
 // Contenu d'une formule (les produits sous une catégorie à prix)
 function evt_contenu($items, $k) {
     $l = [];
     for ($i = $k + 1; $i < count($items) && !$items[$i]['cat']; $i++) $l[] = $items[$i]['nom'] . (($items[$i]['accomp'] ?? '') !== '' ? ' (' . $items[$i]['accomp'] . ')' : '');
     return $l;
 }
-function evenement_clean($e) {
+// Liste de produits (événements et commandes spéciales) : catégories, formules, produits avec formats et choix
+function produits_clean($liste) {
     $items = [];
-    foreach (liste($e['items'] ?? []) as $p) {
+    foreach (liste($liste) as $p) {
         // « cat » : un titre de catégorie (Entrées, Plats, Desserts…) et non un produit
         $p = !empty($p['cat']) ? ['nom' => txt($p['nom'] ?? '', 60), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']) && trim((string)($p['prix'] ?? '')) !== '', 'cat' => true]
                                : ['nom' => txt($p['nom'] ?? '', 140), 'prix' => txt($p['prix'] ?? '', 30), 'epuise' => !empty($p['epuise']), 'cat' => false,
@@ -140,14 +148,20 @@ function evenement_clean($e) {
                                   'accomp' => txt($p['accomp'] ?? '', 140),
                                   // formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) : chacun son prix ; « kg » = prix au kilo, le client choisit un poids
                                   'formats' => array_slice(array_values(array_filter(array_map(function ($f) {
-                                      return ['nom' => txt($f['nom'] ?? '', 40), 'prix' => txt($f['prix'] ?? '', 30), 'kg' => !empty($f['kg'])];
-                                  }, liste($p['formats'] ?? [])), function ($f) { return $f['nom'] !== '' || $f['kg']; })), 0, 8),
+                                      // unité du prix : '' (à l'unité), kg, 500g (le client choisit un poids), portion, pers (par personne)
+                                      $u = in_array($f['unite'] ?? null, ['', 'kg', '500g', 'portion', 'pers'], true) ? $f['unite'] : (!empty($f['kg']) ? 'kg' : '');
+                                      return ['nom' => txt($f['nom'] ?? '', 40), 'prix' => txt($f['prix'] ?? '', 30), 'unite' => $u, 'kg' => $u === 'kg' || $u === '500g'];
+                                  }, liste($p['formats'] ?? [])), function ($f) { return $f['nom'] !== '' || $f['unite'] !== ''; })), 0, 8),
                                   // un choix à faire (ex. Huîtres : Ouvertes / Fermées), avec un supplément éventuel
                                   'option' => ['titre' => txt($p['option']['titre'] ?? '', 40), 'choix' => array_slice(array_values(array_filter(array_map(function ($c) {
                                       return ['nom' => txt($c['nom'] ?? '', 40), 'prix' => txt($c['prix'] ?? '', 30)];
                                   }, liste($p['option']['choix'] ?? [])), function ($c) { return $c['nom'] !== ''; })), 0, 6)]];
         if ($p['nom'] !== '') $items[] = $p;
     }
+    return $items;
+}
+function evenement_clean($e) {
+    $items = produits_clean($e['items'] ?? []);
     $r = is_array($e['reservation'] ?? null) ? $e['reservation'] : [];
     return [
         'actif' => !empty($e['actif']),
@@ -177,6 +191,19 @@ function evenements_visibles($liste) {
 }
 function reservation_ouverte($e) { return !$e['reservation']['active'] || $e['reservation']['date'] === '' || date('Y-m-d') <= $e['reservation']['date']; }
 
+// Commandes spéciales (raclette, corbeilles de fruits, plateaux de fromages…) : à commander à l'avance, en ligne ou non
+function commande_speciale_clean($c) {
+    $c = is_array($c) ? $c : [];
+    return [
+        'actif' => !empty($c['actif']),
+        'titre' => txt($c['titre'] ?? '', 80) ?: 'Nouvelle offre',
+        'accroche' => txt($c['accroche'] ?? '', 240),
+        'delai' => txt($c['delai'] ?? '', 80),   // ex. « À commander 48 h à l'avance »
+        'photo' => preg_replace('/[^a-z0-9-]/', '', (string)($c['photo'] ?? '')),
+        'items' => produits_clean($c['items'] ?? []),
+        'note' => txt($c['note'] ?? '', 240),
+    ];
+}
 function site_clean($d) {
     $mots = liste_txt($d['mots'] ?? [], 40);
     $avis = [];
@@ -189,6 +216,7 @@ function site_clean($d) {
         'semaine' => semaine_clean($d['semaine'] ?? []),
         'semaine_suivante' => semaine_suivante_clean($d['semaine_suivante'] ?? []),
         'menus' => array_map('carte_clean', liste($d['menus'] ?? [])),
+        'commandes' => array_map('commande_speciale_clean', liste($d['commandes'] ?? [])),
         'mots' => $mots ?: ['épicerie fine', 'traiteur', 'charcuterie', 'fromagerie', 'fruits et légumes'],
         'avis' => $avis,
         // Foire aux questions (bas de la page d'accueil, et réponses directes dans Google)

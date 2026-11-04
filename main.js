@@ -132,7 +132,7 @@
     function vars() { var l = []; evt().items.forEach(function (it) { (it.v || []).forEach(function (v) { l.push({ it: it, v: v }); }); }); return l; }
     function trouve(cle) { var e = evt(); return e ? vars().filter(function (x) { return x.v.cle === cle; })[0] : null; }
     function poids(g) { return g >= 1000 ? String(+(g / 1000).toFixed(2)).replace('.', ',') + ' kg' : g + ' g'; }
-    function montant(x, q) { return x.v.kg ? num(x.v.prix) * q / 1000 : num(x.v.prix) * q; }
+    function montant(x, q) { return x.v.kg ? num(x.v.prix) * q / (x.v.par || 1000) : num(x.v.prix) * q; }
     function total() { var j = jour(), e = evt();
       if (e) return vars().reduce(function (t, x) { return t + montant(x, etat.items[x.v.cle] || 0); }, 0); return num(j.plat.prix) * etat.plat + (j.special ? num(j.special.prix) * etat.special : 0) + autres().reduce(function (t, a) { return t + num(a.plat.prix) * etat.autres[a.date]; }, 0); }
     function nb() { if (evt()) return Object.keys(etat.items).filter(function (k) { return etat.items[k] > 0; }).length; return etat.plat + (jour().special ? etat.special : 0) + autres().reduce(function (t, a) { return t + etat.autres[a.date]; }, 0); }
@@ -189,9 +189,9 @@
           var q = etat.items[v.cle] || 0, t = '';
           if (v.choix && v.choix !== dernier) { dernier = v.choix; t = '<p class="rs-var-t">' + (it.titreChoix ? esc(it.titreChoix) + ' : ' : '') + '<b>' + esc(v.choix) + '</b>' + (v.sup ? ' <span>' + esc(v.sup) + '</span>' : '') + '</p>'; }
           return t + '<div class="rs-var' + (q ? ' choisi' : '') + '"><span class="rs-var-nom">' + esc(v.format || (v.choix ? 'Quantité' : it.nom)) + '</span>' +
-            (v.prix ? '<span class="rs-px">' + esc(v.prix) + (v.kg ? '<small>/kg</small>' : '') + '</span>' : '') +
+            (v.prix ? '<span class="rs-px">' + esc(v.prix) + (v.suffixe ? '<small>' + esc(v.suffixe) + '</small>' : '') + '</span>' : '') +
             (v.kg ? qteKg('e:' + v.cle, q) : qte('e:' + v.cle, q, 0)) + '</div>' +
-            (v.kg && q && v.prix ? '<p class="rs-var-kg">≈ ' + euros(num(v.prix) * q / 1000) + ' · prix exact à la pesée</p>' : '');
+            (v.kg && q && v.prix ? '<p class="rs-var-kg">≈ ' + euros(num(v.prix) * q / (v.par || 1000)) + ' · prix exact à la pesée</p>' : '');
         }).join('')) + '</div>';
     }
     function qteKg(nom, g) {
