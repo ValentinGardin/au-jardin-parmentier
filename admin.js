@@ -27,7 +27,14 @@
   function ico(n) { return '<svg class="ico" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
   function get(p) { return p.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, site); }
   function set(p, v) { var k = p.split('.'), last = k.pop(); (k.length ? get(k.join('.')) : site)[last] = v; }
-  function sale(part) { return JSON.stringify(site[part]) !== JSON.stringify(saved[part]); }
+  // « modifié ? » : la version enregistrée n'est convertie en texte qu'une fois (elle ne change qu'à l'enregistrement)
+  var cacheSaved = new WeakMap();
+  function jsonSaved(part) {
+    var o = saved[part]; if (!o || typeof o !== 'object') return JSON.stringify(o);
+    var s = cacheSaved.get(o); if (s === undefined) { s = JSON.stringify(o); cacheSaved.set(o, s); }
+    return s;
+  }
+  function sale(part) { return JSON.stringify(site[part]) !== jsonSaved(part); }
   function pluriel(n, s, pl) { return n + ' ' + (n > 1 ? pl || s + 's' : s); }
 
   // ---------- Prix : « 9,5 » devient « 9.50 € » ----------
@@ -850,7 +857,7 @@
         if (!r) return;
         api('photo-suppr', { nom: nom }).then(function () {
           E.photos = E.photos.filter(function (x) { return x.nom !== nom; });
-          [site, saved].forEach(function (s) { s.menus.concat(s.evenements).forEach(function (x) { if (x.photo === nom) x.photo = ''; }); });
+          [site, saved].forEach(function (s) { s.menus.concat(s.evenements, s.commandes || []).forEach(function (x) { if (x.photo === nom) x.photo = ''; }); }); cacheSaved = new WeakMap();
           render(true);
           toast('Photo supprimée.');
         }).catch(function (e) { toast(e.message, true); });
@@ -2009,12 +2016,19 @@
     if (onglet === 'semaine') dessinerApercus();
   }
   var bar = document.getElementById('enreg'), barTxt = document.getElementById('enreg-txt');
+  var barreT = 0;
   function barre() {
+    // regroupe les mises à jour pendant la frappe : une seule par image affichée
+    if (barreT) return;
+    barreT = requestAnimationFrame(function () { barreT = 0; barreMaj(); });
+  }
+  function barreMaj() {
     bar.hidden = !sale(partActive());
     barTxt.textContent = VISITE ? 'Mode visite : ces essais ne seront pas enregistrés' : 'Modifications non enregistrées sur ' + NOMS[partActive()];
     document.getElementById('enregistrer').hidden = VISITE;
     document.getElementById('annuler').textContent = VISITE ? 'Revenir à l’original' : 'Annuler';
-    document.querySelectorAll('[data-onglet]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && sale('semaine_suivante'))); });
+    var memo = {}; function s(p) { return p in memo ? memo[p] : (memo[p] = PARTS.indexOf(p) >= 0 && sale(p)); }
+    document.querySelectorAll('[data-onglet]').forEach(function (b) { b.classList.toggle('modifie', s(b.dataset.onglet) || (b.dataset.onglet === 'semaine' && s('semaine_suivante'))); });
     document.querySelectorAll('.choix-sem [data-s]').forEach(function (b) { b.classList.toggle('modifie', sale(b.dataset.s)); });
   }
   function apresSaisie() {

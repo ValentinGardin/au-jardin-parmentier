@@ -784,3 +784,6 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .sc-var .sc-choix{border-style:dashed}
 .sc-note{margin:0;font-size:.86rem;color:var(--gris)}
 .sc .btn{align-self:flex-start;margin-top:.3rem}
+/* Réservation : boutons +/− réactifs au doigt (pas de zoom au double appui), défilement fluide de la fenêtre */
+.rs-qte button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.rs-corps{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

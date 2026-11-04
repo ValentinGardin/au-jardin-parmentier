@@ -129,8 +129,13 @@
     function evt() { return etat.evt === null ? null : (D.evts || []).filter(function (e) { return e.i === etat.evt; })[0]; }
     function evtJour() { var e = evt(); return e ? (e.jours.filter(function (x) { return x.date === etat.evtDate; })[0] || e.jours[0]) : null; }
     // Produits d'événement : une ligne par façon de commander (format × choix) ; « kg » : la quantité est un poids en grammes
-    function vars() { var l = []; evt().items.forEach(function (it) { (it.v || []).forEach(function (v) { l.push({ it: it, v: v }); }); }); return l; }
-    function trouve(cle) { var e = evt(); return e ? vars().filter(function (x) { return x.v.cle === cle; })[0] : null; }
+    var cacheVars = { e: null, l: [], m: {} };
+    function vars() {
+      var e = evt();
+      if (cacheVars.e !== e) { cacheVars = { e: e, l: [], m: {} }; e.items.forEach(function (it) { (it.v || []).forEach(function (v) { var x = { it: it, v: v }; cacheVars.l.push(x); cacheVars.m[v.cle] = x; }); }); }
+      return cacheVars.l;
+    }
+    function trouve(cle) { return evt() ? (vars(), cacheVars.m[cle] || null) : null; }
     function poids(g) { return g >= 1000 ? String(+(g / 1000).toFixed(2)).replace('.', ',') + ' kg' : g + ' g'; }
     function montant(x, q) { return x.v.kg ? num(x.v.prix) * q / (x.v.par || 1000) : num(x.v.prix) * q; }
     function total() { var j = jour(), e = evt();
@@ -141,6 +146,25 @@
     function court(d) { var x = new Date(d + 'T12:00:00'); return { j: x.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''), n: x.getDate(), m: x.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '') }; }
     function qte(nom, v, min) {
       return '<div class="rs-qte" role="group" aria-label="Quantité"><button type="button" data-rs="moins" data-q="' + nom + '" aria-label="Un de moins"' + (v <= min ? ' disabled' : '') + '>−</button><output aria-live="polite">' + v + '</output><button type="button" data-rs="plus" data-q="' + nom + '" aria-label="Un de plus"' + (v >= 20 ? ' disabled' : '') + '>+</button></div>';
+    }
+    // Mise à jour sur place après un + / − : compteur, boutons, ligne choisie, estimation au poids, total et « Continuer »
+    function majQte(k, x) {
+      var v = getQ(k), kg = x && x.v.kg, max = kg ? 5000 : 20;
+      var moins = corps.querySelector('[data-rs="moins"][data-q="' + k + '"]'); if (!moins) return etape1();
+      var groupe = moins.parentNode, plus = groupe.querySelector('[data-rs="plus"]');
+      groupe.querySelector('output').textContent = kg ? (v ? poids(v) : '0') : v;
+      moins.disabled = v <= 0; plus.disabled = v >= max;
+      var ligne = groupe.closest('.rs-var, .rs-plat');
+      if (ligne) ligne.classList.toggle('choisi', v > 0);
+      var carte = groupe.closest('.rs-art');
+      if (carte) carte.classList.toggle('choisi', !!carte.querySelector('.rs-var.choisi'));
+      if (kg && ligne) {
+        var est = ligne.nextElementSibling && ligne.nextElementSibling.classList.contains('rs-var-kg') ? ligne.nextElementSibling : null;
+        if (v && x.v.prix) { if (!est) { est = document.createElement('p'); est.className = 'rs-var-kg'; ligne.after(est); } est.textContent = '≈ ' + euros(num(x.v.prix) * v / (x.v.par || 1000)) + ' · prix exact à la pesée'; }
+        else if (est) est.remove();
+      }
+      var t = pied.querySelector('.rs-total b'); if (t) t.textContent = total() ? euros(total()) : '–';
+      var suite = pied.querySelector('[data-rs="suite"]'); if (suite) suite.disabled = !nb();
     }
     function entete(n, titre) {
       document.getElementById('rs-etape').textContent = n <= 2 ? 'Étape ' + n + ' sur 2' : 'C’est réservé';
@@ -354,8 +378,7 @@
       else if (a === 'plus' || a === 'moins') {
         var xk = b.dataset.q.indexOf('e:') === 0 && evt() ? trouve(b.dataset.q.slice(2)) : null, kg = xk && xk.v.kg;
         setQ(b.dataset.q, Math.max(0, Math.min(kg ? 5000 : 20, getQ(b.dataset.q) + (a === 'plus' ? 1 : -1) * (kg ? 100 : 1))));
-        var y = corps.scrollTop; etape1(); corps.scrollTop = y;
-        var n = corps.querySelector('[data-rs="' + a + '"][data-q="' + b.dataset.q + '"]'); if (n && !n.disabled) n.focus();
+        majQte(b.dataset.q, xk);   // seule la ligne touchée et le total changent (plus de reconstruction de toute la fenêtre)
       }
       else if (a === 'autres') { etat.voirAutres = true; var y2 = corps.scrollTop; etape1(); corps.scrollTop = y2; var c1 = corps.querySelector('.rs-autre [data-rs="plus"]'); if (c1) c1.focus(); }
       else if (a === 'idee') {
