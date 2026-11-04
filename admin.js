@@ -1199,8 +1199,24 @@
         return '<tr><td class="c">' + (r.recupere ? '✓' : '☐') + '</td><td>' + (r.num || '') + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
           '<td>' + r.lignes.map(function (l) { return '<b>' + l.qte + '</b>× ' + esc(l.nom); }).join(' · ') + (r.note ? ' <i>— ' + esc(r.note) + '</i>' : '') + '</td>' +
           '<td class="n">' + (t ? euros(t) : '') + '</td><td class="c">' + (r.paye ? '✓' : '☐') + '</td></tr>';
-      }).join('') + '</tbody></table>' : '<p>Aucune réservation ce jour-là.</p>');
+      }).join('') + '</tbody></table>' + recapImpression(jour) : '<p>Aucune réservation ce jour-là.</p>');
     imprimerCompact(h);
+  }
+  // Récapitulatif global (en bas des impressions) : quantité, prix et montant par plat, total, encaissé et reste à encaisser
+  function recapImpression(resas) {
+    var t = {}, ordre = [], qte = 0, total = 0, enc = 0;
+    resas.forEach(function (r) { r.lignes.forEach(function (l) {
+      var nom = (l.nom.trim() || 'Autre') + (l.jour && l.jour !== r.date ? ' (plat du ' + jourNom(l.jour).toLowerCase() + ')' : ''), k = nom + '|' + l.prix;
+      if (!t[k]) { t[k] = { nom: nom, prix: prixNum(l.prix), qte: 0, recup: 0 }; ordre.push(k); }
+      t[k].qte += l.qte; if (r.recupere) t[k].recup += l.qte;
+      qte += l.qte; total += prixNum(l.prix) * l.qte; if (r.paye) enc += prixNum(l.prix) * l.qte;
+    }); });
+    if (!ordre.length) return '';
+    ordre.sort(function (a, b) { return t[b].qte - t[a].qte; });
+    return '<table class="imp-table imp-recap-tab"><thead><tr><th>Récapitulatif global</th><th class="n">Qté</th><th class="n">Récupérés</th><th class="n">Prix</th><th class="n">Montant</th></tr></thead><tbody>' +
+      ordre.map(function (k) { var x = t[k]; return '<tr><td>' + esc(x.nom) + '</td><td class="n"><b>' + x.qte + '</b></td><td class="n">' + x.recup + ' / ' + x.qte + '</td><td class="n">' + (x.prix ? euros(x.prix) : '–') + '</td><td class="n">' + (x.prix ? euros(x.prix * x.qte) : '–') + '</td></tr>'; }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td class="n">' + qte + '</td><td></td><td></td><td class="n">' + euros(total) + '</td></tr>' +
+      '<tr><td colspan="5" class="n">Encaissé <b>' + euros(enc) + '</b> · Reste à encaisser <b>' + euros(total - enc) + '</b></td></tr></tfoot></table>';
   }
   function imprimerCompact(h) {
     var z = document.getElementById('impression') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'impression' }));
@@ -1347,7 +1363,7 @@
               return '<tr><td>' + (r.num || '') + '</td><td class="nw">' + r.date.slice(8, 10) + '/' + r.date.slice(5, 7) + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
                 '<td>' + r.lignes.map(function (x) { return '<b>' + x.qte + '</b>× ' + esc(x.nom); }).join(' · ') + (r.note ? ' <i>— ' + esc(r.note) + '</i>' : '') + '</td>' +
                 '<td class="n">' + (t ? euros(t) : '') + '</td><td class="c">' + (r.paye ? '✓' : '☐') + '</td><td class="c">' + (r.recupere ? '✓' : '☐') + '</td></tr>';
-            }).join('') + '</tbody></table>');
+            }).join('') + '</tbody></table>' + recapImpression(l));
         }
         return;
       }

@@ -1114,3 +1114,8 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 }
 @media print{.imp-table .nw{white-space:nowrap}}
 @media print{.imp-histo{table-layout:fixed}.imp-histo small{font-size:7pt}}
+@media print{
+  .imp-recap-tab{width:auto;min-width:60%;margin:8pt 0 0 auto;break-inside:avoid}
+  .imp-recap-tab tfoot td{border-bottom:0;padding-top:2pt}
+  .imp-recap-tab tfoot tr:first-child td{border-top:.8pt solid #000;font-weight:700}
+}
