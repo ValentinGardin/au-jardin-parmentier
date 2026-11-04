@@ -8,6 +8,8 @@ RewriteEngine On
 # Fichiers techniques jamais accessibles depuis le navigateur (Git, réglages, bibliothèques PHP)
 RewriteRule (^|/)\.(?!well-known/) - [R=404,L]
 RewriteRule ^(lib|stats|comptes|google|clients|sms)\.php$ - [R=404,L]
+# Notes techniques et outils de compilation : jamais servis aux visiteurs
+RewriteRule ^(CLAUDE\.md|outils(/.*)?)$ - [R=404,L]
 
 # Anciennes adresses en .php : redirection définitive vers l'adresse propre
 RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.php[\s?] [NC]

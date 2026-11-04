@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.66 · 4 novembre 2026';
+const VERSION = '1.67 · 4 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -20,6 +20,11 @@ function asset($f) {
 }
 
 function site_load() {
+    // lu et vérifié une seule fois par requête (une copie en mémoire, vidée dès que site.json est réenregistré)
+    if (isset($GLOBALS['site_memo'])) return $GLOBALS['site_memo'];
+    return $GLOBALS['site_memo'] = site_lire();
+}
+function site_lire() {
     // site.json est créé par le back-office ; tant qu'il n'existe pas, le contenu de départ (site.exemple.json) est affiché
     $f = is_file(DATA . '/site.json') ? DATA . '/site.json' : DATA . '/site.exemple.json';
     $d = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
@@ -327,6 +332,7 @@ function img_attrs($rel, $sizes) {
 
 // Écriture atomique : fichier temporaire puis renommage
 function json_save($file, $data) {
+    if (basename($file) === 'site.json') unset($GLOBALS['site_memo']);
     $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
     $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     if ($json === false || file_put_contents($tmp, $json, LOCK_EX) === false) return false;
