@@ -1042,3 +1042,8 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .accomp-ligne input:focus{border-style:solid;background:var(--blanc)}
 .item-inclus + .accomp-ligne{margin-left:1.7rem}
 .ap-evt li .ap-accomp{display:block;font-weight:400;font-size:.74rem;opacity:.8;margin-top:.1rem}
+/* Simulation de prise de commande */
+.sim-bloc{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.8rem 1.2rem;margin-top:1.2rem;padding:1rem 1.1rem;border:1.5px dashed #f0a46b;border-radius:14px;background:#fff8f1}
+.sim-bloc > div{display:grid;gap:.15rem;flex:1 1 260px}
+.sim-bloc small{color:var(--gris);font-size:.8rem}
+.sim-bloc .btn{color:#c2410c;border-color:#f0a46b}

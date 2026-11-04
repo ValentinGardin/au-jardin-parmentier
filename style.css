@@ -752,3 +752,9 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 .evt-accomp{display:block;margin-top:.15rem;font-weight:400;font-size:.86rem;line-height:1.35;opacity:.78}
 .evt-items li.evt-inclus > span,.evt-items li > span:has(.evt-accomp){display:block}
 .rs-accomp{color:var(--violet)!important;font-weight:500}
+/* Simulation de prise de commande (depuis le back-office) */
+.sim-bandeau{position:sticky;top:0;z-index:300;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.5rem 1rem;padding:.6rem 1rem;background:#e8590c;color:#fff;font-size:.9rem;text-align:center}
+.sim-bandeau button{border:0;border-radius:99px;padding:.4rem .9rem;background:#fff;color:#e8590c;font:700 .85rem var(--texte);cursor:pointer}
+.en-simulation .rs-boite{box-shadow:0 0 0 4px #e8590c,0 30px 60px -20px rgba(0,0,0,.5)}
+.en-simulation .rs-etape::after{content:" · simulation";color:#e8590c}
+.rs-sim{margin:1rem 0 0;padding:.8rem 1rem;border-radius:12px;background:#fff4e6;color:#a1440b;font-size:.9rem;font-weight:500}

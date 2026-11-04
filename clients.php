@@ -517,13 +517,23 @@ function commande_evts($d) {
         $jours = [];
         foreach (evt_jours($e) as $j) if ($j > $demain || ($j === $demain && date('H:i') < $c['limite'])) $jours[] = ['date' => $j, 'libelle' => date_fr($j, true)];
         if (!$jours) continue;
-        $items = [];
-        foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
-            'desc' => $it['desc'] ?? '', 'accomp' => $it['accomp'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => evt_variantes($e['items'], $k), 'contenu' => $it['cat'] && $it['prix'] !== '' ? evt_contenu($e['items'], $k) : [],
-            'forte' => !$it['epuise'] && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
-        $out[] = ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
+        $out[] = evt_resa_donnees($e, $i, $jours);
     }
     return $out;
+}
+// Ce que la fenêtre de réservation reçoit pour un événement
+function evt_resa_donnees($e, $i, $jours) {
+    $items = [];
+    foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
+        'desc' => $it['desc'] ?? '', 'accomp' => $it['accomp'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => evt_variantes($e['items'], $k), 'contenu' => $it['cat'] && $it['prix'] !== '' ? evt_contenu($e['items'], $k) : [],
+        'forte' => !$it['epuise'] && $e['date'] !== '' && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
+    return ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
+}
+// Simulation depuis le back-office : l'événement tel qu'il est en cours de modification, même désactivé, sans date ou clos.
+// Tous ses jours sont proposés (ou demain s'il n'a pas encore de date). Rien n'est enregistré.
+function evt_simulation($e, $i) {
+    $jours = array_map(function ($j) { return ['date' => $j, 'libelle' => date_fr($j, true)]; }, $e['date'] !== '' ? evt_jours($e) : [date('Y-m-d', strtotime('tomorrow'))]);
+    return evt_resa_donnees($e, $i, $jours) + ['simulation' => true];
 }
 
 // ---- Import de contacts (bouton Importer de l'onglet Clients) ----

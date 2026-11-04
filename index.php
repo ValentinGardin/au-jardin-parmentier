@@ -30,6 +30,21 @@ $galerie = photos_galerie();
 // Réservation en ligne (interrupteur dans le back-office) : jours réservables à partir du lendemain
 $cmdJours = commande_config()['actif'] ? commande_jours($s) : [];
 $cmdEvts = commande_config()['actif'] ? commande_evts($s) : [];   // événements réservables en ligne
+// Simulation de prise de commande (bouton dans le back-office, onglet Événements) : réservée aux personnes connectées
+// au back-office. La fenêtre de réservation s'ouvre pour cet événement ; rien n'est enregistré, aucun e-mail ne part.
+$simulation = null;
+if (isset($_GET['simulation']) && !empty($_COOKIE['jp_admin'])) {
+    require_once __DIR__ . '/comptes.php';
+    session_name('jp_admin');
+    session_start(['read_and_close' => true]);
+    if (!empty($_SESSION['uid']) && compte_par_id($_SESSION['uid'])) {
+        $iSim = (int)$_GET['simulation'];
+        $eSim = isset($_POST['evt']) ? json_decode((string)$_POST['evt'], true) : ($s['evenements'][$iSim] ?? null);
+        if (is_array($eSim)) { $simulation = evt_simulation(evenement_clean($eSim), $iSim); $cmdJours = []; $cmdEvts = [$simulation]; }
+    }
+    header('Cache-Control: no-store');
+    header('X-Robots-Tag: noindex, nofollow');
+}
 $cmd = $cmdJours || $cmdEvts;
 $evtEnLigne = array_column($cmdEvts, null, 'i');
 $cmdDates = array_column($cmdJours, 'date');
@@ -75,7 +90,10 @@ foreach ($ld as $bloc): ?>
 <script type="application/ld+json"><?= json_encode($bloc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
 <?php endforeach; ?>
 </head>
-<body>
+<body<?= $simulation ? ' class="en-simulation"' : '' ?>>
+<?php if ($simulation): ?>
+<div class="sim-bandeau" role="status"><span><b>Mode simulation</b> · <?= h($simulation['titre']) ?> · rien n’est enregistré, aucun e-mail n’est envoyé</span><button type="button" data-reserver-evt="<?= (int)$simulation['i'] ?>">Relancer la commande</button></div>
+<?php endif; ?>
 
 <a class="skip" href="#contenu">Aller au contenu</a>
 
@@ -596,7 +614,7 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
   </div>
 </div>
 <script type="application/json" id="rs-donnees"><?= json_encode(['jours' => $cmdJours, 'evts' => $cmdEvts, 'tel' => $tel, 'telHref' => $telHref, 'limite' => str_replace(':', 'h', commande_config()['limite']),
-    'mailPret' => smtp_config()['pret'], 'smsPret' => sms_pret(sms_config())], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    'mailPret' => smtp_config()['pret'], 'smsPret' => sms_pret(sms_config()), 'simulation' => $simulation ? $simulation['i'] : null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <?php endif; ?>
 
 

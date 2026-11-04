@@ -537,6 +537,8 @@
         '<div class="champ"><span>Photo <em>facultatif</em></span>' + photos + '</div>' +
         '<label class="case"><input type="checkbox" data-p="' + p + '.popup"' + (e.popup ? ' checked' : '') + '> Afficher en fenêtre (pop-up) à l’arrivée des visiteurs sur le site</label>' +
         '<label class="case"><input type="checkbox" data-p="' + p + '.masquer_apres"' + (e.masquer_apres ? ' checked' : '') + '> Retirer automatiquement du site le lendemain de l’événement</label>' +
+        '<div class="sim-bloc"><div><b>Tester la prise de commande</b><small>Ouvre la vraie fenêtre de réservation du site pour cet événement, comme un client. Rien n’est enregistré, aucun e-mail ne part. Fonctionne aussi avant d’enregistrer et pour un événement désactivé.</small></div>' +
+          '<button type="button" class="btn btn-ligne" data-act="simuler" data-i="' + i + '">' + ico('resa') + 'Simuler une prise de commande</button></div>' +
         '</div><aside class="evt-apercu"><p class="evt-apercu-t">Aperçu sur le site <small>mis à jour en direct</small></p><div id="ap-evt-' + i + '">' + apercuEvt(e) + '</div>' +
           '<a class="lien evt-apercu-lien" href="./#evenements" target="_blank" rel="noopener">' + ico('oeil') + 'Voir la page en vrai (après enregistrement)</a></aside></div>' +
         '</section>';
@@ -2232,6 +2234,12 @@
         .then(function () { b.textContent = txt; carteV.classList.remove('en-cours'); app.querySelectorAll('[data-act=video],[data-act=video-apercu]').forEach(function (x) { x.disabled = false; }); });
     } else if (a === 'periodeStats') {
       periodeStats = i; ecrire('periodeStats', String(i)); render(true);
+    } else if (a === 'simuler') {
+      // l'événement tel qu'il est à l'écran (même non enregistré) part dans un nouvel onglet, en mode simulation
+      var fs = document.createElement('form');
+      fs.method = 'post'; fs.action = './?simulation=' + i; fs.target = '_blank'; fs.hidden = true;
+      var champ = document.createElement('input'); champ.name = 'evt'; champ.value = JSON.stringify(site.evenements[i]);
+      fs.appendChild(champ); document.body.appendChild(fs); fs.submit(); fs.remove();
     } else if (a === 'evt-plier') {
       evtOuvert(i, !evtOuvert(i)); render(true);
     } else if (a === 'evt-tout') {

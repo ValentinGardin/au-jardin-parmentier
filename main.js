@@ -50,6 +50,7 @@
 
   // Statistiques : clics utiles (appel, itinéraire, e-mail, Facebook, avis, réservation d'événement, carte consultée)
   function suivre(e, x) {
+    if (document.body.classList.contains('en-simulation')) return;   // simulation depuis le back-office : pas de statistiques
     var d = new URLSearchParams({ e: e, x: x || '' });
     try { if (navigator.sendBeacon && navigator.sendBeacon('track.php', d)) return; } catch (err) {}
     try { fetch('track.php', { method: 'POST', body: d, keepalive: true }); } catch (err) {}
@@ -288,12 +289,14 @@
       if (!client.email) return erreur('Indiquez votre adresse e-mail : vous y recevrez le récapitulatif de votre commande.', 'email');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.email)) return erreur('Cette adresse e-mail ne semble pas valide.', 'email');
       var b = pied.querySelector('.btn-violet'); b.disabled = true; b.textContent = 'Envoi…';
+      // simulation (depuis le back-office) : rien n'est envoyé au serveur
+      if (D.simulation !== null && D.simulation !== undefined) return setTimeout(function () { etape3({ ok: true, num: 'ESSAI', quand: evtJour().libelle, total: total(), email: '', simulation: true }); }, 400);
       fetch('commander', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(evt() ? { evt: etat.evt, date: evtJour().date, items: etat.items, prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t } : { date: jour().date, plat: etat.plat, special: jour().special ? etat.special : 0, autres: autres().reduce(function (o, a) { o[a.date] = etat.autres[a.date]; return o; }, {}), prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email, note: client.note, lettre: client.lettre, site_web: f.site_web.value, t: etat.t }) })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j.ok) { if (j.jours) { D.jours = j.jours; } throw j; }
-          try { if (client.memo) localStorage.setItem('jp-client', JSON.stringify({ prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email })); else localStorage.removeItem('jp-client'); } catch (er) {}
+          try { if (client.memo && !j.simulation) localStorage.setItem('jp-client', JSON.stringify({ prenom: client.prenom, nom: client.nom, tel: client.tel, email: client.email })); else localStorage.removeItem('jp-client'); } catch (er) {}
           suivre('resa-ok');
           etape3(j);
         })
@@ -305,8 +308,9 @@
         '<p class="rs-ok-titre">C’est réservé !</p><p class="rs-num">Commande n° <b>' + j.num + '</b></p>' +
         '<p>' + esc(recap().join(', ')) + '<br>à récupérer <b>' + esc(j.quand) + '</b> à la boutique,<br>9, place Parmentier à Montdidier.</p>' +
         (j.total ? '<p class="rs-ok-px">' + euros(j.total) + ' à régler sur place</p>' : '') +
-        '<p class="rs-info">' + (j.email ? 'Le récapitulatif vient de vous être envoyé à <b>' + esc(j.email) + '</b>. ' : '') + 'Un changement ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p></div>';
-      pied.innerHTML = '<button type="button" class="btn btn-violet btn-lg" data-rs="fermer">Parfait, à bientôt !</button>';
+        (j.simulation ? '<p class="rs-sim">Simulation terminée : aucune réservation enregistrée, aucun e-mail envoyé. Le vrai client verrait cet écran et recevrait le récapitulatif par e-mail.</p>' :
+        '<p class="rs-info">' + (j.email ? 'Le récapitulatif vient de vous être envoyé à <b>' + esc(j.email) + '</b>. ' : '') + 'Un changement ? Appelez-nous au <a href="' + D.telHref + '">' + esc(D.tel) + '</a>.</p>') + '</div>';
+      pied.innerHTML = j.simulation ? '<button type="button" class="btn btn-violet btn-lg" data-rs="recommencer">Recommencer une simulation</button>' : '<button type="button" class="btn btn-violet btn-lg" data-rs="fermer">Parfait, à bientôt !</button>';
       pied.querySelector('button').focus();
       etat.fini = true;
     }
@@ -341,6 +345,7 @@
       var b = e.target.closest('[data-rs]'); if (!b || !rs.contains(b)) return;
       var a = b.dataset.rs;
       if (a === 'fermer') fermer();
+      else if (a === 'recommencer') { ouvrirEvt(D.simulation); }
       else if (a === 'evt-jour') { etat.evtDate = b.dataset.d; etape1(); corps.querySelector('[data-d="' + etat.evtDate + '"]').focus(); }
       else if (a === 'jour') {
         etat.date = b.dataset.d; if (!jour().special) etat.special = 0;
@@ -373,6 +378,7 @@
       }
     });
     // Lien direct : https://…/#reserver ouvre la réservation (pratique sur les réseaux sociaux)
+    if (D.simulation !== null && D.simulation !== undefined) { ouvrirEvt(D.simulation); return; }
     if (location.hash === '#reserver') { if (D.jours.length) ouvrir(); else if (D.evts.length) ouvrirEvt(D.evts[0].i); }
   })();
 
