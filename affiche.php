@@ -28,7 +28,10 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   .outils{position:sticky;top:0;display:flex;gap:.6rem;justify-content:center;padding:.8rem;background:#fff;border-bottom:1px solid #ddd}
   .outils button,.outils a{font:600 .95rem Inter,sans-serif;padding:.7rem 1.2rem;border-radius:10px;border:1px solid #ddd;background:#fff;color:var(--encre);text-decoration:none;cursor:pointer}
   .outils button{background:var(--violet);border-color:var(--violet);color:#fff}
-  .page{width:210mm;min-height:297mm;margin:1.5rem auto;background:#fff;padding:16mm 16mm 12mm;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+  /* une feuille A4 exactement ; marges intérieures larges pour rester dans la zone imprimable de toutes les imprimantes */
+  .page{width:210mm;height:297mm;margin:1.5rem auto;background:#fff;padding:14mm 15mm 12mm;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+  /* contenu réduit automatiquement (zoom) s'il est trop long pour tenir sur la feuille */
+  .contenu{height:100%;display:flex;flex-direction:column}
   header{text-align:center}
   header img{width:22mm;margin:0 auto 4mm;display:block}
   h1{margin:0;font:800 23mm/0.85 "Baloo 2",sans-serif;color:var(--violet);text-transform:uppercase;letter-spacing:-.01em}
@@ -55,13 +58,15 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   .special ul{list-style:none;margin:0;padding:0;font-weight:600;font-size:4.2mm;line-height:1.5;color:#3a3338}
   .note{text-align:center;font-size:3.6mm;color:var(--gris);margin:4mm 0 0}
   footer{text-align:center;font-size:3.4mm;color:var(--gris);margin-top:5mm;padding-top:3mm;border-top:1px solid #eee}
-  @media print{body{background:#fff}.outils{display:none}.page{margin:0;box-shadow:none;height:297mm}}
+  @media print{body{background:#fff}.outils,.aide{display:none}.page{margin:0;box-shadow:none}}
+  .aide{max-width:210mm;margin:.6rem auto 0;padding:0 1rem;font-size:.85rem;color:#5f575d;text-align:center}
   @media screen and (max-width:820px){.page{transform-origin:top left;transform:scale(calc(100vw / 220mm));margin:1rem 0 0}}
 </style>
 </head>
 <body>
 <div class="outils"><a href="<?= ESPACE ?>/">← Retour</a><button type="button" onclick="window.print()">Imprimer ou enregistrer en PDF</button></div>
-<main class="page">
+<p class="aide">Dans la fenêtre d’impression : format A4, échelle 100 %, et décochez « En-têtes et pieds de page » s’ils apparaissent.</p>
+<main class="page"><div class="contenu">
   <header>
     <img src="img/logo/symbole-violet.svg" alt="">
     <h1><?= h($mots[0] ?? '') ?><?php if (!empty($mots[1])): ?><span><?= h($mots[1]) ?></span><?php endif; ?></h1>
@@ -95,6 +100,19 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   <p class="note"><?= h($sem['note']) ?></p>
 <?php endif; ?>
   <footer>Réservations au 09 50 17 39 62 · lejardinparmentier.fr</footer>
-</main>
+</div></main>
+<script>
+// Tout doit tenir sur une feuille : si le contenu dépasse (beaucoup de plats, longue offre), on le réduit juste ce qu'il faut
+(function () {
+  var page = document.querySelector('.page'), c = document.querySelector('.contenu');
+  function ajuster() {
+    c.style.zoom = 1; c.style.height = '';
+    var h = c.clientHeight, s = 1;
+    while (c.scrollHeight > c.clientHeight + 1 && s > 0.55) { s -= 0.02; c.style.zoom = s; c.style.height = (h / s) + 'px'; }
+  }
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(ajuster);
+  window.addEventListener('beforeprint', ajuster);
+})();
+</script>
 </body>
 </html>
