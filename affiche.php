@@ -33,7 +33,7 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   /* contenu réduit automatiquement (zoom) s'il est trop long pour tenir sur la feuille */
   .contenu{height:100%;display:flex;flex-direction:column}
   header{text-align:center}
-  header img{width:22mm;margin:0 auto 4mm;display:block}
+  header img{width:14mm;margin:0 auto 2.5mm;display:block}
   h1{margin:0;font:800 23mm/0.85 "Baloo 2",sans-serif;color:var(--violet);text-transform:uppercase;letter-spacing:-.01em}
   h1 span{display:block;font-weight:600;font-size:11mm;line-height:1.1;margin-top:1mm}
   .adr{margin:4mm 0 0;font-size:3.6mm}
