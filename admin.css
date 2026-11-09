@@ -1119,3 +1119,5 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
   .imp-recap-tab tfoot td{border-bottom:0;padding-top:2pt}
   .imp-recap-tab tfoot tr:first-child td{border-top:.8pt solid #000;font-weight:700}
 }
+.resa-enligne{margin-bottom:.6rem}
+.resa-enligne .aide{margin:.35rem 0 0}

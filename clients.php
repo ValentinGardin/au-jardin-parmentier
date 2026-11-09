@@ -530,7 +530,7 @@ function commande_evts($d) {
     $c = commande_config(); $out = [];
     $demain = date('Y-m-d', strtotime('tomorrow'));
     foreach ($d['evenements'] as $i => $e) {
-        if (!$e['actif'] || $e['date'] === '' || !reservation_ouverte($e)) continue;
+        if (!$e['actif'] || $e['date'] === '' || !reservation_ouverte($e) || !$e['reservation']['en_ligne']) continue;
         if (!array_filter(array_keys($e['items']), function ($k) use ($e) { return evt_variantes($e['items'], $k); })) continue;
         // jours de retrait possibles : ceux de l'événement, à partir de demain (la veille jusqu'à l'heure limite)
         $jours = [];

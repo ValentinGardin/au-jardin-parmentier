@@ -90,7 +90,7 @@
     item: function () { return { nom: '', prix: '', epuise: false, cat: false, desc: '', accomp: '', formats: [], option: { titre: '', choix: [] } }; },
     catEvt: function () { return { nom: '', prix: '', epuise: false, cat: true }; },
     faq: function () { return { q: '', r: '' }; },
-    evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', date_fin: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '' }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
+    evenement: function () { return { actif: false, titre: 'Nouvel événement', date: '', date_fin: '', accroche: '', items: [{ nom: '', prix: '' }], lignes: [], cta: 'N’oubliez pas de réserver !', reservation: { active: false, date: '', en_ligne: true }, couleur: '#700954', photo: '', popup: false, masquer_apres: true }; }
   };
 
   // ---------- Champs ----------
@@ -412,7 +412,8 @@
     if (!e.actif) return ['gris', 'Masqué sur le site'];
     if (e.masquer_apres && e.date && evtFin(e) < t) return ['gris', 'Date passée : masqué automatiquement'];
     if (e.reservation.active && e.reservation.date && e.reservation.date < t) return ['orange', 'En ligne · réservations closes'];
-    return ['vert', 'En ligne sur le site'];
+    if (e.reservation.en_ligne === false) return ['bleu', 'En ligne · commandes par téléphone'];
+    return ['vert', 'En ligne · commande en ligne ouverte'];
   }
   // Formats de vente (Entier, Demi, Tranche, Au kilo, Douzaine…) et un choix (Ouvertes / Fermées…) pour un produit d'événement
   var varOuverts = {};
@@ -552,6 +553,8 @@
           '<button type="button" class="btn-ajout discret" data-act="add" data-p="' + p + '.items" data-tpl="catEvt">' + ico('plus') + 'Ajouter une catégorie <em>(Entrées, Plats…)</em></button></div></div>' +
         champ('Phrases mises en avant', p + '.lignes', { lignes: true, rows: 2, opt: true, ph: '« Sans oublier nos huîtres de Normandie »', aide: 'Une phrase par ligne, affichée en couleur sous les produits.' }) +
         champ('Phrase au-dessus du bouton Réserver', p + '.cta', { opt: true, ph: 'N’oubliez pas de réserver !' }) +
+        '<div class="resa-bloc resa-enligne"><label class="interrupteur"><input type="checkbox" data-p="' + p + '.reservation.en_ligne"' + (e.reservation.en_ligne !== false ? ' checked' : '') + '><span></span><b>Prise de commande en ligne</b></label>' +
+          '<p class="aide">' + (e.reservation.en_ligne !== false ? (E.commande.actif ? 'Activée : les clients réservent sur le site (bouton « Réserver en ligne »).' : 'Activée ici, mais la réservation en ligne est fermée pour tout le site (onglet Réservations).') : 'Désactivée : l’événement reste affiché, avec seulement le bouton « Réserver au 09 50 17 39 62 ».') + '</p></div>' +
         '<div class="resa-bloc"><label class="interrupteur"><input type="checkbox" data-p="' + p + '.reservation.active"' + (e.reservation.active ? ' checked' : '') + '><span></span>Date limite de réservation</label>' +
           (e.reservation.active ? champ('Réservations acceptées jusqu’au (inclus)', p + '.reservation.date', { type: 'date', aide: 'Après cette date, le bouton Réserver est remplacé par « Réservations closes ».' }) : '<p class="aide">Désactivée : le bouton « Réserver » reste affiché jusqu’à l’événement.</p>') + '</div>' +
         '<div class="champ"><span>Couleur du bandeau</span><div class="couleurs">' + themes + '</div><small>Choisissez une suggestion ou « Autre couleur… ». Le texte passe automatiquement en blanc ou en noir pour rester lisible.</small></div>' +

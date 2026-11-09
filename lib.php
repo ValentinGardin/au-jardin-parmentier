@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.70 · 9 novembre 2026';
+const VERSION = '1.71 · 9 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -178,7 +178,8 @@ function evenement_clean($e) {
         'items' => $items,
         'lignes' => liste_txt($e['lignes'] ?? [], 160),
         'cta' => txt($e['cta'] ?? '', 80),
-        'reservation' => ['active' => !empty($r['active']), 'date' => date_ok($r['date'] ?? '')],
+        // en_ligne : prise de commande en ligne pour cet événement (sinon, réservation par téléphone uniquement) ; oui par défaut
+        'reservation' => ['active' => !empty($r['active']), 'date' => date_ok($r['date'] ?? ''), 'en_ligne' => !array_key_exists('en_ligne', $r) || !empty($r['en_ligne'])],
         'couleur' => hex_ok($e['couleur'] ?? '') ?: (THEMES[$e['theme'] ?? ''] ?? THEMES['violet']),
         'popup' => !empty($e['popup']),
         'photo' => preg_replace('/[^a-z0-9-]/', '', (string)($e['photo'] ?? '')),
