@@ -102,7 +102,7 @@
         if (!j.ok) throw new Error(j.erreur);
         var p = lettre.prenom.value.trim(), ok = document.createElement('p');
         ok.className = 'lettre-ok'; ok.setAttribute('role', 'status');
-        ok.textContent = 'C’est noté' + (p ? ', ' + p : '') + ' ! Vous recevrez le prochain menu lundi.';
+        ok.textContent = 'C’est noté' + (p ? ', ' + p : '') + ' ! Vous recevrez le prochain menu vendredi midi.';
         lettre.replaceWith(ok);
         suivre('lettre');
       })
@@ -282,7 +282,7 @@
         '<div class="rs-idees" aria-label="Suggestions">' + ['Je passe vers 12h', 'Je passe en fin de journée', 'Sans sauce, svp', 'Allergie : ', 'C’est pour offrir'].map(function (t) {
           return '<button type="button" data-rs="idee" data-t="' + esc(t) + '">' + esc(t.replace(/ : $/, '…')) + '</button>';
         }).join('') + '</div>' +
-        '<label class="rs-case rs-case-lettre"><input type="checkbox" name="lettre"' + (client.lettre ? ' checked' : '') + '><span>Recevoir aussi le menu de la semaine chaque lundi par e-mail</span></label>' +
+        '<label class="rs-case rs-case-lettre"><input type="checkbox" name="lettre"' + (client.lettre ? ' checked' : '') + '><span>Recevoir aussi le menu de la semaine chaque vendredi midi par e-mail</span></label>' +
         '<label class="rs-case"><input type="checkbox" name="memo"' + (client.memo ? ' checked' : '') + '><span>Me reconnaître la prochaine fois sur cet appareil</span></label>' +
         '<div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><input name="site_web" tabindex="-1" autocomplete="off"></div>' +
         '<p class="rs-erreur" role="alert" hidden></p></form>';

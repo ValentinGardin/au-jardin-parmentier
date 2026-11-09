@@ -1434,7 +1434,7 @@
       var k = connu();
       if (!f.c.email.trim()) return '';
       if (k && k.lettre.statut === 'oui' && k.email === f.c.email.trim().toLowerCase()) return '<p class="fr-lettre deja">' + ico('ok') + 'Reçoit déjà le menu de la semaine par e-mail</p>';
-      return '<div class="fr-lettre"><span>Envoyer le menu de la semaine par e-mail chaque lundi ?</span><div class="seg" role="group" aria-label="Menu par e-mail">' +
+      return '<div class="fr-lettre"><span>Envoyer le menu de la semaine par e-mail chaque vendredi midi ?</span><div class="seg" role="group" aria-label="Menu par e-mail">' +
         '<button type="button" data-f="lettre" data-v="oui" aria-pressed="' + (f.c.lettre === 'oui') + '">Oui, il accepte</button>' +
         '<button type="button" data-f="lettre" data-v="non" aria-pressed="' + (f.c.lettre === 'non') + '">Non</button></div></div>';
     }
@@ -1637,14 +1637,14 @@
   function blocLettre() {
     var L = LETTRE, s = L.semaine, txt;
     var dernier = L.envois.filter(function (e) { return e.mode !== 'test'; })[0];
-    if (!s) txt = 'Aucun menu ne commence cette semaine : rien ne sera envoyé. Préparez le menu dans l’onglet « Menu de la semaine ».';
+    if (!s) txt = 'Aucun menu à envoyer pour l’instant. Préparez le menu de la semaine prochaine (onglet « Menu de la semaine » → « Semaine suivante ») : il partira vendredi à partir de 12 h.';
     else if (s.envoye) txt = ico('ok') + 'Le menu ' + esc(periode(s.du, s.au)) + ' a été envoyé ' + quand(s.envoye.date) + (s.envoye.en_cours ? ' (envoi en cours).' : ' à ' + pluriel(s.envoye.ok, 'personne') + '.');
     else if (!L.auto) txt = 'Envoi automatique désactivé : le menu ' + esc(periode(s.du, s.au)) + ' ne partira que si vous cliquez sur « Envoyer maintenant ».';
     else if (!s.complete) txt = 'Le menu ' + esc(periode(s.du, s.au)) + ' n’est pas complet : il partira automatiquement dès que chaque jour aura son plat (ou sera marqué fermé).';
-    else txt = 'Le menu ' + esc(periode(s.du, s.au)) + ' partira automatiquement lundi à partir de 8 h.';
-    return '<section class="bloc lettre-bloc"><div class="bloc-tete"><div><h2>Le menu de la semaine par e-mail</h2><p class="aide">Les inscrits reçoivent chaque lundi le menu de la semaine, avec un lien pour se désinscrire. Ils s’inscrivent sur le site, ou vous les inscrivez avec leur accord.</p></div>' +
+    else txt = 'Le menu ' + esc(periode(s.du, s.au)) + ' partira automatiquement ' + (s.du > E.aujourdhui ? 'vendredi à partir de 12 h' : 'à la prochaine visite du site (jusqu’à mercredi)') + '.';
+    return '<section class="bloc lettre-bloc"><div class="bloc-tete"><div><h2>Le menu de la semaine par e-mail</h2><p class="aide">Les inscrits reçoivent chaque vendredi à 12 h le menu de la semaine suivante, avec un lien pour se désinscrire. Ils s’inscrivent sur le site, ou vous les inscrivez avec leur accord.</p></div>' +
       '<span class="lettre-nb"><b>' + L.inscrits + '</b> inscrit' + (L.inscrits > 1 ? 's' : '') + '</span></div>' +
-      '<label class="interrupteur"><input type="checkbox" data-lettre-auto' + (L.auto ? ' checked' : '') + (VISITE ? ' disabled' : '') + '><span></span>Envoi automatique chaque lundi matin</label>' +
+      '<label class="interrupteur"><input type="checkbox" data-lettre-auto' + (L.auto ? ' checked' : '') + (VISITE ? ' disabled' : '') + '><span></span>Envoi automatique le vendredi à 12 h</label>' +
       '<p class="lettre-etat">' + txt + '</p>' +
       '<div class="lettre-actions"><button type="button" class="btn btn-ligne" data-act="lettre-test">' + ico('mail') + 'M’envoyer un essai</button>' +
       '<button type="button" class="btn btn-ligne" data-act="lettre-envoyer"' + (L.inscrits ? '' : ' disabled') + '>' + ico('envoyer') + 'Envoyer maintenant</button>' +
@@ -1730,7 +1730,7 @@
       '<div class="grille-2"><label class="champ"><span>Téléphone</span><input name="tel" type="tel" value="' + esc(c.tel) + '"></label><label class="champ"><span>E-mail</span><input name="email" type="email" value="' + esc(c.email) + '"></label></div>' +
       '<label class="champ"><span>Note <em>facultatif</em></span><textarea name="note" rows="2" placeholder="ex. allergique aux fruits à coque, préfère être appelé le matin">' + esc(c.note) + '</textarea></label>' +
       '<div class="champ"><span>Ce qu’il accepte de recevoir</span>' +
-        accord('lettre', c.lettre, 'Le menu de la semaine par e-mail', 'chaque lundi, à son adresse e-mail', 'Inscrit', 'Désinscrit') +
+        accord('lettre', c.lettre, 'Le menu de la semaine par e-mail', 'chaque vendredi midi, à son adresse e-mail', 'Inscrit', 'Désinscrit') +
         accord('sms', c.sms, 'Des messages par SMS', 'sur son téléphone : menu, rappel de commande…', 'Accepte les SMS', 'Refuse les SMS') + '</div>' +
       (nouveau ? '' : '<div class="champ"><span>Commandes</span><div id="fc-cmd" class="fc-cmd"><p class="aide">Chargement…</p></div></div>') +
       '<p class="alerte" hidden></p><div class="modale-actions">' +
@@ -1812,7 +1812,7 @@
       '<p>Un fichier CSV exporté de votre messagerie (Thunderbird, Outlook, Gmail…) ou d’Excel. Les personnes déjà présentes sont reconnues par leur e-mail : pas de doublon.</p>' +
       '<label class="imp-fichier"><input type="file" accept=".csv,text/csv" id="imp-f">' + ico('upload') + '<span>Choisir le fichier CSV</span></label>' +
       '<div id="imp-apercu"></div>' +
-      '<label class="case imp-accord"><input type="checkbox" id="imp-accord" checked> Ces personnes ont donné leur accord pour recevoir le menu de la semaine chaque lundi</label>' +
+      '<label class="case imp-accord"><input type="checkbox" id="imp-accord" checked> Ces personnes ont donné leur accord pour recevoir le menu de la semaine par e-mail</label>' +
       '<p class="aide petit">Une personne qui s’était désinscrite ou avait refusé n’est jamais réinscrite.</p>' +
       '<div class="modale-actions"><button type="button" class="btn btn-discret" data-r="0">Annuler</button><button type="button" class="btn btn-violet" id="imp-ok" disabled>Importer</button></div></div>';
     document.body.appendChild(d);
@@ -1840,7 +1840,7 @@
       api('clients-import', { contacts: contacts, accord: d.querySelector('#imp-accord').checked }).then(function (j) {
         CL = j.clients; LETTRE = j.lettre; fin(); majClients();
         var r = j.resultat;
-        toast(pluriel(r.ajoutes, 'client') + ' ajouté' + (r.ajoutes > 1 ? 's' : '') + (r.maj ? ', ' + r.maj + ' déjà connu' + (r.maj > 1 ? 's' : '') : '') + (r.inscrits ? ' · ' + r.inscrits + ' inscrit' + (r.inscrits > 1 ? 's' : '') + ' au menu du lundi' : '') + (r.refus ? ' · ' + r.refus + ' laissé' + (r.refus > 1 ? 's' : '') + ' désinscrit' + (r.refus > 1 ? 's' : '') : '') + '.');
+        toast(pluriel(r.ajoutes, 'client') + ' ajouté' + (r.ajoutes > 1 ? 's' : '') + (r.maj ? ', ' + r.maj + ' déjà connu' + (r.maj > 1 ? 's' : '') : '') + (r.inscrits ? ' · ' + r.inscrits + ' inscrit' + (r.inscrits > 1 ? 's' : '') + ' au menu par e-mail' : '') + (r.refus ? ' · ' + r.refus + ' laissé' + (r.refus > 1 ? 's' : '') + ' désinscrit' + (r.refus > 1 ? 's' : '') : '') + '.');
       }).catch(function (er) { b.disabled = false; b.textContent = 'Importer'; toast(er.message, true); });
     });
   }
@@ -2251,7 +2251,7 @@
       return;
     }
     if ('lettreAuto' in t.dataset) {
-      api('lettre-auto', { auto: t.checked }).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast(t.checked ? 'Envoi automatique activé : le menu partira chaque lundi matin.' : 'Envoi automatique désactivé.'); })
+      api('lettre-auto', { auto: t.checked }).then(function (j) { CL = j.clients; LETTRE = j.lettre; majClients(); toast(t.checked ? 'Envoi automatique activé : le menu de la semaine suivante partira chaque vendredi à 12 h.' : 'Envoi automatique désactivé.'); })
         .catch(function (er) { t.checked = !t.checked; toast(er.message, true); });
       return;
     }

@@ -2,7 +2,7 @@
 // Cartes traiteur et commandes spéciales : seules celles mises « En ligne » dans le back-office sont affichées
 $s['menus'] = array_values(array_filter($s['menus'], function ($c) { return $c['actif']; }));
 $surCommande = array_values(array_filter($s['commandes'], function ($c) { return $c['actif'] && $c['items']; }));
-lettre_auto($s);   // envoi du menu aux inscrits le lundi (si activé dans le back-office)
+lettre_auto($s);   // envoi du menu de la semaine suivante aux inscrits, le vendredi à partir de 12 h (si activé dans le back-office)
 sms_auto();        // rappel SMS des commandes non récupérées (si activé)
 stats_vue();
 $evts = evenements_visibles($s['evenements']);
@@ -353,10 +353,10 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
       <img class="lettre-sym" src="img/logo/symbole-violet.svg" alt="" width="164" height="244" loading="lazy">
       <div class="lettre-txt">
         <h2 id="lettre-titre">Le menu de la semaine dans votre boîte mail</h2>
-        <p>Chaque lundi, les plats du jour de la semaine. Rien d’autre, et désinscription en un clic.</p>
+        <p>Chaque vendredi midi, les plats du jour de la semaine suivante. Rien d’autre, et désinscription en un clic.</p>
       </div>
 <?php $lettreEtat = $_GET['lettre'] ?? ''; if ($lettreEtat === 'ok'): ?>
-      <p class="lettre-ok" role="status">C’est noté ! Vous recevrez le prochain menu lundi.</p>
+      <p class="lettre-ok" role="status">C’est noté ! Vous recevrez le prochain menu vendredi midi.</p>
 <?php else: ?>
       <form class="lettre-form" method="post" action="lettre" novalidate>
         <div class="lettre-champs">

@@ -46,10 +46,10 @@ if ($jeton === '' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] 
         if ($nouveau) {
             $lien = lien_desabo($nouveau);
             $html = '<div style="font:15px/1.6 Arial,sans-serif;color:#1d171b;max-width:520px">' . ($prenom !== '' ? '<p>Bonjour ' . h($prenom) . ',</p>' : '')
-                . '<p>C’est noté : vous recevrez <strong>le menu de la semaine</strong> d’Au Jardin Parmentier chaque lundi.</p><p>À très vite à la boutique,<br>L’équipe du Jardin Parmentier<br>09 50 17 39 62</p>'
+                . '<p>C’est noté : vous recevrez <strong>le menu de la semaine</strong> d’Au Jardin Parmentier chaque vendredi midi, pour la semaine suivante.</p><p>À très vite à la boutique,<br>L’équipe du Jardin Parmentier<br>09 50 17 39 62</p>'
                 . '<p style="font-size:12px;color:#8b8288">Ce n’était pas vous ? <a href="' . h($lien) . '" style="color:#8b8288">Se désinscrire</a></p></div>';
-            mail_envoyer($email, 'Bienvenue · le menu de la semaine, chaque lundi', $html,
-                ($prenom !== '' ? "Bonjour $prenom,\n\n" : '') . "C'est noté : vous recevrez le menu de la semaine d'Au Jardin Parmentier chaque lundi.\n\nSe désinscrire : $lien\n", $lien);
+            mail_envoyer($email, 'Bienvenue · le menu de la semaine, chaque vendredi midi', $html,
+                ($prenom !== '' ? "Bonjour $prenom,\n\n" : '') . "C'est noté : vous recevrez le menu de la semaine d'Au Jardin Parmentier chaque vendredi midi, pour la semaine suivante.\n\nSe désinscrire : $lien\n", $lien);
         }
     }
     if ($json) fin_json($err ? 400 : 200, $err ? ['erreur' => $err] : ['ok' => true]);

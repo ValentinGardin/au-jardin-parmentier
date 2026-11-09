@@ -156,16 +156,32 @@ function lettre_noter($envoi) {
 }
 function lettre_inscrits($clients) { return array_values(array_filter($clients, function ($c) { return $c['lettre']['statut'] === 'oui' && $c['email'] !== ''; })); }
 
-// Menu à envoyer cette semaine : celui qui commence entre lundi et dimanche (semaine en cours ou semaine suivante préparée)
-function lettre_semaine($d) {
-    $lundi = date('Y-m-d', strtotime('monday this week'));
-    $dimanche = date('Y-m-d', strtotime($lundi . ' +6 days'));
-    foreach (['semaine', 'semaine_suivante'] as $k) {
-        $s = $d[$k];
-        if ($s['du'] >= $lundi && $s['du'] <= $dimanche && !$s['conges']['actif'] && jours_visibles($s['jours'])) return $s;
+// Menu à envoyer : du vendredi au dimanche, celui de la semaine prochaine (préparé dans « Semaine suivante ») ;
+// du lundi au jeudi, celui de la semaine en cours (rattrapage s'il n'a pas pu partir le vendredi).
+// $prochaineSeulement : le week-end, ne jamais se rabattre sur la semaine en cours (envoi automatique).
+function lettre_semaine($d, $prochaineSeulement = false, $t = null) {
+    $t = $t ?? time();
+    $lundis = [date('Y-m-d', strtotime('monday this week', $t))];
+    if ((int)date('N', $t) >= 5) {
+        $lundi = date('Y-m-d', strtotime('next monday', $t));
+        $lundis = $prochaineSeulement ? [$lundi] : [$lundi, $lundis[0]];
+    }
+    foreach ($lundis as $lundi) {
+        $dimanche = date('Y-m-d', strtotime($lundi . ' +6 days'));
+        foreach (['semaine', 'semaine_suivante'] as $k) {
+            $s = $d[$k];
+            if ($s['du'] >= $lundi && $s['du'] <= $dimanche && !$s['conges']['actif'] && jours_visibles($s['jours'])) return $s;
+        }
     }
     return null;
 }
+// Moment de l'envoi automatique : du vendredi 12 h au dimanche (semaine suivante), et rattrapage du lundi au mercredi
+function lettre_auto_moment($t = null) {
+    $t = $t ?? time(); $n = (int)date('N', $t);
+    return !($n === 4 || ($n === 5 && (int)date('G', $t) < 12));
+}
+// « la semaine prochaine » ou « la semaine » selon la date d'envoi
+function lettre_quand($s) { return $s['du'] > date('Y-m-d', strtotime('sunday this week')) ? 'la semaine prochaine, ' : 'la semaine '; }
 // Le menu est-il complet (chaque jour a un plat ou est marqué fermé) ? Évite d'envoyer un menu à moitié saisi.
 function semaine_complete($s) {
     foreach ($s['jours'] as $j) if ($j['nom'] === '' && !$j['ferme']) return false;
@@ -198,7 +214,7 @@ function lettre_html($s, $prenom, $lienDesabo) {
         . '<body style="margin:0;background:#f2ece4;padding:24px 12px"><div style="max-width:560px;margin:0 auto;background:#fff;border-radius:18px;padding:28px 26px">'
         . '<p style="margin:0 0 4px;font:700 12px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#700954">Au Jardin Parmentier · plats du jour</p>'
         . '<h1 style="margin:0 0 4px;font:800 26px/1.15 Arial,sans-serif;color:#1d171b">' . $e($s['titre'] ?: 'Le menu de la semaine') . '</h1>'
-        . '<p style="margin:0 0 16px;font:15px Arial,sans-serif;color:#6b6369">' . ($prenom !== '' ? 'Bonjour ' . $e($prenom) . ', voici' : 'Voici') . ' nos plats de la semaine ' . $e(periode_fr($s['du'], $s['au'])) . '.</p>'
+        . '<p style="margin:0 0 16px;font:15px Arial,sans-serif;color:#6b6369">' . ($prenom !== '' ? 'Bonjour ' . $e($prenom) . ', voici' : 'Voici') . ' nos plats de ' . $e(lettre_quand($s) . periode_fr($s['du'], $s['au'])) . '.</p>'
         . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">' . $jours . '</table>' . $special
         . ($s['note'] !== '' ? '<p style="margin:18px 0 0;font:14px Arial,sans-serif;color:#6b6369">' . $e($s['note']) . '</p>' : '')
         . '<p style="margin:24px 0 0;text-align:center"><a href="tel:+33950173962" style="display:inline-block;background:#700954;color:#fff;text-decoration:none;font:700 15px Arial,sans-serif;padding:13px 22px;border-radius:12px">Réserver au 09 50 17 39 62</a></p>'
@@ -207,7 +223,7 @@ function lettre_html($s, $prenom, $lienDesabo) {
         . '<a href="' . $e($lienDesabo) . '" style="color:#8b8288">Se désinscrire en un clic</a></p></body></html>';
 }
 function lettre_texte($s, $prenom, $lienDesabo) {
-    $t = ($prenom !== '' ? "Bonjour $prenom,\n\n" : '') . 'Nos plats de la semaine ' . periode_fr($s['du'], $s['au']) . " :\n\n";
+    $t = ($prenom !== '' ? "Bonjour $prenom,\n\n" : '') . 'Nos plats de ' . lettre_quand($s) . periode_fr($s['du'], $s['au']) . " :\n\n";
     foreach (jours_visibles($s['jours']) as $j) $t .= $j['jour'] . ' : ' . ($j['ferme'] ? ($j['motif'] ?: 'Fermé') : $j['nom'] . ($j['desc'] !== '' ? ', ' . $j['desc'] : '') . ($j['prix'] !== '' ? ' (' . $j['prix'] . ')' : '')) . "\n";
     if ($s['special']['nom'] !== '') $t .= "\n" . $s['special']['nom'] . ($s['special']['prix'] !== '' ? ' · ' . $s['special']['prix'] : '') . "\n" . implode("\n", $s['special']['lignes']) . "\n";
     return $t . "\nRéservation au 09 50 17 39 62\nAu Jardin Parmentier, 9 place Parmentier, 80500 Montdidier\n\nSe désinscrire : $lienDesabo\n";
@@ -302,10 +318,12 @@ function lettre_envoyer($s, $mode) {
     return [$ok, $ok < count($l) ? (count($l) - $ok) . ' envoi(s) n’ont pas pu partir.' : null];
 }
 
-// Envoi automatique : à partir du lundi 8 h, dès qu'une page est vue, si le menu de la semaine est complet et pas encore envoyé
+// Envoi automatique : à partir du vendredi 12 h, le menu de la semaine suivante, dès qu'une page est vue (ou par la tâche
+// planifiée rappels.php), s'il est complet et pas encore envoyé. S'il n'était pas prêt, il part dès qu'il l'est, au plus tard
+// jusqu'au mercredi (rattrapage avec le menu de la semaine en cours). Rien le jeudi ni le vendredi matin.
 function lettre_auto($d) {
-    if ((int)date('N') > 3 || ((int)date('N') === 1 && (int)date('G') < 8) || !lettre_config()['auto']) return;
-    $s = lettre_semaine($d);
+    if (!lettre_auto_moment() || !lettre_config()['auto']) return;
+    $s = lettre_semaine($d, (int)date('N') >= 5);
     if (!$s || !semaine_complete($s) || lettre_deja($s['du'])) return;
     // on réserve l'envoi tout de suite (sous verrou) pour qu'il ne parte jamais deux fois
     $go = verrou(function () use ($s) {
@@ -538,7 +556,7 @@ function evt_simulation($e, $i) {
 }
 
 // ---- Import de contacts (bouton Importer de l'onglet Clients) ----
-// À appeler sous verrou(). Accord acquis : inscription au menu du lundi, jamais pour quelqu'un qui l'avait refusé.
+// À appeler sous verrou(). Accord acquis : inscription au menu par e-mail, jamais pour quelqu'un qui l'avait refusé.
 function clients_importer($contacts, $accord, $source) {
     $l = clients_charger(); $n = ['ajoutes' => 0, 'maj' => 0, 'ignores' => 0, 'refus' => 0, 'inscrits' => 0];
     foreach (array_slice($contacts, 0, 2000) as $x) {
