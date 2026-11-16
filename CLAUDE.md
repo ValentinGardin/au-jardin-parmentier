@@ -44,4 +44,6 @@ Playwright est préinstallé (`require('playwright')`). Penser à remettre les d
 - Nouvelles cartes traiteur et offres « Sur commande » : hors ligne par défaut (interrupteur « En ligne »).
 - Menu par e-mail (lettre) : envoi automatique le vendredi à partir de 12 h avec le menu de la semaine suivante
   (`lettre_auto`, `lettre_semaine`, `lettre_auto_moment`) ; rattrapage du lundi au mercredi ; rien le jeudi.
+- Connexion back-office : sessions 30 jours dans `data/sessions/`, « rester connecté » 60 jours (`data/souvenirs.json`,
+  empreintes seulement), jeton CSRF lié au compte (`csrf_pour`, clé `data/secret.key`), ping toutes les 10 min (`?api=ping`).
 - Garder le site responsive (téléphone d'abord, pas de défilement horizontal, champs à 16 px sur iPhone).

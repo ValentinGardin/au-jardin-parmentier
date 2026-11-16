@@ -29,3 +29,6 @@ livrables/
 
 # Outils de compilation
 outils/node_modules/
+data/sessions/
+data/souvenirs.json
+data/secret.key

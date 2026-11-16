@@ -868,6 +868,14 @@
   }
 
   // =============== Utilisateurs / Mon compte ===============
+  // Garde la session active tant que le back-office est ouvert (toutes les 10 minutes, et au retour sur l'onglet)
+  function ping() {
+    fetch(E.api + '?api=ping', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+      if (r.status === 401) toast('Vous avez été déconnecté : rechargez la page pour vous reconnecter.', true);
+    }).catch(function () {});
+  }
+  setInterval(ping, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) ping(); });
   function api(action, data) {
     return fetch(E.api + '?api=' + action, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': E.csrf }, body: JSON.stringify(data) })
       .then(function (r) { return r.json().catch(function () { return { erreur: 'Réponse inattendue du serveur.' }; }); })

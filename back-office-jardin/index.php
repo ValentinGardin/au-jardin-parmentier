@@ -8,15 +8,59 @@ require dirname(__DIR__) . '/comptes.php';
 require dirname(__DIR__) . '/google.php';
 require dirname(__DIR__) . '/clients.php';
 require dirname(__DIR__) . '/sms.php';
+// Connexion longue durée : la session est gardée 30 jours dans data/sessions (le dossier commun de l'hébergeur est vidé
+// au bout de ~24 min sans activité), et un jeton « rester connecté » (60 jours) reconnecte si elle est perdue malgré tout.
+const DUREE_SESSION = 30 * 86400, DUREE_SOUVENIR = 60 * 86400, SOUVENIRS = DATA . '/souvenirs.json';
+if (!is_dir(DATA . '/sessions')) @mkdir(DATA . '/sessions', 0700);
+if (is_dir(DATA . '/sessions') && is_writable(DATA . '/sessions')) session_save_path(DATA . '/sessions');
+ini_set('session.gc_maxlifetime', (string)DUREE_SESSION);
+ini_set('session.gc_probability', '1'); ini_set('session.gc_divisor', '200');
 session_name('jp_admin');
-session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
+session_set_cookie_params(['lifetime' => DUREE_SESSION, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
+// Jeton anti-falsification lié au compte (le même d'une session à l'autre : une reconnexion automatique ne casse pas la page ouverte)
+function csrf_pour($uid) {
+    $f = DATA . '/secret.key';
+    $k = is_file($f) ? trim((string)file_get_contents($f)) : '';
+    if (strlen($k) < 32) { $k = bin2hex(random_bytes(32)); @file_put_contents($f, $k, LOCK_EX); @chmod($f, 0600); }
+    return hash_hmac('sha256', 'csrf|' . $uid, $k);
+}
+// « Rester connecté » : jeton aléatoire dans un cookie ; seul son empreinte est gardée (data/souvenirs.json)
+function souvenir_cookie($valeur, $fin) {
+    setcookie('jp_souvenir', $valeur, ['expires' => $fin, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true, 'samesite' => 'Lax']);
+}
+function souvenirs_garder($f) { return array_values(array_filter(liste(lire_json(SOUVENIRS)), $f)); }
+function souvenir_creer($uid) {
+    $jeton = bin2hex(random_bytes(32));
+    verrou(function () use ($uid, $jeton) {
+        $l = souvenirs_garder(function ($x) { return ($x['fin'] ?? 0) > time(); });
+        $l[] = ['h' => hash('sha256', $jeton), 'uid' => $uid, 'fin' => time() + DUREE_SOUVENIR];
+        json_save(SOUVENIRS, array_slice($l, -50));
+    });
+    souvenir_cookie($jeton, time() + DUREE_SOUVENIR);
+}
+function souvenir_oublier() {
+    $j = (string)($_COOKIE['jp_souvenir'] ?? '');
+    if ($j !== '') verrou(function () use ($j) { json_save(SOUVENIRS, souvenirs_garder(function ($x) use ($j) { return !hash_equals($x['h'] ?? '', hash('sha256', $j)); })); });
+    souvenir_cookie('', time() - 3600);
+}
+function souvenir_compte() {
+    $j = (string)($_COOKIE['jp_souvenir'] ?? '');
+    if (!preg_match('/^[a-f0-9]{64}$/', $j)) return null;
+    foreach (liste(lire_json(SOUVENIRS)) as $x) if (hash_equals($x['h'] ?? '', hash('sha256', $j)) && ($x['fin'] ?? 0) > time()) return $x['uid'];
+    return null;
+}
 header('X-Frame-Options: DENY');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex, nofollow');
 
+// session perdue mais « rester connecté » valable : on reconnecte sans rien demander
+if (empty($_SESSION['uid']) && ($uidSouvenir = souvenir_compte()) && compte_par_id($uidSouvenir)) {
+    session_regenerate_id(true);
+    $_SESSION['uid'] = $uidSouvenir; $_SESSION['csrf'] = csrf_pour($uidSouvenir);
+}
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(16));
 $comptes = comptes_charger();
 $moi = !empty($_SESSION['uid']) ? compte_par_id($_SESSION['uid']) : null;
@@ -33,10 +77,11 @@ function compte_reinit($jeton) {
 $estAdmin = $logged && $moi['role'] === 'admin';
 $err = '';
 
-function ouvrir_session($u) {
+function ouvrir_session($u, $souvenir = true) {
     session_regenerate_id(true);
     $_SESSION['uid'] = $u['id'];
-    $_SESSION['csrf'] = bin2hex(random_bytes(16));
+    $_SESSION['csrf'] = csrf_pour($u['id']);
+    if ($souvenir) souvenir_creer($u['id']);
     $l = comptes_charger();
     foreach ($l as &$x) if ($x['id'] === $u['id']) $x['derniere'] = date('Y-m-d H:i');
     comptes_enregistrer($l);
@@ -46,7 +91,8 @@ function repondre($code, $data) { http_response_code($code); header('Content-Typ
 function api_garde($admin = false) {
     global $logged, $estAdmin, $moi;
     if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page pour vous reconnecter (vos modifications non enregistrées seront perdues).']);
-    if (!hash_equals($_SESSION['csrf'], (string)($_SERVER['HTTP_X_CSRF'] ?? ''))) repondre(403, ['erreur' => 'Session expirée : rechargez la page.']);
+    $x = (string)($_SERVER['HTTP_X_CSRF'] ?? '');
+    if (!hash_equals($_SESSION['csrf'], $x) && !hash_equals(csrf_pour($moi['id']), $x)) repondre(403, ['erreur' => 'Session expirée : rechargez la page.']);
     if ($moi['role'] === 'visiteur') repondre(403, ['erreur' => 'Mode visite : les modifications ne sont pas enregistrées.']);
     if ($admin && !$estAdmin) repondre(403, ['erreur' => 'Réservé aux administrateurs.']);
 }
@@ -116,6 +162,8 @@ if ($api !== '') {
             if ($it['epuise'] && empty($ancien[$i]['items'][$k]['epuise'])) epuise_noter($e['date'] ?: date('Y-m-d'), $it['nom']);
         repondre(200, ['ok' => true, 'data' => $d[$part]]);
     }
+    // signal envoyé par le back-office ouvert, toutes les 10 minutes : garde la session active
+    if ($api === 'ping') repondre($logged ? 200 : 401, ['ok' => $logged]);
     if ($api === 'stats') {
         if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
         repondre(200, stats_synthese((int)($_GET['jours'] ?? 30)) + ['ventes' => ventes_synthese((int)($_GET['jours'] ?? 30))]);
@@ -605,7 +653,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $err = 'Trop de tentatives. Réessayez dans 15 minutes.';
         } else {
             $u = compte_par_login($_POST['login'] ?? '');
-            if ($u && password_verify((string)($_POST['pwd'] ?? ''), $u['hash'])) { tentatives(false); ouvrir_session($u); header('Location: ./'); exit; }
+            if ($u && password_verify((string)($_POST['pwd'] ?? ''), $u['hash'])) { tentatives(false); ouvrir_session($u, !empty($_POST['souvenir'])); header('Location: ./'); exit; }
             usleep(700000); tentatives(true);
             $err = 'Identifiant, e-mail ou mot de passe incorrect.';
         }
@@ -637,11 +685,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($l as &$x) if ($x['id'] === $u['id']) { $x['hash'] = password_hash((string)$_POST['pwd'], PASSWORD_DEFAULT); unset($x['reinit'], $x['reinit_fin']); }
             unset($x);
             comptes_enregistrer($l);
+            // nouveau mot de passe : les « rester connecté » de ce compte sont annulés sur tous les appareils
+            $uidR = $u['id']; verrou(function () use ($uidR) { json_save(SOUVENIRS, souvenirs_garder(function ($x) use ($uidR) { return ($x['uid'] ?? '') !== $uidR; })); });
             tentatives(false);
             header('Location: ./?change=1'); exit;
         }
     } elseif ($action === 'logout') {
-        $_SESSION = []; session_destroy(); header('Location: ./'); exit;
+        souvenir_oublier(); $_SESSION = []; session_destroy(); header('Location: ./'); exit;
     }
 }
 
@@ -709,6 +759,7 @@ if ($logged) {
     <label class="champ"><span>Identifiant ou adresse e-mail</span><input name="login" required autocomplete="username" autofocus value="<?= h($_POST['login'] ?? '') ?>"></label>
     <label class="champ"><span>Mot de passe</span>
       <span class="mdp-zone"><input type="password" name="pwd" required autocomplete="current-password"><button type="button" class="voir-mdp" aria-label="Afficher le mot de passe" onclick="var i=this.previousElementSibling;i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Afficher':'Masquer'">Afficher</button></span></label>
+    <label class="case souvenir"><input type="checkbox" name="souvenir" value="1" checked> Rester connecté sur cet appareil (60 jours)</label>
     <button class="btn btn-violet btn-plein">Se connecter</button>
     <p class="aide petit-aide"><a href="<?= ESPACE ?>/?oubli">Mot de passe oublié ?</a></p>
 <?php endif; ?>
