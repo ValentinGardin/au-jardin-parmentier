@@ -2151,13 +2151,15 @@
 
   // =============== Revenir en arrière (annuler un enregistrement fait par erreur) ===============
   // Avant chaque enregistrement, le serveur garde une copie du site : on peut remettre une partie (menu, cartes…) comme avant.
-  function restaurer(part, f, message) {
+  // retablir : on remet ce qu'on venait d'annuler ; c'est la fin (pas de nouveau bouton, pour ne pas tourner en rond)
+  function restaurer(part, f, retablir) {
     if (VISITE) return toast('Mode visite : rien n’est modifié.');
-    return api('restaurer', { part: part, f: f }).then(function (j) {
+    return api('restaurer', { part: part, f: f, retablir: !!retablir }).then(function (j) {
       site[part] = j.data; saved[part] = clone(j.data);
       if (part === SEM) specialOuvert = aSpecial(j.data);
       render(true);
-      toastAction(message || 'C’est fait : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont revenus' : 'est revenu') + ' comme avant.', 'Rétablir', function () { restaurer(part, j.copie, 'Modification rétablie.'); });
+      if (retablir) return toast('C’est rétabli : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont' : 'est') + ' comme avant l’annulation.');
+      toastAction('Annulé : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont revenus' : 'est revenu') + ' comme avant.', 'Rétablir', function () { restaurer(part, j.copie, true); });
     }).catch(function (e) { toast(e.message, true); });
   }
   function fenetreVersions() {
@@ -2170,8 +2172,8 @@
         '<p>Choisissez l’enregistrement à annuler : ' + esc(NOMS[part]) + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'redeviennent' : 'redevient') + ' tel' + (NOMS[part].indexOf('les ') === 0 ? 's' : '') + ' qu’avant cet enregistrement (et ceux qui ont suivi). Les autres onglets ne changent pas.</p>' +
         (sale(part) ? '<p class="alerte">Vos modifications pas encore enregistrées sur cet onglet seront perdues.</p>' : '') +
         (l.length ? '<ul class="versions-liste">' + l.map(function (v, k) {
-          return '<li><span><b>' + (k === 0 ? 'Dernier enregistrement' : 'Enregistrement') + '</b><small>' + esc(quand(v.date)) + (v.qui ? ' · ' + esc(v.qui) : '') + '</small></span>' +
-            '<button type="button" class="btn ' + (k === 0 ? 'btn-violet' : 'btn-ligne') + '" data-v="' + esc(v.f) + '">' + ico('annuler') + 'Annuler celui-ci</button></li>';
+          return '<li><span><b>' + esc(v.quoi || 'Enregistrement') + (k === 0 ? ' <em>le plus récent</em>' : '') + '</b><small>' + esc(quand(v.date)) + (v.qui ? ' · ' + esc(v.qui) : '') + '</small></span>' +
+            '<button type="button" class="btn ' + (k === 0 ? 'btn-violet' : 'btn-ligne') + '" data-v="' + esc(v.f) + '">' + ico('annuler') + 'Revenir avant</button></li>';
         }).join('') + '</ul>' : '<p class="vide">Aucun enregistrement récent à annuler pour cet onglet.</p>') +
         '<div class="modale-actions"><button type="button" class="btn btn-discret" data-v="">Fermer</button></div></div>';
       document.body.appendChild(d);

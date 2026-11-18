@@ -101,7 +101,7 @@ function entree() { $in = json_decode((string)file_get_contents('php://input'), 
 // Copie de sécurité avant chaque enregistrement (les 30 dernières sont gardées dans data/sauvegardes/)
 // Le journal (data/sauvegardes/journal.json) note pour chaque copie la partie enregistrée et par qui : bouton « Revenir en arrière ».
 const JOURNAL = DATA . '/sauvegardes/journal.json';
-function sauvegarder($part = '') {
+function sauvegarder($part = '', $quoi = 'Enregistrement') {
     global $moi;
     $src = DATA . '/site.json';
     if (!is_file($src)) return '';
@@ -113,7 +113,7 @@ function sauvegarder($part = '') {
     sort($l);
     foreach (array_slice($l, 0, max(0, count($l) - 60)) as $f) @unlink($f);
     $j = array_values(array_filter(liste(lire_json(JOURNAL)), function ($e) use ($dir) { return is_file($dir . '/' . ($e['f'] ?? '')); }));
-    $j[] = ['f' => $nom, 'date' => date('Y-m-d H:i'), 'part' => $part, 'qui' => $moi ? ($moi['nom'] ?: $moi['identifiant']) : ''];
+    $j[] = ['f' => $nom, 'date' => date('Y-m-d H:i'), 'part' => $part, 'quoi' => $quoi, 'qui' => $moi ? ($moi['nom'] ?: $moi['identifiant']) : ''];
     json_save(JOURNAL, $j);
     return $nom;
 }
@@ -184,9 +184,10 @@ if ($api !== '') {
         if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'commandes', 'mots', 'avis', 'faq'], true) || !preg_match('/^site-[\w-]+\.json$/', $f) || !is_file(DATA . '/sauvegardes/' . $f)) repondre(400, ['erreur' => 'Cette version n’existe plus.']);
         $b = json_decode((string)file_get_contents(DATA . '/sauvegardes/' . $f), true);
         if (!is_array($b)) repondre(400, ['erreur' => 'Cette version est illisible.']);
-        $res = verrou(function () use ($b, $part) {
+        $quoi = !empty($in['retablir']) ? 'Rétablissement' : 'Retour en arrière';
+        $res = verrou(function () use ($b, $part, $quoi) {
             $d = site_load();
-            $copie = sauvegarder($part);   // le retour en arrière peut lui-même être annulé
+            $copie = sauvegarder($part, $quoi);   // le retour en arrière peut lui-même être annulé (une fois : « Rétablir »)
             $d[$part] = site_clean($b)[$part];
             if (!json_save(DATA . '/site.json', site_clean($d))) return null;
             return [site_load()[$part], $copie];
@@ -528,7 +529,7 @@ if ($api !== '') {
                 if (!isset($d['evenements'][$e]['items'][$k])) return null;
                 $d['evenements'][$e]['items'][$k]['epuise'] = $v;
                 if ($v) epuise_noter($date, $d['evenements'][$e]['items'][$k]['nom']);
-                sauvegarder('evenements'); json_save(DATA . '/site.json', site_clean($d));
+                sauvegarder('evenements', 'Épuisé / disponible'); json_save(DATA . '/site.json', site_clean($d));
                 return ['evenements', site_load()['evenements']];
             }
             foreach (['semaine', 'semaine_suivante'] as $k) {
@@ -538,13 +539,13 @@ if ($api !== '') {
                     if ($s['special']['nom'] === '') continue;
                     $d[$k]['special']['epuise'] = $v;
                     if ($v) epuise_noter($date, $s['special']['nom']);
-                    sauvegarder($k); json_save(DATA . '/site.json', site_clean($d));
+                    sauvegarder($k, 'Épuisé / disponible'); json_save(DATA . '/site.json', site_clean($d));
                     return [$k, site_load()[$k]];
                 }
                 foreach ($d[$k]['jours'] as $i => $j) if (norm($j['jour']) === norm($nom) && $j['nom'] !== '') {
                     $d[$k]['jours'][$i]['epuise'] = !empty($in['valeur']);
                     if (!empty($in['valeur'])) epuise_noter($date, $j['nom']);
-                    sauvegarder($k);
+                    sauvegarder($k, 'Épuisé / disponible');
                     json_save(DATA . '/site.json', site_clean($d));
                     return [$k, site_load()[$k]];
                 }

@@ -1168,3 +1168,8 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .versions-liste .btn{flex:none;font-size:.82rem;padding:.45rem .7rem}
 @media (max-width:560px){.versions-liste li{flex-direction:column;align-items:stretch}.toast-action{flex-wrap:wrap}}
 #retour-arriere[hidden]{display:none!important}
+/* Messages avec bouton (Annuler / Rétablir) : aux couleurs du Jardin */
+.toast.toast-action{background:var(--violet);color:#fff}
+.toast-action button{background:#fff;color:var(--violet)}
+.toast-action button:hover{background:var(--violet-pale)}
+.versions-liste b em{font-style:normal;font-weight:600;font-size:.7rem;color:var(--violet);background:var(--violet-pale);padding:.1rem .45rem;border-radius:99px;margin-left:.35rem}
