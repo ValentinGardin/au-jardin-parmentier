@@ -41,6 +41,8 @@ Playwright est préinstallé (`require('playwright')`). Penser à remettre les d
 - Ne jamais demander de mot de passe ou de clé dans la conversation : la clé Google, le SMTP et le SMS se saisissent dans le back-office.
 - Événements : une catégorie avec un prix = formule tout compris (le contenu n'est pas commandable seul) ;
   formats avec unité (unité, kg, 500 g, portion, personne ; kg et 500 g = le client choisit un poids par 100 g).
+- Menu de la semaine : chaque jour = plat du jour, « Pas de plat » (`ferme` + `ouvert` : titre/message, pas réservable, bouton Appeler,
+  `jour_motif()`) ou « Fermé » (`ferme`).
 - Nouvelles cartes traiteur et offres « Sur commande » : hors ligne par défaut (interrupteur « En ligne »).
 - Menu par e-mail (lettre) : envoi automatique le vendredi à partir de 12 h avec le menu de la semaine suivante
   (`lettre_auto`, `lettre_semaine`, `lettre_auto_moment`) ; rattrapage du lundi au mercredi ; rien le jeudi.

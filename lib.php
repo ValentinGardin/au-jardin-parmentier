@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.74 · 18 novembre 2026';
+const VERSION = '1.75 · 18 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -80,6 +80,8 @@ function semaine_clean($s) {
         // « ferme » : jour férié ou fermeture exceptionnelle, avec un titre (motif) et un message à la place du plat
         $j = ['jour' => txt($j['jour'] ?? '', 30), 'nom' => txt($j['nom'] ?? '', 140), 'desc' => txt($j['desc'] ?? '', 200), 'prix' => txt($j['prix'] ?? '', 20),
               'ferme' => !empty($j['ferme']), 'motif' => txt($j['motif'] ?? '', 60), 'message' => txt($j['message'] ?? '', 200),
+              // « ouvert » (avec ferme) : pas de plat du jour mais boutique ouverte (ex. retrait des commandes de Noël) : pas réservable en ligne, bouton Appeler
+              'ouvert' => !empty($j['ferme']) && !empty($j['ouvert']),
               'epuise' => !empty($j['epuise'])];   // plus disponible (tout est parti) : plus réservable
         if ($j['jour'] !== '' || $j['nom'] !== '') $jours[] = $j;
     }
@@ -109,6 +111,8 @@ function semaine_suivante_clean($s) {
 function semaine_remplie($s) {
     return $s['conges']['actif'] || (bool)jours_visibles($s['jours']);
 }
+// Titre affiché d'un jour sans plat
+function jour_motif($j) { return $j['motif'] !== '' ? $j['motif'] : (!empty($j['ouvert']) ? 'Pas de plat du jour' : 'Fermé'); }
 function jours_visibles($jours) { return array_values(array_filter($jours, function ($j) { return $j['nom'] !== '' || $j['ferme']; })); }
 // Couleurs suggérées pour les événements (toute autre couleur peut être choisie dans le back-office)
 const THEMES = ['violet' => '#700954', 'vin' => '#5e1426', 'sapin' => '#1c4634', 'printemps' => '#4f7a2b', 'or' => '#2a2118'];

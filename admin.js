@@ -131,16 +131,17 @@
     var s = site[SEM], st = statutSemaine(s), n = s.jours.length;
     var jours = s.jours.map(function (j, i) {
       var p = SEM + '.jours.' + i;
-      return '<div class="jour-ligne' + (j.ferme ? ' est-ferme' : '') + '"><div class="jour-col">' +
+      return '<div class="jour-ligne' + (j.ferme ? (j.ouvert ? ' est-info' : ' est-ferme') : '') + '"><div class="jour-col">' +
         '<select data-p="' + p + '.jour" aria-label="Jour">' + JOURS.map(function (d) { return '<option' + (d === j.jour ? ' selected' : '') + '>' + d + '</option>'; }).join('') +
         (JOURS.indexOf(j.jour) < 0 ? '<option selected>' + esc(j.jour) + '</option>' : '') + '</select>' +
-        '<label class="interrupteur petit" title="Jour férié, fermeture exceptionnelle…"><input type="checkbox" data-p="' + p + '.ferme"' + (j.ferme ? ' checked' : '') + '><span></span>Fermé</label>' +
+        '<select class="jour-etat" data-jour="' + p + '" aria-label="Ce jour-là" title="Plat du jour, pas de plat (boutique ouverte), ou fermé">' +
+          [['', 'Plat du jour'], ['info', 'Pas de plat'], ['ferme', 'Fermé']].map(function (o) { var v = j.ferme ? (j.ouvert ? 'info' : 'ferme') : ''; return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
         (!j.ferme ? '<label class="interrupteur petit epuise" title="Tout est parti : le plat reste affiché mais ne peut plus être réservé"><input type="checkbox" data-p="' + p + '.epuise"' + (j.epuise ? ' checked' : '') + '><span></span>Épuisé</label>' : '') + '</div>' +
         (j.ferme
           ? '<div class="jour-champs">' +
-              '<input class="fort" data-p="' + p + '.motif" value="' + esc(j.motif) + '" placeholder="Titre, ex. Férié, Fermeture exceptionnelle" aria-label="Titre de la fermeture">' +
-              '<input data-p="' + p + '.message" value="' + esc(j.message) + '" placeholder="Message, ex. Bon 11 novembre à tous !" aria-label="Message">' +
-            '</div><span class="badge-ferme">Fermé</span>'
+              '<input class="fort" data-p="' + p + '.motif" value="' + esc(j.motif) + '" placeholder="' + (j.ouvert ? 'Titre, ex. Retrait des commandes de Noël (sinon « Pas de plat du jour »)' : 'Titre, ex. Férié, Fermeture exceptionnelle') + '" aria-label="Titre">' +
+              '<input data-p="' + p + '.message" value="' + esc(j.message) + '" placeholder="' + (j.ouvert ? 'Message, ex. La boutique est ouverte, appelez-nous pour toute demande' : 'Message, ex. Bon 11 novembre à tous !') + '" aria-label="Message">' +
+            '</div>' + (j.ouvert ? '<span class="badge-ferme badge-tel" title="Sur le site : pas de réservation en ligne ce jour-là, un bouton Appeler à la place">' + ico('tel') + 'Appeler</span>' : '<span class="badge-ferme">Fermé</span>')
           : '<div class="jour-champs">' +
               '<input class="fort" data-p="' + p + '.nom" value="' + esc(j.nom) + '" placeholder="Plat, ex. Waterzooï de volaille" aria-label="Plat du ' + esc(j.jour) + '">' +
               '<input data-p="' + p + '.desc" value="' + esc(j.desc) + '" placeholder="Accompagnement, ex. légumes et riz pilaf" aria-label="Accompagnement">' +
@@ -228,7 +229,7 @@
     if (s.conges.actif) return tete_ + '<div class="af-conges"><strong>' + esc(s.conges.titre || 'Fermeture pour congés') + '</strong><span>' + esc(s.conges.message) + '</span></div>';
     return tete_ +
       s.jours.map(function (j) {
-        if (j.ferme) return '<div class="af-jour af-ferme"><b>' + esc(j.jour) + '</b><span><strong>' + esc(j.motif || 'Fermé') + '</strong>' + esc(j.message) + '</span><em>Fermé</em></div>';
+        if (j.ferme) return '<div class="af-jour af-ferme"><b>' + esc(j.jour) + '</b><span><strong>' + esc(j.motif || (j.ouvert ? 'Pas de plat du jour' : 'Fermé')) + '</strong>' + esc(j.message) + '</span><em>' + (j.ouvert ? 'Appeler' : 'Fermé') + '</em></div>';
         return '<div class="af-jour"><b>' + esc(j.jour) + '</b><span><strong>' + (esc(j.nom) || '<i>Plat à saisir</i>') + '</strong>' + esc(j.desc) + '</span><em>' + esc(j.prix) + '</em></div>';
       }).join('') +
       (specialOuvert && (sp.nom || sp.lignes.join('')) ? '<div class="af-special"><b>' + esc(sp.titre) + '</b><strong>' + esc(sp.nom) + (sp.prix ? ' · ' + esc(sp.prix) : '') + '</strong>' +
@@ -2325,6 +2326,8 @@
     var t = e.target;
     if (t.id === 'cl-tri') { clTri = t.value; ecrire('clTri', clTri); majClientsListe(); return; }
     if (t.id === 'r-cal') { if (t.value) { R.date = t.value; render(true); } return; }
+    // état d'un jour du menu : plat du jour / pas de plat du jour (boutique ouverte) / fermé
+    if (t.classList.contains('jour-etat')) { set(t.dataset.jour + '.ferme', t.value !== ''); set(t.dataset.jour + '.ouvert', t.value === 'info'); apresSaisie(); render(true); return; }
     // unité du prix d'un format (à l'unité, au kilo, les 500 g, la portion, par personne)
     if (t.classList.contains('var-unite')) { set(t.dataset.p, t.value); set(t.dataset.p.replace(/unite$/, 'kg'), t.value === 'kg' || t.value === '500g'); apresSaisie(); render(true); return; }
     if (t.dataset.sms) {

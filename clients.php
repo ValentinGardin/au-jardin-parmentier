@@ -253,7 +253,7 @@ function lettre_html($s, $prenom, $lienDesabo) {
     foreach (jours_visibles($s['jours']) as $j) {
         $jours .= '<tr><td style="padding:12px 0;border-bottom:1px solid #eee5dc;width:92px;vertical-align:top;font:700 13px Arial,sans-serif;color:#700954;text-transform:uppercase;letter-spacing:.06em">' . $e($j['jour']) . '</td>'
             . '<td style="padding:12px 0;border-bottom:1px solid #eee5dc;vertical-align:top;font:15px/1.4 Arial,sans-serif;color:#1d171b">'
-            . ($j['ferme'] ? '<strong>' . $e($j['motif'] ?: 'Fermé') . '</strong>' . ($j['message'] !== '' ? '<br><span style="color:#6b6369">' . $e($j['message']) . '</span>' : '')
+            . ($j['ferme'] ? '<strong>' . $e(jour_motif($j)) . '</strong>' . ($j['message'] !== '' ? '<br><span style="color:#6b6369">' . $e($j['message']) . '</span>' : '')
                            : '<strong>' . $e($j['nom']) . '</strong>' . ($j['desc'] !== '' ? '<br><span style="color:#6b6369">' . $e($j['desc']) . '</span>' : ''))
             . '</td><td style="padding:12px 0 12px 10px;border-bottom:1px solid #eee5dc;vertical-align:top;text-align:right;white-space:nowrap;font:700 15px Arial,sans-serif;color:#700954">' . ($j['ferme'] ? '' : $e($j['prix'])) . '</td></tr>';
     }
@@ -276,7 +276,7 @@ function lettre_html($s, $prenom, $lienDesabo) {
 }
 function lettre_texte($s, $prenom, $lienDesabo) {
     $t = ($prenom !== '' ? "Bonjour $prenom,\n\n" : '') . 'Nos plats de ' . lettre_quand($s) . periode_fr($s['du'], $s['au']) . " :\n\n";
-    foreach (jours_visibles($s['jours']) as $j) $t .= $j['jour'] . ' : ' . ($j['ferme'] ? ($j['motif'] ?: 'Fermé') : $j['nom'] . ($j['desc'] !== '' ? ', ' . $j['desc'] : '') . ($j['prix'] !== '' ? ' (' . $j['prix'] . ')' : '')) . "\n";
+    foreach (jours_visibles($s['jours']) as $j) $t .= $j['jour'] . ' : ' . ($j['ferme'] ? jour_motif($j) : $j['nom'] . ($j['desc'] !== '' ? ', ' . $j['desc'] : '') . ($j['prix'] !== '' ? ' (' . $j['prix'] . ')' : '')) . "\n";
     if ($s['special']['nom'] !== '') $t .= "\n" . $s['special']['nom'] . ($s['special']['prix'] !== '' ? ' · ' . $s['special']['prix'] : '') . "\n" . implode("\n", $s['special']['lignes']) . "\n";
     return $t . "\nRéservation au 09 50 17 39 62\nAu Jardin Parmentier, 9 place Parmentier, 80500 Montdidier\n\nSe désinscrire : $lienDesabo\n";
 }

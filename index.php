@@ -303,11 +303,13 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
     <div class="semaine-in<?= $semW['special']['nom'] !== '' || $semW['special']['lignes'] ? ' avec-special' : '' ?>">
       <ol class="jours">
 <?php foreach ($semW['jours'] as $i => $j): $estAuj = $enCoursW && norm($j['jour']) === norm($auj); ?>
-        <li class="jour reveal<?= $estAuj ? ' auj' : '' ?><?= $j['ferme'] ? ' ferme' : '' ?>" style="--d:<?= $i ?>">
+        <li class="jour reveal<?= $estAuj ? ' auj' : '' ?><?= $j['ferme'] ? ($j['ouvert'] ? ' sans-plat' : ' ferme') : '' ?>" style="--d:<?= $i ?>">
           <span class="jour-nom"><?= h($j['jour']) ?><?php if ($estAuj): ?> <em>Aujourd’hui</em><?php endif; ?></span>
 <?php if ($j['ferme']): ?>
-          <span class="jour-plat"><strong><?= h($j['motif'] ?: 'Fermé') ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span>
-          <span class="jour-px"><span class="badge-ferme">Fermé</span></span>
+          <span class="jour-plat"><strong><?= h(jour_motif($j)) ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span>
+<?php if ($j['ouvert']): ?>          <span class="jour-px"><a class="jour-resa tel" href="<?= $telHref ?>" aria-label="Appeler la boutique au <?= $tel ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Appeler</a></span>
+<?php else: ?>          <span class="jour-px"><span class="badge-ferme">Fermé</span></span>
+<?php endif; ?>
 <?php else: ?>
 <?php $dj = $dateDuJour($semW, $j['jour']); ?>
           <span class="jour-plat"><strong><?= h($j['nom']) ?><?php if ($j['epuise']): ?> <em class="etiq etiq-epuise">Épuisé</em><?php elseif ($dj >= date('Y-m-d') && ($parts[$dj] ?? 0) >= FORTE_DEMANDE): ?> <em class="etiq etiq-forte">Forte demande</em><?php endif; ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span>

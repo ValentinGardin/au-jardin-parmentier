@@ -1147,3 +1147,11 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .fr-prod-px{font-weight:700;font-size:.88rem;white-space:nowrap}
 .fr-prod .qte output{min-width:1.8rem;text-align:center;font-weight:700}
 .fr-prod .qte button:disabled{opacity:.35}
+/* Jour « pas de plat du jour » (boutique ouverte) */
+.jour-ligne.est-info{background:var(--violet-pale)}
+.jour-etat{font-size:.82rem;padding:.35rem .4rem;margin-top:.3rem}
+.badge-ferme.badge-tel{display:inline-flex;align-items:center;gap:.3rem;color:var(--violet);border-color:var(--violet)}
+.badge-ferme.badge-tel .ico{width:13px;height:13px}
+.jour-col .jour-etat{text-transform:none;letter-spacing:0;font-weight:600;font-size:.76rem;color:var(--gris);background-color:var(--blanc);width:100%}
+.est-info .jour-col .jour-etat{color:var(--violet)}
+.est-ferme .jour-col .jour-etat{color:var(--gris)}

@@ -48,6 +48,7 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   .jour em{font:700 6mm "Baloo 2",sans-serif;font-style:normal;color:var(--violet);white-space:nowrap}
   .jour.ferme b{color:var(--gris)}
   .jour.ferme strong{color:var(--violet)}
+  .jour em.badge.tel{color:var(--violet);border-color:var(--violet)}
   .jour em.badge{font:600 3.2mm Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--gris);border:.3mm solid var(--gris);border-radius:5mm;padding:1.2mm 3mm}
   .conges{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;margin:8mm 0;padding:14mm 12mm;border-radius:6mm;background:#f6ecf2}
   .conges h2{margin:0 0 5mm;font:800 14mm/1.05 "Baloo 2",sans-serif;color:var(--violet)}
@@ -84,7 +85,7 @@ $mots = preg_split('/\s+/u', trim($sem['titre']), 2);
   <section class="jours">
 <?php foreach ($sem['jours'] as $j): ?>
 <?php if ($j['ferme']): ?>
-    <div class="jour ferme"><b><?= h($j['jour']) ?></b><span><strong><?= h($j['motif'] ?: 'Fermé') ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span><em class="badge">Fermé</em></div>
+    <div class="jour ferme"><b><?= h($j['jour']) ?></b><span><strong><?= h(jour_motif($j)) ?></strong><?php if ($j['message'] !== ''): ?><span><?= h($j['message']) ?></span><?php endif; ?></span><?php if ($j['ouvert']): ?><em class="badge tel">09 50 17 39 62</em><?php else: ?><em class="badge">Fermé</em><?php endif; ?></div>
 <?php else: ?>
     <div class="jour"><b><?= h($j['jour']) ?></b><span><strong><?= h($j['nom']) ?></strong><?php if ($j['desc'] !== ''): ?><span><?= h($j['desc']) ?></span><?php endif; ?></span><em><?= h($j['prix']) ?></em></div>
 <?php endif; endforeach; ?>

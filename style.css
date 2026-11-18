@@ -787,3 +787,8 @@ a.hm-ligne:hover{background:var(--fond);color:var(--encre)}
 /* Réservation : boutons +/− réactifs au doigt (pas de zoom au double appui), défilement fluide de la fenêtre */
 .rs-qte button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .rs-corps{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* Jour sans plat du jour mais boutique ouverte (ex. retrait des commandes de Noël) : bouton Appeler */
+.jour.sans-plat{background:var(--violet-pale,#f6ecf2)}
+.jour.sans-plat .jour-plat strong{color:var(--violet)}
+.jour.sans-plat .jour-resa.tel{display:inline-flex;align-items:center;gap:.35rem}
+.jour.sans-plat .jour-resa.tel .ico{width:15px;height:15px}

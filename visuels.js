@@ -102,7 +102,7 @@ window.Visuels = (function () {
       }
       jours.forEach(function (j, i) {
         var fp = '700 ' + Math.round(31 * f) + 'px Inter', fd = '400 ' + Math.round(26 * f) + 'px Inter';
-        var t1 = j.ferme ? (j.motif || 'Fermé') : j.nom, t2 = j.ferme ? j.message : j.desc;
+        var t1 = j.ferme ? (j.motif || (j.ouvert ? 'Pas de plat du jour' : 'Fermé')) : j.nom, t2 = j.ferme ? j.message : j.desc;
         var lp = couper(ctx, t1, fp, lPlat), ld = couper(ctx, t2, fd, lPlat);
         var hT = lp.length * 31 * f * 1.25 + ld.length * 26 * f * 1.35, hJ = 50 * f;
         var h = Math.max(hT, hJ) + 2 * pad;
