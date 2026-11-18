@@ -2141,10 +2141,11 @@
     clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, erreur ? 7000 : 3200);
   }
   // Message avec un bouton (ex. « Annuler » juste après un enregistrement) ; il reste affiché un peu plus longtemps
-  function toastAction(msg, libelle, fn) {
+  // genre : « annuler » (bouton rouge) ou « retablir » (bouton bleu)
+  function toastAction(msg, libelle, fn, genre) {
     var t = document.getElementById('toast');
     t.className = 'toast toast-action'; t.hidden = false;
-    t.innerHTML = '<span>' + esc(msg) + '</span><button type="button">' + ico('annuler') + esc(libelle) + '</button>';
+    t.innerHTML = '<span>' + esc(msg) + '</span><button type="button" class="ta-' + (genre || 'annuler') + '">' + ico(genre === 'retablir' ? 'redo' : 'annuler') + esc(libelle) + '</button>';
     t.querySelector('button').onclick = function () { t.hidden = true; fn(); };
     clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 10000);
   }
@@ -2159,7 +2160,7 @@
       if (part === SEM) specialOuvert = aSpecial(j.data);
       render(true);
       if (retablir) return toast('C’est rétabli : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont' : 'est') + ' comme avant l’annulation.');
-      toastAction('Annulé : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont revenus' : 'est revenu') + ' comme avant.', 'Rétablir', function () { restaurer(part, j.copie, true); });
+      toastAction('Annulé : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont revenus' : 'est revenu') + ' comme avant.', 'Rétablir', function () { restaurer(part, j.copie, true); }, 'retablir');
     }).catch(function (e) { toast(e.message, true); });
   }
   function fenetreVersions() {
@@ -2173,7 +2174,7 @@
         (sale(part) ? '<p class="alerte">Vos modifications pas encore enregistrées sur cet onglet seront perdues.</p>' : '') +
         (l.length ? '<ul class="versions-liste">' + l.map(function (v, k) {
           return '<li><span><b>' + esc(v.quoi || 'Enregistrement') + (k === 0 ? ' <em>le plus récent</em>' : '') + '</b><small>' + esc(quand(v.date)) + (v.qui ? ' · ' + esc(v.qui) : '') + '</small></span>' +
-            '<button type="button" class="btn ' + (k === 0 ? 'btn-violet' : 'btn-ligne') + '" data-v="' + esc(v.f) + '">' + ico('annuler') + 'Revenir avant</button></li>';
+            '<button type="button" class="btn btn-annuler' + (k === 0 ? ' plein' : '') + '" data-v="' + esc(v.f) + '">' + ico('annuler') + 'Revenir avant</button></li>';
         }).join('') + '</ul>' : '<p class="vide">Aucun enregistrement récent à annuler pour cet onglet.</p>') +
         '<div class="modale-actions"><button type="button" class="btn btn-discret" data-v="">Fermer</button></div></div>';
       document.body.appendChild(d);

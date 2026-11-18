@@ -1173,3 +1173,13 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .toast-action button{background:#fff;color:var(--violet)}
 .toast-action button:hover{background:var(--violet-pale)}
 .versions-liste b em{font-style:normal;font-weight:600;font-size:.7rem;color:var(--violet);background:var(--violet-pale);padding:.1rem .45rem;border-radius:99px;margin-left:.35rem}
+/* Annuler = rouge, Rétablir = bleu, sur un message sombre et sobre */
+.toast.toast-action{background:#2a2328;color:#fff}
+.toast-action button.ta-annuler{background:#d92d20;color:#fff}
+.toast-action button.ta-annuler:hover{background:#b42318}
+.toast-action button.ta-retablir{background:#1f6fd1;color:#fff}
+.toast-action button.ta-retablir:hover{background:#185bb0}
+.btn.btn-annuler{color:#b42318;border:1.5px solid #f1b4ae;background:#fff}
+.btn.btn-annuler:hover{background:#fdecea}
+.btn.btn-annuler.plein{background:#d92d20;border-color:#d92d20;color:#fff}
+.btn.btn-annuler.plein:hover{background:#b42318}
