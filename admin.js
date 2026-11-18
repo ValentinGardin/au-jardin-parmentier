@@ -481,20 +481,24 @@
   function ligneAccomp(it, pi) {
     return '<label class="accomp-ligne"><span aria-hidden="true">↳</span><input data-p="' + pi + '.accomp" value="' + esc(it.accomp || '') + '" placeholder="Accompagnement (2e ligne, facultatif) · ex. Gratin dauphinois et marrons" aria-label="Accompagnement"></label>';
   }
+  // Liste des produits dans les aperçus (événement et offre « Sur commande ») ; epuise : afficher l'étiquette « Épuisé »
+  function apercuProduits(items, epuise) {
+    return items.map(function (it, k) {
+      if (!it.nom) return '';
+      var acc = it.accomp ? '<small class="ap-accomp">' + esc(it.accomp) + '</small>' : '', ep = epuise && it.epuise ? ' <em>Épuisé</em>' : '';
+      if (it.cat) return '<li class="ap-cat"><span>' + esc(it.nom) + (it.prix ? ' <i>tout compris</i>' + ep : '') + '</span>' + (it.prix ? '<b>' + esc(it.prix) + '</b>' : '') + '</li>';
+      if (prixCatEvt(items, k)) return '<li class="ap-inclus"><span>' + esc(it.nom) + acc + '</span></li>';
+      var fs = it.formats || [], ch = it.option ? it.option.choix : [];
+      var chips = fs.map(function (f) { var px = f.prix || prixEvt(items, k); return '<span>' + esc(formatNom(f)) + (px ? ' <b>' + esc(px) + formatSuffixe(f) + '</b>' : '') + '</span>'; }).join('') +
+        (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (x) { return x.nom + (x.prix ? ' (+' + x.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
+      return '<li' + (ep ? ' class="ap-epuise"' : '') + '><span>' + esc(it.nom) + ep + acc + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
+        (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
+    }).join('');
+  }
   function apercuEvt(e) {
     var cl = couleursEvt(e.couleur), ph = E.photos.filter(function (x) { return x.nom === e.photo; })[0];
     var quand = e.date ? evtQuand(e) : '';
-    var items = e.items.map(function (it, k) {
-      if (!it.nom) return '';
-      if (it.cat) return '<li class="ap-cat"><span>' + esc(it.nom) + (it.prix ? ' <i>tout compris</i>' : '') + (it.prix && it.epuise ? ' <em>Épuisé</em>' : '') + '</span>' + (it.prix ? '<b>' + esc(it.prix) + '</b>' : '') + '</li>';
-      var acc = it.accomp ? '<small class="ap-accomp">' + esc(it.accomp) + '</small>' : '';
-      if (prixCatEvt(e.items, k)) return '<li class="ap-inclus"><span>' + esc(it.nom) + acc + '</span></li>';
-      var fs = it.formats || [], ch = it.option ? it.option.choix : [];
-      var chips = fs.map(function (f) { var px = f.prix || prixEvt(e.items, k); return '<span>' + esc(formatNom(f)) + (px ? ' <b>' + esc(px) + formatSuffixe(f) + '</b>' : '') + '</span>'; }).join('') +
-        (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (c) { return c.nom + (c.prix ? ' (+' + c.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
-      return '<li' + (it.epuise ? ' class="ap-epuise"' : '') + '><span>' + esc(it.nom) + (it.epuise ? ' <em>Épuisé</em>' : '') + acc + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
-        (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
-    }).join('');
+    var items = apercuProduits(e.items, true);
     return '<div class="ap-evt' + (cl.clair ? ' ap-clair' : '') + '" style="--f:' + cl.fond + ';--t:' + cl.texte + ';--a:' + cl.accent + '">' +
       (ph ? '<img src="' + esc(ph.url) + '" alt="">' : '') +
       (quand ? '<span class="ap-quand">' + esc(quand.charAt(0).toUpperCase() + quand.slice(1)) + '</span>' : '<span class="ap-quand ap-vide">Pas encore de date</span>') +
@@ -584,17 +588,7 @@
   }
   function apercuCmd(c) {
     var ph = E.photos.filter(function (x) { return x.nom === c.photo; })[0];
-    var items = c.items.map(function (it, k) {
-      if (!it.nom) return '';
-      var acc = it.accomp ? '<small class="ap-accomp">' + esc(it.accomp) + '</small>' : '';
-      if (it.cat) return '<li class="ap-cat"><span>' + esc(it.nom) + (it.prix ? ' <i>tout compris</i>' : '') + '</span>' + (it.prix ? '<b>' + esc(it.prix) + '</b>' : '') + '</li>';
-      if (prixCatEvt(c.items, k)) return '<li class="ap-inclus"><span>' + esc(it.nom) + acc + '</span></li>';
-      var fs = it.formats || [], ch = it.option ? it.option.choix : [];
-      var chips = fs.map(function (f) { var px = f.prix || prixEvt(c.items, k); return '<span>' + esc(formatNom(f)) + (px ? ' <b>' + esc(px) + formatSuffixe(f) + '</b>' : '') + '</span>'; }).join('') +
-        (ch.length ? '<span class="ap-choix">' + esc((it.option.titre ? it.option.titre + ' : ' : '') + ch.map(function (x) { return x.nom + (x.prix ? ' (+' + x.prix + ')' : ''); }).join(' ou ')) + '</span>' : '');
-      return '<li><span>' + esc(it.nom) + acc + '</span>' + (!fs.length && !ch.length && it.prix ? '<b>' + esc(it.prix) + '</b>' : '') +
-        (it.desc || chips ? '<small>' + (it.desc ? '<span class="ap-desc">' + esc(it.desc) + '</span>' : '') + chips + '</small>' : '') + '</li>';
-    }).join('');
+    var items = apercuProduits(c.items, false);
     return '<div class="ap-cmd">' + (ph ? '<img src="' + esc(ph.url) + '" alt="">' : '') + '<div class="ap-cmd-corps">' +
       (c.delai ? '<span class="ap-cmd-delai">' + esc(c.delai) + '</span>' : '') +
       '<h3>' + esc(c.titre || 'Nom de l’offre') + '</h3>' + (c.accroche ? '<p class="ap-accroche">' + esc(c.accroche) + '</p>' : '') +
