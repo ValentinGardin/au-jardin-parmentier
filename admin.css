@@ -1121,3 +1121,11 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 }
 .resa-enligne{margin-bottom:.6rem}
 .resa-enligne .aide{margin:.35rem 0 0}
+/* Commandes par événement */
+.r-evt-groupe{display:inline-flex;align-items:stretch;gap:.35rem;flex-wrap:wrap}
+.r-evt-liste{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .8rem;border:1.5px solid var(--c,var(--violet));border-radius:12px;background:var(--blanc);color:var(--c,var(--violet));font:600 .82rem var(--texte);cursor:pointer}
+.r-evt-liste .ico{width:15px;height:15px}
+.r-evt-liste:hover{background:var(--fond)}
+.r-num-evt{background:var(--violet-pale);color:var(--violet)}
+.h-num small{display:block;font-size:.68rem;color:var(--gris);font-weight:500;white-space:nowrap}
+.sim-boutons{display:flex;flex-wrap:wrap;gap:.5rem}

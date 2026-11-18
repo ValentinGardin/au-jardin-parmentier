@@ -2,7 +2,7 @@
 // Fonctions communes au site (index.php), à l'affiche (affiche.php) et au back-office (back-office-jardin/)
 const DATA = __DIR__ . '/data';
 const ESPACE = 'back-office-jardin';   // dossier du back-office : https://…/back-office-jardin/
-const VERSION = '1.72 · 16 novembre 2026';
+const VERSION = '1.73 · 18 novembre 2026';
 const FORTE_DEMANDE = 15;   // parts réservées à partir desquelles un plat est signalé « forte demande »
 const FORTE_OFFRE = 10;     // même chose pour l'offre spéciale et les produits des événements   // affichée en bas de la page de connexion du back-office
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -27,8 +27,11 @@ function site_load() {
 function site_lire() {
     // site.json est créé par le back-office ; tant qu'il n'existe pas, le contenu de départ (site.exemple.json) est affiché
     $f = is_file(DATA . '/site.json') ? DATA . '/site.json' : DATA . '/site.exemple.json';
-    $d = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
-    $d = site_clean(is_array($d) ? $d : []);
+    $brut = is_file($f) ? json_decode((string)file_get_contents($f), true) : null;
+    $d = site_clean(is_array($brut) ? $brut : []);
+    // événements créés avant les identifiants : on enregistre tout de suite ceux qui viennent d'être attribués
+    $sansId = false; foreach (liste($brut['evenements'] ?? []) as $k => $e) if (($e['id'] ?? '') !== ($d['evenements'][$k]['id'] ?? '')) $sansId = true;
+    if ($sansId && is_file(DATA . '/site.json')) json_save(DATA . '/site.json', $d);
     // Bascule automatique : le dimanche à minuit (ou dès le lendemain du dernier jour s'il tombe plus tôt),
     // le menu préparé dans « Semaine suivante » devient le menu en cours
     $n = $d['semaine_suivante']; $t = date('Y-m-d');
@@ -169,6 +172,8 @@ function evenement_clean($e) {
     $items = produits_clean($e['items'] ?? []);
     $r = is_array($e['reservation'] ?? null) ? $e['reservation'] : [];
     return [
+        // identifiant permanent : relie les réservations à l'événement (même s'il est renommé ou déplacé dans la liste)
+        'id' => preg_match('/^[a-z0-9]{8,16}$/', (string)($e['id'] ?? '')) ? $e['id'] : bin2hex(random_bytes(5)),
         'actif' => !empty($e['actif']),
         'titre' => txt($e['titre'] ?? '', 80) ?: 'Événement',
         'date' => date_ok($e['date'] ?? ''),
@@ -210,6 +215,12 @@ function commande_speciale_clean($c) {
         'note' => txt($c['note'] ?? '', 240),
     ];
 }
+// Liste des événements : un identifiant en double (événement dupliqué) en reçoit un nouveau
+function evenements_clean($l) {
+    $vus = []; $out = [];
+    foreach (liste($l) as $e) { $e = evenement_clean($e); if (isset($vus[$e['id']])) $e['id'] = bin2hex(random_bytes(5)); $vus[$e['id']] = 1; $out[] = $e; }
+    return $out;
+}
 function site_clean($d) {
     $mots = liste_txt($d['mots'] ?? [], 40);
     $avis = [];
@@ -218,7 +229,7 @@ function site_clean($d) {
         if ($a['texte'] !== '') $avis[] = $a;
     }
     return [
-        'evenements' => array_map('evenement_clean', liste($d['evenements'] ?? [])),
+        'evenements' => evenements_clean($d['evenements'] ?? []),
         'semaine' => semaine_clean($d['semaine'] ?? []),
         'semaine_suivante' => semaine_suivante_clean($d['semaine_suivante'] ?? []),
         'menus' => array_map('carte_clean', liste($d['menus'] ?? [])),

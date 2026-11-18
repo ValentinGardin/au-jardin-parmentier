@@ -90,8 +90,10 @@ function resas_enregistrer($l) { return json_save(RESAS, array_values($l)); }
 // Un numéro n'est donc jamais attribué deux fois. À appeler sous verrou().
 const NUMEROS = DATA . '/numeros.json';
 function resa_num_suivant($l) {
-    $n = max((int)(lire_json(NUMEROS)['dernier'] ?? 0), array_reduce($l, function ($m, $r) { return max($m, (int)($r['num'] ?? 0)); }, 0)) + 1;
-    json_save(NUMEROS, ['dernier' => $n]);
+    $c = lire_json(NUMEROS);
+    $n = max((int)($c['dernier'] ?? 0), array_reduce($l, function ($m, $r) { return max($m, (int)($r['num'] ?? 0)); }, 0)) + 1;
+    $c['dernier'] = $n;
+    json_save(NUMEROS, $c);
     return $n;
 }
 // Vérification à chaque chargement : les réservations sans numéro (créées avant les numéros) ou en double en reçoivent un nouveau
@@ -106,6 +108,32 @@ function resas_numeroter() {
             if ($n < 1 || isset($vus[$n])) { $n = resa_num_suivant($l); $l[$k]['num'] = $n; $change = true; }
             $vus[$n] = true;
         }
+        // Réservations d'événements d'avant la numérotation par événement : rattachées à leur événement
+        // (produit de l'événement + jour de retrait pendant l'événement), puis numérotées dans l'ordre où elles ont été passées
+        $d = site_load();
+        foreach ($ordre as $k) {
+            $r = &$l[$k];
+            if (!array_key_exists('evt', $r)) {
+                $r['evt'] = ''; $r['evt_num'] = 0; $r['evt_titre'] = ''; $change = true;
+                $evtLignes = array_filter($r['lignes'], function ($li) { return $li['type'] === 'evenement'; });
+                if ($evtLignes) {
+                    $meilleur = null; $score = -1;
+                    foreach ($d['evenements'] as $e) {
+                        $noms = array_map('norm', array_column($e['items'], 'nom'));
+                        $s = (in_array($r['date'], evt_jours($e), true) ? 2 : 0);
+                        foreach ($evtLignes as $li) { $a = norm(($li['article'] ?? '') ?: preg_replace('/ · .*$/u', '', $li['nom'])); if (in_array($a, $noms, true)) $s += 3; }
+                        if ($s > $score && $s > 0) { $score = $s; $meilleur = $e; }
+                    }
+                    if ($meilleur) {
+                        $r['evt'] = $meilleur['id']; $r['evt_titre'] = $meilleur['titre'];
+                        foreach ($r['lignes'] as &$li) if ($li['type'] === 'evenement') $li['evt'] = $meilleur['id'];
+                        unset($li);
+                    }
+                }
+            }
+            if (($r['evt'] ?? '') !== '' && empty($r['evt_num'])) { resa_evt_numeroter($r, $l); $change = true; }
+            unset($r);
+        }
         if ($change) resas_enregistrer($l);
     });
 }
@@ -118,7 +146,8 @@ function resa_clean($in, $ancien, $qui) {
               // plat d'un autre jour (ex. le plat de mercredi réservé pour vendredi) : à mettre de côté ce jour-là
               'jour' => date_ok($l['jour'] ?? ''),
               // produit d'événement avec format/option : « article » = le produit (pour compter les parts), « poids » en grammes et prix au kilo
-              'article' => txt($l['article'] ?? '', 140), 'poids' => max(0, min(20000, (int)($l['poids'] ?? 0))), 'pkg' => txt($l['pkg'] ?? '', 20)];
+              'article' => txt($l['article'] ?? '', 140), 'poids' => max(0, min(20000, (int)($l['poids'] ?? 0))), 'pkg' => txt($l['pkg'] ?? '', 20),
+              'evt' => preg_match('/^[a-z0-9]{8,16}$/', (string)($l['evt'] ?? '')) ? $l['evt'] : ''];   // événement du produit
         if ($l['nom'] !== '') $lignes[] = $l;
     }
     $r = [
@@ -136,8 +165,31 @@ function resa_clean($in, $ancien, $qui) {
         'source' => $ancien['source'] ?? (($in['source'] ?? '') === 'site' ? 'site' : 'back-office'),   // « site » : commande passée sur le site   // SMS « votre commande vous attend » déjà envoyé (date · par qui)
     ];
     if (array_key_exists('paye', $in)) resa_etat($r, 'paye', !empty($in['paye']), $qui);
+    // Réservation d'un événement : rattachée à cet événement, avec sa propre numérotation (n° 1, 2, 3… par événement)
+    $evt = '';
+    foreach ($lignes as $li) if ($li['evt'] !== '') { $evt = $li['evt']; break; }
+    if ($evt === '' && ($ancien['evt'] ?? '') !== '' && array_filter($lignes, function ($li) { return $li['type'] === 'evenement'; })) $evt = $ancien['evt'];
+    $r['evt'] = $evt;
+    $r['evt_num'] = $evt !== '' && ($ancien['evt'] ?? '') === $evt ? (int)($ancien['evt_num'] ?? 0) : 0;   // attribué par resa_evt_numeroter()
+    $r['evt_titre'] = $evt !== '' ? (($ancien['evt'] ?? '') === $evt ? (string)($ancien['evt_titre'] ?? '') : '') : '';
     return $r;
 }
+// Événement par son identifiant (ou null s'il a été supprimé)
+function evt_par_id($d, $id) { foreach ($d['evenements'] as $i => $e) if ($e['id'] === $id) return $e + ['i' => $i]; return null; }
+// Numéro dans l'événement : un compteur par événement (data/numeros.json, « evts »), qui ne recule jamais. Sous verrou().
+function resa_evt_numeroter(&$r, $l) {
+    if ($r['evt'] === '') return;
+    $e = evt_par_id(site_load(), $r['evt']);
+    if ($e) $r['evt_titre'] = $e['titre'];
+    if ($r['evt_num']) return;
+    $c = lire_json(NUMEROS);
+    $n = max((int)($c['evts'][$r['evt']] ?? 0), array_reduce($l, function ($m, $x) use ($r) { return ($x['evt'] ?? '') === $r['evt'] ? max($m, (int)($x['evt_num'] ?? 0)) : $m; }, 0)) + 1;
+    $c['evts'][$r['evt']] = $n;
+    json_save(NUMEROS, $c);
+    $r['evt_num'] = $n;
+}
+// Numéro affiché : « Menu de Noël · n° 3 » pour un événement, sinon « n° 341 »
+function resa_num_txt($r) { return !empty($r['evt_num']) ? ($r['evt_titre'] ?? 'Événement') . ' · n° ' . $r['evt_num'] : 'n° ' . $r['num']; }
 function resa_etat(&$r, $champ, $valeur, $qui) {
     if ($r[$champ] === $valeur) return;
     $r[$champ] = $valeur;
@@ -453,12 +505,12 @@ function evt_variantes($items, $k) {
     return $out;
 }
 // Ligne de réservation pour une variante (q = quantité, ou poids en grammes pour le prix au kilo)
-function evt_ligne($it, $v, $q) {
+function evt_ligne($it, $v, $q, $evtId = '') {
     $nom = $it['nom'] . ($v['detail'] !== '' ? ' · ' . $v['detail'] : '');
     // au poids : le prix suit le poids choisi ; « pkg » garde le prix au kilo (500 g à 16 € → 32 €/kg)
     if ($v['kg']) return ['type' => 'evenement', 'nom' => $nom . ' · ' . poids_txt($q), 'prix' => $v['prix'] ? prix_txt(round(prix_nombre($v['prix']) * $q / $v['par'], 2)) : '', 'qte' => 1,
-                          'article' => $it['nom'], 'poids' => $q, 'pkg' => $v['prix'] ? prix_txt(prix_nombre($v['prix']) * 1000 / $v['par']) : ''];
-    return ['type' => 'evenement', 'nom' => $nom, 'prix' => $v['prix'], 'qte' => $q, 'article' => $it['nom']];
+                          'article' => $it['nom'], 'poids' => $q, 'pkg' => $v['prix'] ? prix_txt(prix_nombre($v['prix']) * 1000 / $v['par']) : '', 'evt' => $evtId];
+    return ['type' => 'evenement', 'nom' => $nom, 'prix' => $v['prix'], 'qte' => $q, 'article' => $it['nom'], 'evt' => $evtId];
 }
 function prix_nombre($p) { return preg_match('/\d+(?:[.,]\d+)?/', (string)$p, $m) ? (float)str_replace(',', '.', $m[0]) : 0.0; }
 function ventes_synthese($n) {
@@ -546,7 +598,7 @@ function evt_resa_donnees($e, $i, $jours) {
     foreach ($e['items'] as $k => $it) $items[] = ['k' => $k, 'nom' => $it['nom'], 'prix' => evt_prix($e['items'], $k), 'epuise' => $it['epuise'], 'cat' => $it['cat'],
         'desc' => $it['desc'] ?? '', 'accomp' => $it['accomp'] ?? '', 'titreChoix' => $it['option']['titre'] ?? '', 'v' => evt_variantes($e['items'], $k), 'contenu' => $it['cat'] && $it['prix'] !== '' ? evt_contenu($e['items'], $k) : [],
         'forte' => !$it['epuise'] && $e['date'] !== '' && offre_parts('evenement', $it['nom'], $e['date'], evt_fin($e)) >= FORTE_OFFRE];
-    return ['i' => $i, 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
+    return ['i' => $i, 'id' => $e['id'], 'titre' => $e['titre'], 'date' => $jours[0]['date'], 'libelle' => $jours[0]['libelle'], 'jours' => $jours, 'quand' => evt_quand($e), 'couleur' => $e['couleur'], 'items' => $items];
 }
 // Simulation depuis le back-office : l'événement tel qu'il est en cours de modification, même désactivé, sans date ou clos.
 // Tous ses jours sont proposés (ou demain s'il n'a pas encore de date). Rien n'est enregistré.
@@ -605,24 +657,24 @@ function mail_commande($r, $c, $pour) {
             . '</div></body></html>';
     };
     if ($pour === 'client') {
-        $sujet = 'Votre réservation n° ' . $r['num'] . ' · ' . $quand . ' · Au Jardin Parmentier';
+        $sujet = 'Votre réservation ' . resa_num_txt($r) . ' · ' . $quand . ' · Au Jardin Parmentier';
         $html = $boite('<p style="margin:0 0 4px;font:15px Arial,sans-serif;color:#6b6369">Bonjour ' . $e($c['prenom'] ?: client_nom($c)) . ',</p>'
             . '<h1 style="margin:0 0 14px;font:800 24px/1.2 Arial,sans-serif;color:#1d171b">Votre réservation est confirmée</h1>',
             '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;background:#f6ecf2;border-radius:14px"><tr>'
-            . '<td style="padding:14px 16px;font:13px Arial,sans-serif;color:#6b6369">Commande<br><b style="font:800 22px Arial,sans-serif;color:#700954">n° ' . (int)$r['num'] . '</b></td>'
+            . '<td style="padding:14px 16px;font:13px Arial,sans-serif;color:#6b6369">Commande' . (!empty($r['evt_num']) ? ' · ' . $e($r['evt_titre']) : '') . '<br><b style="font:800 22px Arial,sans-serif;color:#700954">n° ' . (int)(!empty($r['evt_num']) ? $r['evt_num'] : $r['num']) . '</b></td>'
             . '<td style="padding:14px 16px;font:13px Arial,sans-serif;color:#6b6369;text-align:right">À récupérer<br><b style="font:700 16px Arial,sans-serif;color:#1d171b">' . $e(ucfirst($quand)) . '</b></td></tr></table>'
             . '<p style="margin:20px 0 0;font:700 13px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#700954">Votre commande</p>' . $recap . $note
             . '<p style="margin:18px 0 0;font:14px/1.6 Arial,sans-serif;color:#1d171b">À récupérer à la boutique, <b>9, place Parmentier à Montdidier</b>. ' . ($total ? 'Vous réglez <b>sur place</b>, au retrait.' : '') . '</p>'
             . '<p style="margin:12px 0 0;font:14px/1.6 Arial,sans-serif;color:#6b6369">Un changement ou un empêchement ? Appelez-nous au <a href="tel:+33950173962" style="color:#700954;font-weight:700">09 50 17 39 62</a> en indiquant votre numéro de commande.</p>'
             . '<p style="margin:18px 0 0;font:14px Arial,sans-serif;color:#1d171b">À très vite,<br>Angel &amp; Fab</p>');
-        $texte = 'Bonjour ' . ($c['prenom'] ?: client_nom($c)) . ",\n\nVotre réservation est confirmée.\nCommande n° {$r['num']} · à récupérer " . $quand . " à la boutique (9, place Parmentier, Montdidier).\n\n" . $lignesTxt
+        $texte = 'Bonjour ' . ($c['prenom'] ?: client_nom($c)) . ",\n\nVotre réservation est confirmée.\nCommande " . resa_num_txt($r) . " · à récupérer " . $quand . " à la boutique (9, place Parmentier, Montdidier).\n\n" . $lignesTxt
             . ($total ? "Total : $totalTxt, à régler sur place.\n" : '') . ($r['note'] !== '' ? "Note : {$r['note']}\n" : '') . "\nUn changement ? 09 50 17 39 62\n\nÀ très vite,\nAngel & Fab\n";
         return [$sujet, $html, $texte];
     }
     $lien = adresse_site() . '/' . ESPACE . '/';
-    $sujet = 'Nouvelle réservation n° ' . $r['num'] . ' · ' . $quand . ' · ' . (client_nom($c) ?: 'client');
+    $sujet = 'Nouvelle réservation ' . resa_num_txt($r) . ' · ' . $quand . ' · ' . (client_nom($c) ?: 'client');
     $html = $boite('<p style="margin:0 0 4px;font:700 12px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#1f7a4d">Nouvelle réservation en ligne</p>'
-        . '<h1 style="margin:0 0 14px;font:800 24px/1.2 Arial,sans-serif;color:#1d171b">n° ' . (int)$r['num'] . ' · ' . $e(ucfirst($quand)) . '</h1>',
+        . '<h1 style="margin:0 0 14px;font:800 24px/1.2 Arial,sans-serif;color:#1d171b">' . $e(resa_num_txt($r)) . ' · ' . $e(ucfirst($quand)) . '</h1>',
         '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;background:#faf8f5;border:1px solid #eee5dc;border-radius:14px"><tr><td style="padding:14px 16px;font:14px/1.6 Arial,sans-serif;color:#1d171b">'
         . '<b style="font-size:16px">' . $e(client_nom($c) ?: 'Client') . '</b><br>'
         . ($c['tel'] !== '' ? '<a href="tel:' . $e(preg_replace('/[^\d+]/', '', $c['tel'])) . '" style="color:#700954;font-weight:700;text-decoration:none">' . $e($c['tel']) . '</a><br>' : '<span style="color:#a95a0b">Pas de téléphone</span><br>')
@@ -630,7 +682,7 @@ function mail_commande($r, $c, $pour) {
         . '<p style="margin:20px 0 0;font:700 13px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#700954">Commande</p>' . $recap . $note
         . '<p style="margin:16px 0 0;font:13px Arial,sans-serif;color:#6b6369">Réservée le ' . $e(date_fr(substr($r['cree'], 0, 10), true)) . ' à ' . $e(str_replace(':', 'h', substr($r['cree'], 11, 5))) . ' · paiement sur place</p>'
         . '<p style="margin:22px 0 0;text-align:center"><a href="' . $e($lien) . '" style="display:inline-block;background:#700954;color:#fff;text-decoration:none;font:700 15px Arial,sans-serif;padding:12px 22px;border-radius:12px">Ouvrir les réservations</a></p>');
-    $texte = "Nouvelle réservation en ligne n° {$r['num']} · " . $quand . "\n\n" . (client_nom($c) ?: 'Client') . "\n" . ($c['tel'] ?: 'pas de téléphone') . ($c['email'] ? ' · ' . $c['email'] : '') . "\n\n" . $lignesTxt
+    $texte = "Nouvelle réservation en ligne " . resa_num_txt($r) . " · " . $quand . "\n\n" . (client_nom($c) ?: 'Client') . "\n" . ($c['tel'] ?: 'pas de téléphone') . ($c['email'] ? ' · ' . $c['email'] : '') . "\n\n" . $lignesTxt
         . ($total ? "Total : $totalTxt\n" : '') . ($r['note'] !== '' ? "Note : {$r['note']}\n" : '') . "\nBack-office : $lien\n";
     return [$sujet, $html, $texte];
 }

@@ -33,7 +33,7 @@ if (isset($in['evt'])) {
             $q = $v['kg'] ? max(0, min(5000, intdiv($q, 50) * 50)) : max(0, min(20, $q));
             if (!$q) continue;
             if ($it['epuise']) fin(400, ['erreur' => '« ' . $it['nom'] . ' » vient d’être épuisé, désolé ! Retirez-le de votre commande.']);
-            $lignes[] = evt_ligne($it, $v, $q);
+            $lignes[] = evt_ligne($it, $v, $q, $evt['id']);
         }
     }
 } else {
@@ -76,6 +76,7 @@ $res = verrou(function () use ($ci, $in, $jour, $lignes) {
     $l = resas_charger();
     $r = resa_clean(['client' => $clients[$i]['id'], 'date' => $jour['date'], 'lignes' => $lignes, 'note' => $in['note'] ?? '', 'source' => 'site'], null, 'Site internet');
     $r['num'] = resa_num_suivant($l);
+    resa_evt_numeroter($r, $l);   // réservation d'événement : son numéro dans l'événement (n° 1, 2, 3…)
     $l[] = $r;
     if (!clients_enregistrer($clients) || !resas_enregistrer($l)) return null;
     return [$r, $clients[$i]];
@@ -91,4 +92,4 @@ mail_envoyer(EXPEDITEUR, $sujet, $html, $texte);
 $total = array_reduce($r['lignes'], function ($t, $l) { return $t + prix_nombre($l['prix']) * $l['qte']; }, 0);
 $quand = date_fr($r['date'], true);
 
-fin(200, ['ok' => true, 'num' => $r['num'], 'quand' => $quand, 'total' => $total, 'email' => $mailOk ? $c['email'] : '']);
+fin(200, ['ok' => true, 'num' => $r['evt_num'] ?: $r['num'], 'numEvt' => $r['evt_num'] ? $r['evt_titre'] : '', 'quand' => $quand, 'total' => $total, 'email' => $mailOk ? $c['email'] : '']);

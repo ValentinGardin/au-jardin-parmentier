@@ -329,7 +329,7 @@
     function etape3(j) {
       entete(3, 'Merci ' + client.prenom + ' !');
       corps.innerHTML = '<div class="rs-ok"><div class="rs-coche" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-15"/></svg></div>' +
-        '<p class="rs-ok-titre">C’est réservé !</p><p class="rs-num">Commande n° <b>' + j.num + '</b></p>' +
+        '<p class="rs-ok-titre">C’est réservé !</p><p class="rs-num">' + (j.numEvt ? esc(j.numEvt) + ' · c' : 'C') + 'ommande n° <b>' + j.num + '</b></p>' +
         '<p>' + esc(recap().join(', ')) + '<br>à récupérer <b>' + esc(j.quand) + '</b> à la boutique,<br>9, place Parmentier à Montdidier.</p>' +
         (j.total ? '<p class="rs-ok-px">' + euros(j.total) + ' à régler sur place</p>' : '') +
         (j.simulation ? '<p class="rs-sim">Simulation terminée : aucune réservation enregistrée, aucun e-mail envoyé. Le vrai client verrait cet écran et recevrait le récapitulatif par e-mail.</p>' :

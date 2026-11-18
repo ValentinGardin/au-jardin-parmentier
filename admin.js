@@ -562,7 +562,8 @@
         '<label class="case"><input type="checkbox" data-p="' + p + '.popup"' + (e.popup ? ' checked' : '') + '> Afficher en fenêtre (pop-up) à l’arrivée des visiteurs sur le site</label>' +
         '<label class="case"><input type="checkbox" data-p="' + p + '.masquer_apres"' + (e.masquer_apres ? ' checked' : '') + '> Retirer automatiquement du site le lendemain de l’événement</label>' +
         '<div class="sim-bloc"><div><b>Tester la prise de commande</b><small>Ouvre la vraie fenêtre de réservation du site pour cet événement, comme un client. Rien n’est enregistré, aucun e-mail ne part. Fonctionne aussi avant d’enregistrer et pour un événement désactivé.</small></div>' +
-          '<button type="button" class="btn btn-ligne" data-act="simuler" data-i="' + i + '">' + ico('resa') + 'Simuler une prise de commande</button></div>' +
+          '<span class="sim-boutons"><button type="button" class="btn btn-ligne" data-act="simuler" data-i="' + i + '">' + ico('resa') + 'Simuler une prise de commande</button>' +
+          (e.id ? '<button type="button" class="btn btn-discret" data-act="evt-commandes" data-id="' + esc(e.id) + '">' + ico('livre') + 'Voir ses commandes</button>' : '') + '</span></div>' +
         '</div><aside class="evt-apercu"><p class="evt-apercu-t">Aperçu sur le site <small>mis à jour en direct</small></p><div id="ap-evt-' + i + '">' + apercuEvt(e) + '</div>' +
           '<a class="lien evt-apercu-lien" href="./#evenements" target="_blank" rel="noopener">' + ico('oeil') + 'Voir la page en vrai (après enregistrement)</a></aside></div>' +
         '</section>';
@@ -1030,10 +1031,13 @@
   }
   function poidsTxt(g) { return g >= 1000 ? String(+(g / 1000).toFixed(2)).replace('.', ',') + ' kg' : g + ' g'; }
   // ligne de réservation pour une variante (au kilo : prix selon le poids)
-  function ligneVariante(it, v, poids) {
-    if (v.kg) { poids = poids || 500; var pkg = v.prix ? euros(prixNum(v.prix) * 1000 / v.par) : ''; return { type: 'evenement', nom: v.label + ' · ' + poidsTxt(poids), prix: pkg ? euros(Math.round(prixNum(pkg) * poids / 10) / 100) : '', qte: 1, article: it.nom, poids: poids, pkg: pkg, base: v.label }; }
-    return { type: 'evenement', nom: v.label, prix: v.prix, qte: 1, article: it.nom };
+  function ligneVariante(it, v, poids, evtId) {
+    if (v.kg) { poids = poids || 500; var pkg = v.prix ? euros(prixNum(v.prix) * 1000 / v.par) : ''; return { type: 'evenement', nom: v.label + ' · ' + poidsTxt(poids), prix: pkg ? euros(Math.round(prixNum(pkg) * poids / 10) / 100) : '', qte: 1, article: it.nom, poids: poids, pkg: pkg, base: v.label, evt: evtId || '' }; }
+    return { type: 'evenement', nom: v.label, prix: v.prix, qte: 1, article: it.nom, evt: evtId || '' };
   }
+  // Numéro de commande affiché : « Menu de Noël · n° 3 » pour une réservation d'événement (numérotation propre à l'événement)
+  function evtNomResa(r) { var e = (saved.evenements || []).filter(function (x) { return x.id === r.evt; })[0]; return e ? e.titre : (r.evt_titre || 'Événement'); }
+  function numResa(r) { return r.evt_num ? evtNomResa(r) + ' · n° ' + r.evt_num : 'n° ' + r.num; }
   function aProduits(e) { return e.items.some(function (it) { return !it.cat; }); }
   function evtsAVenir(date) {
     return saved.evenements.map(function (e, i) { return { e: e, i: i }; }).filter(function (x) {
@@ -1062,7 +1066,7 @@
       if (R.data && R.data.du === du) {
         var connues = R.data.resas.map(function (r) { return r.id; });
         j.resas.filter(function (r) { return r.source === 'site' && connues.indexOf(r.id) < 0; }).forEach(function (r) {
-          toast('Nouvelle réservation en ligne : n° ' + r.num + ', ' + (nomClient(r.c) || 'client') + ' pour ' + dateLongue(r.date).toLowerCase() + '.');
+          toast('Nouvelle réservation en ligne : ' + numResa(r) + ', ' + (nomClient(r.c) || 'client') + ' pour ' + dateLongue(r.date).toLowerCase() + '.');
         });
       }
       R.data = j; if (onglet === 'resas') majResas();
@@ -1138,7 +1142,8 @@
       return '<button type="button" data-act="r-filtre" data-f="' + x[0] + '" aria-pressed="' + (R.filtre === x[0]) + '">' + x[1] + ' <span>' + x[2] + '</span></button>';
     }).join('') + '</div>' : '') + '<input type="search" id="r-q" class="r-q" value="' + esc(R.q) + '" placeholder="Rechercher un nom, un téléphone, un n° de commande…" aria-label="Rechercher"></div>';
     var aVenir = evtsAVenir('').filter(function (x) { return x.e.date; }).map(function (x) {
-      return '<button type="button" class="r-evt-btn" data-act="resa-evt" data-e="' + x.i + '" style="--c:' + esc(x.e.couleur) + '">' + ico('plus') + '<span>Réservation pour <b>' + esc(x.e.titre) + '</b><small>retrait ' + esc(evtQuand(x.e)) + '</small></span></button>';
+      return '<span class="r-evt-groupe"><button type="button" class="r-evt-btn" data-act="resa-evt" data-e="' + x.i + '" style="--c:' + esc(x.e.couleur) + '">' + ico('plus') + '<span>Réservation pour <b>' + esc(x.e.titre) + '</b><small>retrait ' + esc(evtQuand(x.e)) + '</small></span></button>' +
+        '<button type="button" class="r-evt-liste" data-act="evt-commandes" data-id="' + esc(x.e.id) + '" style="--c:' + esc(x.e.couleur) + '">' + ico('livre') + 'Ses commandes</button></span>';
     }).join('');
     return semaine + titre + (aVenir ? '<div class="r-evts">' + aVenir + '</div>' : '') + resume + deCote() + outils + '<div id="r-liste">' + resasListe() + '</div>' + recapJour(jour);
   }
@@ -1214,7 +1219,7 @@
       (Object.keys(cote).length ? '<p class="imp-recap"><b>À mettre de côté (autre jour) :</b> ' + Object.keys(cote).map(function (n) { return '<span><b>' + cote[n] + '</b> × ' + esc(n) + '</span>'; }).join(' · ') + '</p>' : '') +
       (jour.length ? '<table class="imp-table"><thead><tr><th>Récup.</th><th>N°</th><th>Client</th><th>Commande</th><th class="n">Total</th><th>Payé</th></tr></thead><tbody>' + jour.map(function (r) {
         var t = r.lignes.reduce(function (s, l) { return s + prixNum(l.prix) * l.qte; }, 0);
-        return '<tr><td class="c">' + (r.recupere ? '✓' : '☐') + '</td><td>' + (r.num || '') + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
+        return '<tr><td class="c">' + (r.recupere ? '✓' : '☐') + '</td><td>' + (r.evt_num ? '<small>' + esc(evtNomResa(r)) + '</small> ' + r.evt_num : (r.num || '')) + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
           '<td>' + r.lignes.map(function (l) { return '<b>' + l.qte + '</b>× ' + esc(l.nom); }).join(' · ') + (r.note ? ' <i>— ' + esc(r.note) + '</i>' : '') + '</td>' +
           '<td class="n">' + (t ? euros(t) : '') + '</td><td class="c">' + (r.paye ? '✓' : '☐') + '</td></tr>';
       }).join('') + '</tbody></table>' + recapImpression(jour) : '<p>Aucune réservation ce jour-là.</p>');
@@ -1264,7 +1269,7 @@
   function ligneResa(r) {
     var c = r.c, t = totalResa(r);
     return '<article class="r-ligne' + (r.recupere ? ' fait' : '') + '">' +
-      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + ' <span class="r-num">n° ' + r.num + '</span>' + (r.source === 'site' ? ' <span class="r-web">En ligne</span>' : '') + '</strong>' +
+      '<div class="r-client"><strong>' + esc(nomClient(c) || 'Sans nom') + ' <span class="r-num' + (r.evt_num ? ' r-num-evt' : '') + '">' + esc(numResa(r)) + '</span>' + (r.source === 'site' ? ' <span class="r-web">En ligne</span>' : '') + '</strong>' +
         (c.tel ? '<a href="tel:' + esc(c.tel.replace(/[^\d+]/g, '')) + '">' + ico('tel') + esc(c.tel) + '</a>' : '') +
         '<small>' + (r.source === 'site' ? 'Réservée sur le site' : 'Prise par ' + esc(r.par)) + ' · ' + quand(r.cree).replace(/ par .*$/, '') + '</small>' +
         (r.rappel ? '<small class="r-sms-ok" title="SMS de rappel envoyé ' + esc(quand(r.rappel)) + '">' + ico('ok') + 'SMS envoyé à ' + heure(r.rappel) + '</small>' : '') + '</div>' +
@@ -1308,8 +1313,9 @@
   }
 
   // ---------- Historique de toutes les commandes (fenêtre, filtres jour / client, impression) ----------
-  function historique() {
-    var H = { toutes: null, jour: '', quel: 'retrait', client: '' };
+  function historique(opts) {
+    opts = opts || {};
+    var H = { toutes: null, jour: '', quel: 'retrait', client: '', evt: opts.evt || '' };   // evt : '' tout, 'jour' hors événements, ou l'identifiant d'un événement
     var d = document.createElement('div');
     d.className = 'modale-fond histo-fond';
     d.innerHTML = '<div class="modale histo" role="dialog" aria-modal="true" aria-labelledby="h-t">' +
@@ -1317,6 +1323,7 @@
       '<div class="histo-actions"><button type="button" class="btn btn-ligne" data-h="imprimer">' + ico('imprim') + 'Imprimer</button><button type="button" class="ib histo-x" data-h="fermer" aria-label="Fermer">×</button></div></div>' +
       '<div class="histo-filtres"><label class="champ"><span>Jour</span><span class="histo-jour"><input type="date" id="h-jour">' +
         '<select id="h-quel" aria-label="Type de date"><option value="retrait">de retrait</option><option value="commande">de commande</option></select></span></label>' +
+        '<label class="champ"><span>Commandes</span><select id="h-evt"><option value="">Toutes</option></select></label>' +
         '<label class="champ"><span>Client</span><input type="search" id="h-client" list="h-clients" placeholder="Nom, téléphone ou e-mail…"><datalist id="h-clients"></datalist></label>' +
         '<button type="button" class="btn btn-discret" data-h="effacer">Tout afficher</button></div>' +
       '<div class="histo-liste" id="h-liste"><p class="chargement">Chargement…</p></div></div>';
@@ -1328,12 +1335,17 @@
       var q = sansAccent(H.client).trim(), qc = q.replace(/\D/g, '');
       return (H.toutes || []).filter(function (r) {
         if (H.jour && (H.quel === 'retrait' ? r.date : r.cree.slice(0, 10)) !== H.jour) return false;
+        if (H.evt === 'jour' ? r.evt : H.evt && r.evt !== H.evt) return false;
         if (q && sansAccent(nomClient(r.c) + ' ' + r.c.email).indexOf(q) < 0 && !(qc.length > 2 && r.c.tel.replace(/\D/g, '').indexOf(qc) >= 0) && String(r.num) !== q) return false;
         return true;
       });
     }
     function dessiner() {
       var l = filtrees(), tot = 0, enc = 0;
+      // un événement choisi : ses commandes dans l'ordre de leurs numéros (n° 1, 2, 3…)
+      if (H.evt && H.evt !== 'jour') l = l.slice().sort(function (a, b) { return a.evt_num - b.evt_num; });
+      var nomEvt = H.evt && H.evt !== 'jour' ? (H.toutes.filter(function (r) { return r.evt === H.evt; })[0] ? evtNomResa(H.toutes.filter(function (r) { return r.evt === H.evt; })[0]) : evtNomResa({ evt: H.evt })) : '';
+      d.querySelector('#h-t').textContent = nomEvt ? 'Commandes · ' + nomEvt : H.evt === 'jour' ? 'Commandes hors événements' : 'Historique des commandes';
       l.forEach(function (r) { var t = totalResa(r); tot += t; if (r.paye) enc += t; });
       var res = [];
       if (H.jour) res.push((H.quel === 'retrait' ? 'retrait le ' : 'commandées le ') + dateLongue(H.jour).toLowerCase());
@@ -1341,7 +1353,7 @@
       d.querySelector('#h-resume').textContent = pluriel(l.length, 'commande') + (res.length ? ' · ' + res.join(' · ') : ' · toutes') + (tot ? ' · ' + euros(tot) + ' (dont ' + euros(enc) + ' encaissés)' : '');
       d.querySelector('#h-liste').innerHTML = l.length ? '<table class="histo-table"><thead><tr><th>N°</th><th>Retrait</th><th>Client</th><th>Commande</th><th class="n">Total</th><th>État</th><th>Prise</th></tr></thead><tbody>' + l.map(function (r) {
         var t = totalResa(r);
-        return '<tr data-id="' + r.id + '" data-d="' + r.date + '" title="Ouvrir ce jour dans les réservations"><td class="h-num">' + r.num + '</td>' +
+        return '<tr data-id="' + r.id + '" data-d="' + r.date + '" title="Ouvrir ce jour dans les réservations"><td class="h-num">' + (r.evt_num ? (H.evt === r.evt ? '' : '<small>' + esc(evtNomResa(r)) + '</small>') + 'n° ' + r.evt_num : r.num) + '</td>' +
           '<td><b>' + esc(dateLongue(r.date)) + '</b><small>commandée ' + esc(quand(r.cree).replace(/ par .*$/, '')) + '</small></td>' +
           '<td><b>' + esc(nomClient(r.c) || 'Sans nom') + '</b><small>' + esc(r.c.tel || r.c.email || '') + '</small></td>' +
           '<td>' + r.lignes.map(function (x) { return x.qte + ' × ' + esc(x.nom); }).join('<br>') + (r.note ? '<small class="h-note">« ' + esc(r.note) + ' »</small>' : '') + '</td>' +
@@ -1354,6 +1366,12 @@
       H.toutes = j.resas.slice().sort(function (a, b) { return (b.date + b.cree).localeCompare(a.date + a.cree); });
       var noms = {};
       H.toutes.forEach(function (r) { var n = nomClient(r.c); if (n) noms[n] = 1; });
+      // choix des commandes : toutes, hors événements, ou un événement (y compris un événement supprimé depuis, grâce à l'historique)
+      var evts = {}; (saved.evenements || []).forEach(function (e) { evts[e.id] = e.titre; });
+      H.toutes.forEach(function (r) { if (r.evt && !evts[r.evt]) evts[r.evt] = (r.evt_titre || 'Événement') + ' (supprimé)'; });
+      d.querySelector('#h-evt').innerHTML = '<option value="">Toutes</option><option value="jour">Plats du jour et autres (hors événements)</option>' +
+        Object.keys(evts).map(function (id) { var n = H.toutes.filter(function (r) { return r.evt === id; }).length; return '<option value="' + esc(id) + '">' + esc(evts[id]) + ' (' + n + ')</option>'; }).join('');
+      d.querySelector('#h-evt').value = H.evt;
       d.querySelector('#h-clients').innerHTML = Object.keys(noms).sort(function (a, b) { return a.localeCompare(b, 'fr'); }).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
       dessiner();
     }).catch(function (e) { d.querySelector('#h-liste').innerHTML = '<p class="vide">' + esc(e.message) + '</p>'; });
@@ -1363,22 +1381,23 @@
     d.addEventListener('change', function (e) {
       if (e.target.id === 'h-jour') { H.jour = e.target.value; dessiner(); }
       if (e.target.id === 'h-quel') { H.quel = e.target.value; dessiner(); }
+      if (e.target.id === 'h-evt') { H.evt = e.target.value; dessiner(); }
     });
     d.addEventListener('click', function (e) {
       if (e.target === d) return fin();
       var b = e.target.closest('[data-h]');
       if (b) {
         if (b.dataset.h === 'fermer') fin();
-        else if (b.dataset.h === 'effacer') { H.jour = ''; H.client = ''; d.querySelector('#h-jour').value = ''; d.querySelector('#h-client').value = ''; dessiner(); }
+        else if (b.dataset.h === 'effacer') { H.jour = ''; H.client = ''; H.evt = ''; d.querySelector('#h-jour').value = ''; d.querySelector('#h-client').value = ''; d.querySelector('#h-evt').value = ''; dessiner(); }
         else if (b.dataset.h === 'imprimer') {
           // feuille compacte : une ligne par commande, police réduite
           var l = filtrees(), tot = 0, enc = 0;
           l.forEach(function (r) { var t = totalResa(r); tot += t; if (r.paye) enc += t; });
           var maint = new Date();
-          imprimerCompact('<div class="imp-tete"><b>Historique des commandes</b><span>' + esc(d.querySelector('#h-resume').textContent) + '</span><small>Au Jardin Parmentier · imprimé le ' + maint.toLocaleDateString('fr-FR') + '</small></div>' +
+          imprimerCompact('<div class="imp-tete"><b>' + esc(d.querySelector('#h-t').textContent) + '</b><span>' + esc(d.querySelector('#h-resume').textContent) + '</span><small>Au Jardin Parmentier · imprimé le ' + maint.toLocaleDateString('fr-FR') + '</small></div>' +
             '<table class="imp-table imp-histo"><colgroup><col style="width:5%"><col style="width:6%"><col style="width:25%"><col><col style="width:8%"><col style="width:5%"><col style="width:5%"></colgroup><thead><tr><th>N°</th><th>Retrait</th><th>Client</th><th>Commande</th><th class="n">Total</th><th>Payé</th><th>Récup.</th></tr></thead><tbody>' + l.map(function (r) {
               var t = totalResa(r);
-              return '<tr><td>' + (r.num || '') + '</td><td class="nw">' + r.date.slice(8, 10) + '/' + r.date.slice(5, 7) + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
+              return '<tr><td>' + (r.evt_num ? (H.evt === r.evt ? '' : '<small>' + esc(evtNomResa(r)) + '</small> ') + r.evt_num : (r.num || '')) + '</td><td class="nw">' + r.date.slice(8, 10) + '/' + r.date.slice(5, 7) + '</td><td><b>' + esc(nomClient(r.c) || '?') + '</b>' + (r.c.tel ? ' <small>' + esc(r.c.tel) + '</small>' : '') + '</td>' +
                 '<td>' + r.lignes.map(function (x) { return '<b>' + x.qte + '</b>× ' + esc(x.nom); }).join(' · ') + (r.note ? ' <i>— ' + esc(r.note) + '</i>' : '') + '</td>' +
                 '<td class="n">' + (t ? euros(t) : '') + '</td><td class="c">' + (r.paye ? '✓' : '☐') + '</td><td class="c">' + (r.recupere ? '✓' : '☐') + '</td></tr>';
             }).join('') + '</tbody></table>' + recapImpression(l));
@@ -1400,7 +1419,7 @@
     if (String(type).indexOf('evt:') === 0) {
       var pe = type.split(':'), ev = saved.evenements[+pe[1]], it = ev && ev.items[+pe[2]];
       var vs0 = it ? evtVariantes(ev.items, +pe[2]) : [];
-      if (vs0.length) { var vs = vs0, cle = pe.length > 3 ? pe.slice(2).join(':') : vs[0].cle; return ligneVariante(it, vs.filter(function (x) { return x.cle === cle; })[0] || vs[0]); }
+      if (vs0.length) { var vs = vs0, cle = pe.length > 3 ? pe.slice(2).join(':') : vs[0].cle; return ligneVariante(it, vs.filter(function (x) { return x.cle === cle; })[0] || vs[0], 0, ev.id); }
     }
     var m = menuDu(date);
     if (type !== 'autre' && type !== 'special' && String(type).indexOf('evt:') !== 0 && m.plat && !m.plat.epuise) return { type: 'plat', nom: m.plat.nom, prix: m.plat.prix, qte: 1 };
@@ -1504,7 +1523,7 @@
     function dessiner() {
       var k = connu();
       d.innerHTML = '<form class="modale modale-resa" role="dialog" aria-modal="true" aria-labelledby="fr-t" novalidate>' +
-        '<h2 id="fr-t">' + (nouveau ? 'Nouvelle réservation' : 'Modifier la réservation <span class="r-num">n° ' + r.num + '</span>') + '</h2>' +
+        '<h2 id="fr-t">' + (nouveau ? 'Nouvelle réservation' : 'Modifier la réservation <span class="r-num">' + esc(numResa(r)) + '</span>') + '</h2>' +
         '<fieldset class="fr-bloc"><legend>Client' + (k ? ' <span class="statut statut-violet">' + ico('ok') + 'Client connu' + (k.nb ? ' · ' + pluriel(k.nb, 'commande') : '') + '</span> <button type="button" class="lien" data-f="oublier">Autre client</button>' : '') + '</legend>' +
           '<div class="grille-2"><label class="champ"><span>Prénom</span><input data-c="prenom" value="' + esc(f.c.prenom) + '" autocomplete="off" placeholder="ex. Marie"></label>' +
           '<label class="champ"><span>Nom</span><input data-c="nom" value="' + esc(f.c.nom) + '" autocomplete="off" placeholder="ex. Dupont"></label></div>' +
@@ -1608,7 +1627,7 @@
           if (lundi(j.resa.date) !== lundi(R.date)) { R.date = j.resa.date; R.data = null; R.charge = ''; }
           else { R.date = j.resa.date; remplacerResa(j.resa); }
           if (onglet === 'resas') render(true); else if (onglet === 'clients') chargerClients();
-          toast((nouveau ? 'Réservation n° ' + j.resa.num + ' enregistrée' : 'Réservation n° ' + j.resa.num + ' modifiée') + ' pour ' + dateLongue(j.resa.date).toLowerCase() + '.');
+          toast((nouveau ? 'Réservation ' + numResa(j.resa) + ' enregistrée' : 'Réservation ' + numResa(j.resa) + ' modifiée') + ' pour ' + dateLongue(j.resa.date).toLowerCase() + '.');
         })
         .catch(function (er) { btn.disabled = false; erreur(er.message); });
     });
@@ -2415,7 +2434,7 @@
       site.evenements.forEach(function (e, k) { evtOuvert(k, b.dataset.v === '1'); }); render(true);
     } else if (a === 'dup-evt') {
       evtOuvert(i + 1, true);
-      var ce = clone(site.evenements[i]); ce.titre += ' (copie)'; ce.actif = false;
+      var ce = clone(site.evenements[i]); ce.titre += ' (copie)'; ce.actif = false; ce.id = '';   // nouvel événement : sa propre numérotation
       site.evenements.splice(i + 1, 0, ce); render(true);
     } else if (a === 'sem') {
       SEM = b.dataset.s; ecrire('sem', SEM);
@@ -2467,6 +2486,8 @@
           if (VISITE) return toast('Mode visite : rien n’est supprimé.');
           api('resa-suppr', { id: rs.id }).then(function () { R.data.resas = R.data.resas.filter(function (x) { return x.id !== rs.id; }); chargerClients(); majResas(); toast('Réservation supprimée.'); }).catch(function (er) { toast(er.message, true); });
         });
+    } else if (a === 'evt-commandes') {
+      historique({ evt: b.dataset.id });
     } else if (a === 'r-historique') {
       historique();
     } else if (a === 'r-imprimer') {

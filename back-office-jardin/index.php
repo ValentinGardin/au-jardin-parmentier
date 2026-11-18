@@ -363,6 +363,7 @@ if ($api !== '') {
                 $r = resa_clean(['client' => $clients[$i]['id']] + $in, $k === null ? null : $l[$k], $qui);
                 if (!$r['lignes']) return [null, 'Ajoutez au moins un plat à la commande.'];
                 if (!$r['num']) $r['num'] = resa_num_suivant($l);
+                resa_evt_numeroter($r, $l);
                 if ($k === null) $l[] = $r; else $l[$k] = $r;
                 if (!clients_enregistrer($clients) || !resas_enregistrer($l)) return [null, 'Enregistrement impossible : le dossier data/ n’est pas modifiable.'];
                 return [[$r, $clients], null];
@@ -529,7 +530,7 @@ if ($api !== '') {
         $nomDe = function ($id) use ($clients) { $i = client_par_id($clients, $id); return $i === null ? 'Client supprimé' : (client_nom($clients[$i]) ?: 'Client'); };
         foreach (resas_charger() as $r) {
             if ($r['cree'] < $depuis) continue;
-            $txt = ' n° ' . $r['num'] . ' · ' . $nomDe($r['client']) . ', pour ' . date_fr($r['date'], true);
+            $txt = ' ' . resa_num_txt($r) . ' · ' . $nomDe($r['client']) . ', pour ' . date_fr($r['date'], true);
             if (($r['source'] ?? '') === 'site') $n[] = ['t' => $r['cree'], 'type' => 'web', 'txt' => 'Nouvelle réservation en ligne' . $txt, 'date' => $r['date']];
             elseif ($r['par'] !== $moiNom && $r['cree'] >= date('Y-m-d H:i', strtotime('-3 days'))) $n[] = ['t' => $r['cree'], 'type' => 'resa', 'txt' => $r['par'] . ' a pris la réservation' . $txt, 'date' => $r['date']];
         }
