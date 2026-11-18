@@ -1432,6 +1432,30 @@
               : { id: '', date: R.date, c: { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '', sms: '' }, lignes: [ligneVide(R.date)], note: '', paye: false };
     if (depart) { f.date = depart.date; f.lignes = depart.lignes; }
     if (clientInit) f.c = { id: clientInit.id, prenom: clientInit.prenom, nom: clientInit.nom, tel: clientInit.tel, email: clientInit.email, lettre: '', sms: '' };
+    // Mode événement (bouton « Réservation pour … » ou modification d'une réservation d'événement) : seulement les jours
+    // et les produits de cet événement, avec des boutons + / − comme sur le site. f.q : quantité (ou grammes) par façon de commander.
+    var EV = null, EVV = [];
+    var evtId = depart && depart.evt ? depart.evt : (r && r.evt ? r.evt : '');
+    if (evtId) EV = (saved.evenements || []).filter(function (e) { return e.id === evtId; })[0] || null;
+    if (EV) {
+      EV.items.forEach(function (it, k) { evtVariantes(EV.items, k).forEach(function (v) { EVV.push({ it: it, k: k, v: v }); }); });
+      f.q = {};
+      // lignes existantes : celles qui correspondent à un produit vont dans les compteurs, les autres restent en « autre chose »
+      f.lignes = f.lignes.filter(function (l) {
+        if (l.type !== 'evenement') return l.type === 'autre' && l.nom.trim();
+        var x = EVV.filter(function (y) { return l.nom === y.v.label || (y.v.kg && l.poids && l.nom.indexOf(y.v.label + ' · ') === 0); })[0];
+        if (!x) return true;
+        f.q[x.v.cle] = (f.q[x.v.cle] || 0) + (x.v.kg ? l.poids : l.qte);
+        return false;
+      });
+      if (!evtDans(EV, f.date)) f.date = evtPremierJour(EV);
+    }
+    function lignesEvt() {   // les compteurs → lignes de la réservation
+      return EVV.filter(function (x) { return f.q[x.v.cle] > 0; }).map(function (x) {
+        var l = ligneVariante(x.it, x.v, x.v.kg ? f.q[x.v.cle] : 0, EV.id); if (!x.v.kg) l.qte = f.q[x.v.cle]; return l;
+      });
+    }
+    function totalForm() { return (EV ? lignesEvt() : []).concat(f.lignes).reduce(function (a, x) { return a + prixNum(x.prix) * x.qte; }, 0); }
     var d = document.createElement('div');
     d.className = 'modale-fond';
     document.body.appendChild(d);
@@ -1469,6 +1493,7 @@
         '<button type="button" data-f="lettre" data-v="non" aria-pressed="' + (f.c.lettre === 'non') + '">Non</button></div></div>';
     }
     function optionsLigne(l) {
+      if (EV) return '<option value="autre" selected>Autre chose…</option>';
       var m = menuDu(f.date), o = [];
       var dj0 = l.type === 'plat' && !l.jour;
       if (m.plat || dj0) o.push(['plat', 'Plat du jour · ' + (dj0 ? l.nom : m.plat.nom) + ((dj0 ? l.prix : m.plat.prix) ? ' · ' + (dj0 ? l.prix : m.plat.prix) : '') + (m.plat && m.plat.epuise ? ' · ÉPUISÉ' : ''), m.plat && m.plat.epuise && !dj0]);
@@ -1498,6 +1523,26 @@
         (avant.length ? '<optgroup label="Plats des jours précédents (à mettre de côté)">' + avant.map(opt).join('') + '</optgroup>' : '') + opt(o[o.length - 1]);
     }
     function htmlLignes() {
+      if (!EV) return htmlLignesListe();
+      var dernierCat = null;
+      var cat = EV.items.map(function (it, k) {
+        if (it.cat && !it.prix) return '<p class="fr-evt-cat">' + esc(it.nom) + '</p>';
+        if (!it.cat && prixCatEvt(EV.items, k)) return '<p class="fr-evt-inclus">' + esc(it.nom) + (it.accomp ? ' <small>' + esc(it.accomp) + '</small>' : '') + '</p>';
+        return EVV.filter(function (x) { return x.k === k; }).map(function (x, j) {
+          var v = x.v, q = f.q[v.cle] || 0;
+          return '<div class="fr-prod' + (q ? ' choisi' : '') + (it.epuise ? ' epuise' : '') + '">' +
+            '<span class="fr-prod-nom">' + (j === 0 ? '<b>' + (it.cat ? 'Formule ' : '') + esc(it.nom) + (it.epuise ? ' <em>épuisé</em>' : '') + '</b>' : '') + (v.detail ? '<small>' + esc(v.detail) + '</small>' : '') + '</span>' +
+            '<span class="fr-prod-px">' + (v.prix ? esc(v.prix) + esc(v.suffixe || '') : '') + '</span>' +
+            (v.kg ? '<label class="fr-poids"><input type="number" min="0" max="20000" step="100" data-qkg="' + v.cle + '" value="' + (q || '') + '" placeholder="0" aria-label="Poids en grammes"><span>g</span></label>'
+                  : '<div class="qte"><button type="button" data-f="q-moins" data-cle="' + v.cle + '" aria-label="Un de moins"' + (q ? '' : ' disabled') + '>−</button><output>' + q + '</output><button type="button" data-f="q-plus" data-cle="' + v.cle + '" aria-label="Un de plus">+</button></div>') + '</div>';
+        }).join('');
+      }).join('');
+      var tot = totalForm();
+      return '<div class="fr-evt-prods">' + cat + '</div>' +
+        (f.lignes.length ? '<p class="fr-evt-cat">Autre chose</p>' + htmlLignesListe(true) : '') +
+        '<div class="fr-pied-cmd"><button type="button" class="btn btn-discret" data-f="ajouter">' + ico('plus') + 'Autre chose</button>' + (tot ? '<span class="fr-total">Total <b>' + euros(tot) + '</b></span>' : '') + '</div>';
+    }
+    function htmlLignesListe(seulesLignes) {
       var tot = 0;
       var h = f.lignes.map(function (l, i) {
         tot += prixNum(l.prix) * l.qte;
@@ -1506,12 +1551,20 @@
           (l.type === 'autre' ? '<input data-l="' + i + '" data-k="nom" value="' + esc(l.nom) + '" placeholder="Quoi ? ex. Quiche lorraine" aria-label="Quoi ?"><input class="prix" data-l="' + i + '" data-k="prix" value="' + esc(l.prix) + '" placeholder="Prix" inputmode="decimal" aria-label="Prix à l’unité">' : '') +
           (l.pkg ? '<label class="fr-poids"><input type="number" min="50" max="20000" step="50" data-l="' + i + '" data-k="poids" value="' + l.poids + '" aria-label="Poids en grammes"><span>g</span></label>' :
           '<div class="qte"><button type="button" data-f="moins" data-i="' + i + '" aria-label="Un de moins">−</button><input type="number" min="1" max="99" data-l="' + i + '" data-k="qte" value="' + l.qte + '" aria-label="Quantité"><button type="button" data-f="plus" data-i="' + i + '" aria-label="Un de plus">+</button></div>') +
-          (f.lignes.length > 1 ? '<button type="button" class="ib ib-suppr" data-f="retirer" data-i="' + i + '" title="Retirer" aria-label="Retirer">' + ico('suppr') + '</button>' : '') + '</div>' +
+          (f.lignes.length > 1 || EV ? '<button type="button" class="ib ib-suppr" data-f="retirer" data-i="' + i + '" title="Retirer" aria-label="Retirer">' + ico('suppr') + '</button>' : '') + '</div>' +
           (l.jour ? '<p class="fr-cote">' + ico('note') + 'Plat du ' + jourNom(l.jour).toLowerCase() + ' ' + dateFr(l.jour) + ' : il sera noté « à mettre de côté » ce jour-là.</p>' : '');
       }).join('');
+      if (seulesLignes) return h;
       return h + '<div class="fr-pied-cmd"><button type="button" class="btn btn-discret" data-f="ajouter">' + ico('plus') + 'Ajouter un plat</button>' + (tot ? '<span class="fr-total">Total <b>' + euros(tot) + '</b></span>' : '') + '</div>';
     }
     function htmlDates() {
+      if (EV) {   // seulement les jours de l'événement
+        var jours = [], x = EV.date;
+        while (x && x <= evtFin(EV) && jours.length < 14) { jours.push(x); x = plus(x, 1); }
+        return '<div class="fr-dates fr-dates-evt" style="--c:' + esc(EV.couleur) + '"><span class="fr-evt-nom">' + esc(EV.titre) + '</span>' +
+          (jours.length > 1 ? '<div class="r-jours">' + jours.map(function (j) { return '<button type="button" class="r-jour' + (j === f.date ? ' actif' : '') + '" data-f="date" data-d="' + j + '"><span>' + JC[parse(j).getDay()] + '</span><b>' + parse(j).getDate() + '</b></button>'; }).join('') + '</div>' : '') +
+          '</div><p class="fr-date-txt">Retrait ' + esc(dateLongue(f.date).toLowerCase()) + '</p>';
+      }
       var du = lundi(f.date), h = '';
       for (var i = 0; i < 7; i++) {
         var x = plus(du, i), pd = menuDu(x).plat;
@@ -1523,7 +1576,7 @@
     function dessiner() {
       var k = connu();
       d.innerHTML = '<form class="modale modale-resa" role="dialog" aria-modal="true" aria-labelledby="fr-t" novalidate>' +
-        '<h2 id="fr-t">' + (nouveau ? 'Nouvelle réservation' : 'Modifier la réservation <span class="r-num">' + esc(numResa(r)) + '</span>') + '</h2>' +
+        '<h2 id="fr-t">' + (nouveau ? (EV ? 'Réservation · ' + esc(EV.titre) : 'Nouvelle réservation') : 'Modifier la réservation <span class="r-num">' + esc(numResa(r)) + '</span>') + '</h2>' +
         '<fieldset class="fr-bloc"><legend>Client' + (k ? ' <span class="statut statut-violet">' + ico('ok') + 'Client connu' + (k.nb ? ' · ' + pluriel(k.nb, 'commande') : '') + '</span> <button type="button" class="lien" data-f="oublier">Autre client</button>' : '') + '</legend>' +
           '<div class="grille-2"><label class="champ"><span>Prénom</span><input data-c="prenom" value="' + esc(f.c.prenom) + '" autocomplete="off" placeholder="ex. Marie"></label>' +
           '<label class="champ"><span>Nom</span><input data-c="nom" value="' + esc(f.c.nom) + '" autocomplete="off" placeholder="ex. Dupont"></label></div>' +
@@ -1545,7 +1598,7 @@
     dessiner();
     // la liste des clients (pour les suggestions) arrive en arrière-plan
     if (CL === null) chargerClients().then(function () { if (d.isConnected) { part('fr-sugg', htmlSugg()); part('fr-lettre', htmlLettre()); } });
-    (f.c.id ? d.querySelector('[data-l="0"][data-k="qte"]') : d.querySelector('[data-c="prenom"]')).focus();
+    var fc = f.c.id ? d.querySelector('[data-l="0"][data-k="qte"], [data-f="q-plus"]') : d.querySelector('[data-c="prenom"]'); if (fc) fc.focus();
     d.addEventListener('input', function (e) {
       var t = e.target;
       if (t.dataset.c) {
@@ -1561,7 +1614,11 @@
           l.nom = l.base + ' · ' + poidsTxt(l.poids); l.prix = l.pkg ? euros(Math.round(prixNum(l.pkg) * l.poids / 10) / 100) : '';
         }
         else if (t.dataset.k !== 'type') l[t.dataset.k] = t.value;
-        if (t.dataset.k === 'prix' || t.dataset.k === 'qte' || t.dataset.k === 'poids') { var tt = d.querySelector('.fr-total'); var s = f.lignes.reduce(function (a, x) { return a + prixNum(x.prix) * x.qte; }, 0); if (tt) tt.innerHTML = 'Total <b>' + euros(s) + '</b>'; else if (s) part('fr-lignes', htmlLignes()); }
+        if (t.dataset.k === 'prix' || t.dataset.k === 'qte' || t.dataset.k === 'poids') { var tt = d.querySelector('.fr-total'); var s = totalForm(); if (tt) tt.innerHTML = 'Total <b>' + euros(s) + '</b>'; else if (s) part('fr-lignes', htmlLignes()); }
+      } else if (t.dataset.qkg) {   // poids d'un produit au kilo (mode événement)
+        f.q[t.dataset.qkg] = Math.max(0, Math.min(20000, parseInt(t.value, 10) || 0));
+        t.closest('.fr-prod').classList.toggle('choisi', f.q[t.dataset.qkg] > 0);
+        var tt2 = d.querySelector('.fr-total'), s2 = totalForm(); if (tt2) tt2.innerHTML = 'Total <b>' + euros(s2) + '</b>'; else if (s2) part('fr-lignes', htmlLignes());
       } else if ('n' in t.dataset) f.note = t.value;
     });
     d.addEventListener('change', function (e) {
@@ -1591,7 +1648,7 @@
       else if (a === 'choisir') {
         var c = CL.filter(function (x) { return x.id === b.dataset.id; })[0];
         f.c = { id: c.id, prenom: c.prenom, nom: c.nom, tel: c.tel, email: c.email, lettre: '', sms: '' };
-        dessiner(); d.querySelector('[data-l="0"][data-k="qte"]').focus();
+        dessiner(); var fq = d.querySelector('[data-l="0"][data-k="qte"], [data-f="q-plus"]'); if (fq) fq.focus();
       } else if (a === 'oublier') { f.c = { id: '', prenom: '', nom: '', tel: '', email: '', lettre: '', sms: '' }; dessiner(); d.querySelector('[data-c="prenom"]').focus(); }
       else if (a === 'lettre' || a === 'sms') { f.c[a] = f.c[a] === b.dataset.v ? '' : b.dataset.v; part('fr-lettre', htmlLettre()); }
       else if (a === 'date') {
@@ -1603,11 +1660,15 @@
           var n = ligneVide(f.date, l.type); if (n.type !== l.type) { n = l; n.type = 'autre'; } n.qte = l.qte; return n;
         });
         part('fr-dates', htmlDates()); part('fr-lignes', htmlLignes());
+      } else if (a === 'q-plus' || a === 'q-moins') {
+        var cq = b.dataset.cle; f.q[cq] = Math.max(0, Math.min(99, (f.q[cq] || 0) + (a === 'q-plus' ? 1 : -1)));
+        part('fr-lignes', htmlLignes());
+        var nb = d.querySelector('[data-f="' + a + '"][data-cle="' + cq + '"]'); if (nb && !nb.disabled) nb.focus();
       } else if (a === 'plus' || a === 'moins') { f.lignes[i].qte = Math.max(1, Math.min(99, f.lignes[i].qte + (a === 'plus' ? 1 : -1))); part('fr-lignes', htmlLignes()); }
       else if (a === 'retirer') { f.lignes.splice(i, 1); part('fr-lignes', htmlLignes()); }
       else if (a === 'ajouter') {
         // deuxième ligne : « autre chose » (le plat du jour est déjà dans la commande, il suffit d'augmenter la quantité)
-        f.lignes.push(ligneVide(f.date, f.lignes.some(function (l) { return l.type === 'plat'; }) ? 'autre' : 'plat'));
+        f.lignes.push(ligneVide(f.date, EV || f.lignes.some(function (l) { return l.type === 'plat'; }) ? 'autre' : 'plat'));
         part('fr-lignes', htmlLignes());
         var n = d.querySelectorAll('.fr-ligne'); var z = n[n.length - 1].querySelector('select'); if (z) z.focus();
       }
@@ -1617,8 +1678,8 @@
       var al = d.querySelector('.alerte');
       function erreur(m) { al.textContent = m; al.hidden = false; }
       if (!f.c.prenom.trim() && !f.c.nom.trim()) { d.querySelector('[data-c="prenom"]').focus(); return erreur('Indiquez le nom ou le prénom du client.'); }
-      var lignes = f.lignes.filter(function (l) { return l.nom.trim(); });
-      if (!lignes.length) return erreur('Ajoutez au moins un plat à la commande.');
+      var lignes = (EV ? lignesEvt() : []).concat(f.lignes.filter(function (l) { return l.nom.trim(); }));
+      if (!lignes.length) return erreur(EV ? 'Choisissez au moins un produit.' : 'Ajoutez au moins un plat à la commande.');
       if (VISITE) { fin(); return toast('Mode visite : la réservation n’est pas enregistrée.'); }
       var btn = d.querySelector('.modale-actions .btn-violet'); btn.disabled = true;
       api('resa', { id: f.id, date: f.date, c: f.c, lignes: lignes, note: f.note, paye: f.paye })
@@ -2474,8 +2535,8 @@
     } else if (a === 'resa-nouvelle') {
       formResa(null);
     } else if (a === 'resa-evt') {
-      var ev = saved.evenements[+b.dataset.e], k0 = ev.items.map(function (it, k) { return !it.epuise && evtVariantes(ev.items, k).length > 0; }).indexOf(true), dj = evtPremierJour(ev);
-      formResa(null, null, { date: dj, lignes: [k0 >= 0 ? ligneVide(dj, 'evt:' + b.dataset.e + ':' + k0) : ligneVide(dj, 'autre')] });
+      var ev = saved.evenements[+b.dataset.e];
+      formResa(null, null, { date: evtPremierJour(ev), lignes: [], evt: ev.id });   // seulement les produits de l'événement
     } else if (a === 'resa-modif') {
       formResa(resaParId(b.dataset.id));
     } else if (a === 'resa-suppr') {

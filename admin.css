@@ -1129,3 +1129,21 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .r-num-evt{background:var(--violet-pale);color:var(--violet)}
 .h-num small{display:block;font-size:.68rem;color:var(--gris);font-weight:500;white-space:nowrap}
 .sim-boutons{display:flex;flex-wrap:wrap;gap:.5rem}
+/* Réservation d'un événement : seulement ses jours et ses produits */
+.fr-dates-evt{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.fr-evt-nom{display:inline-flex;align-items:center;padding:.35rem .8rem;border-radius:99px;background:var(--c,var(--violet));color:#fff;font-weight:700;font-size:.85rem}
+.fr-evt-prods{display:grid;gap:.15rem;max-height:46vh;overflow-y:auto;padding-right:.2rem;overscroll-behavior:contain}
+.fr-evt-cat{margin:.7rem 0 .2rem;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--violet)}
+.fr-evt-prods .fr-evt-cat:first-child{margin-top:0}
+.fr-evt-inclus{margin:0 0 0 1rem;font-size:.82rem;color:var(--gris)}
+.fr-evt-inclus small{color:var(--gris-clair,#b7afb4)}
+.fr-prod{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:.7rem;padding:.45rem .6rem;border:1px solid var(--trait);border-radius:10px;background:var(--blanc);transition:border-color .15s,background-color .15s}
+.fr-prod.choisi{border-color:var(--violet);background:var(--violet-pale)}
+.fr-prod.epuise{opacity:.6}
+.fr-prod-nom{display:grid;min-width:0}
+.fr-prod-nom b{font-size:.9rem}
+.fr-prod-nom b em{font-style:normal;font-size:.68rem;font-weight:700;text-transform:uppercase;color:#b42318;margin-left:.3rem}
+.fr-prod-nom small{font-size:.8rem;color:var(--gris)}
+.fr-prod-px{font-weight:700;font-size:.88rem;white-space:nowrap}
+.fr-prod .qte output{min-width:1.8rem;text-align:center;font-weight:700}
+.fr-prod .qte button:disabled{opacity:.35}
