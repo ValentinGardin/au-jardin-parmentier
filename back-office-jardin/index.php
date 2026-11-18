@@ -99,15 +99,23 @@ function api_garde($admin = false) {
 function entree() { $in = json_decode((string)file_get_contents('php://input'), true); return is_array($in) ? $in : []; }
 
 // Copie de sécurité avant chaque enregistrement (les 30 dernières sont gardées dans data/sauvegardes/)
-function sauvegarder() {
+// Le journal (data/sauvegardes/journal.json) note pour chaque copie la partie enregistrée et par qui : bouton « Revenir en arrière ».
+const JOURNAL = DATA . '/sauvegardes/journal.json';
+function sauvegarder($part = '') {
+    global $moi;
     $src = DATA . '/site.json';
-    if (!is_file($src)) return;
+    if (!is_file($src)) return '';
     $dir = DATA . '/sauvegardes';
     if (!is_dir($dir)) @mkdir($dir, 0755);
-    @copy($src, $dir . '/site-' . date('Y-m-d-His') . '.json');
+    $nom = 'site-' . date('Y-m-d-His') . '-' . bin2hex(random_bytes(2)) . '.json';
+    if (!@copy($src, $dir . '/' . $nom)) return '';
     $l = glob($dir . '/site-*.json') ?: [];
     sort($l);
-    foreach (array_slice($l, 0, max(0, count($l) - 30)) as $f) @unlink($f);
+    foreach (array_slice($l, 0, max(0, count($l) - 60)) as $f) @unlink($f);
+    $j = array_values(array_filter(liste(lire_json(JOURNAL)), function ($e) use ($dir) { return is_file($dir . '/' . ($e['f'] ?? '')); }));
+    $j[] = ['f' => $nom, 'date' => date('Y-m-d H:i'), 'part' => $part, 'qui' => $moi ? ($moi['nom'] ?: $moi['identifiant']) : ''];
+    json_save(JOURNAL, $j);
+    return $nom;
 }
 
 // Photo envoyée depuis le back-office : redimensionnée (1600 px max) et enregistrée en WebP dans img/photos/
@@ -150,7 +158,7 @@ if ($api !== '') {
         $ancien = $d[$part] ?? null;
         $d[$part] = $in['data'] ?? null;
         $d = site_clean($d);
-        sauvegarder();
+        $copie = sauvegarder($part);   // état d'avant : sert au bouton « Annuler » qui suit l'enregistrement
         if (!json_save(DATA . '/site.json', $d)) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable. Donnez-lui les droits d’écriture (755 ou 775) chez votre hébergeur.']);
         // plats passés « épuisés » : gardés en mémoire pour les statistiques
         if (in_array($part, ['semaine', 'semaine_suivante'], true)) {
@@ -160,7 +168,31 @@ if ($api !== '') {
         }
         if ($part === 'evenements') foreach ($d['evenements'] as $i => $e) foreach ($e['items'] as $k => $it)
             if ($it['epuise'] && empty($ancien[$i]['items'][$k]['epuise'])) epuise_noter($e['date'] ?: date('Y-m-d'), $it['nom']);
-        repondre(200, ['ok' => true, 'data' => $d[$part]]);
+        repondre(200, ['ok' => true, 'data' => $d[$part], 'copie' => $copie]);
+    }
+    // Retour en arrière : les enregistrements récents d'une partie (menu de la semaine, cartes, événements…)
+    if ($api === 'versions') {
+        if (!$logged) repondre(401, ['erreur' => 'Votre session a expiré. Rechargez la page.']);
+        $part = (string)($_GET['part'] ?? '');
+        $l = array_values(array_filter(liste(lire_json(JOURNAL)), function ($e) use ($part) { return ($e['part'] ?? '') === $part && is_file(DATA . '/sauvegardes/' . $e['f']); }));
+        repondre(200, ['ok' => true, 'versions' => array_slice(array_reverse($l), 0, 15)]);
+    }
+    if ($api === 'restaurer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        api_garde();
+        $in = entree();
+        $part = (string)($in['part'] ?? ''); $f = basename((string)($in['f'] ?? ''));
+        if (!in_array($part, ['evenements', 'semaine', 'semaine_suivante', 'menus', 'commandes', 'mots', 'avis', 'faq'], true) || !preg_match('/^site-[\w-]+\.json$/', $f) || !is_file(DATA . '/sauvegardes/' . $f)) repondre(400, ['erreur' => 'Cette version n’existe plus.']);
+        $b = json_decode((string)file_get_contents(DATA . '/sauvegardes/' . $f), true);
+        if (!is_array($b)) repondre(400, ['erreur' => 'Cette version est illisible.']);
+        $res = verrou(function () use ($b, $part) {
+            $d = site_load();
+            $copie = sauvegarder($part);   // le retour en arrière peut lui-même être annulé
+            $d[$part] = site_clean($b)[$part];
+            if (!json_save(DATA . '/site.json', site_clean($d))) return null;
+            return [site_load()[$part], $copie];
+        });
+        if (!$res) repondre(500, ['erreur' => 'Enregistrement impossible : le dossier data/ n’est pas modifiable.']);
+        repondre(200, ['ok' => true, 'data' => $res[0], 'copie' => $res[1]]);
     }
     // signal envoyé par le back-office ouvert, toutes les 10 minutes : garde la session active
     if ($api === 'ping') repondre($logged ? 200 : 401, ['ok' => $logged]);
@@ -496,7 +528,7 @@ if ($api !== '') {
                 if (!isset($d['evenements'][$e]['items'][$k])) return null;
                 $d['evenements'][$e]['items'][$k]['epuise'] = $v;
                 if ($v) epuise_noter($date, $d['evenements'][$e]['items'][$k]['nom']);
-                sauvegarder(); json_save(DATA . '/site.json', site_clean($d));
+                sauvegarder('evenements'); json_save(DATA . '/site.json', site_clean($d));
                 return ['evenements', site_load()['evenements']];
             }
             foreach (['semaine', 'semaine_suivante'] as $k) {
@@ -506,13 +538,13 @@ if ($api !== '') {
                     if ($s['special']['nom'] === '') continue;
                     $d[$k]['special']['epuise'] = $v;
                     if ($v) epuise_noter($date, $s['special']['nom']);
-                    sauvegarder(); json_save(DATA . '/site.json', site_clean($d));
+                    sauvegarder($k); json_save(DATA . '/site.json', site_clean($d));
                     return [$k, site_load()[$k]];
                 }
                 foreach ($d[$k]['jours'] as $i => $j) if (norm($j['jour']) === norm($nom) && $j['nom'] !== '') {
                     $d[$k]['jours'][$i]['epuise'] = !empty($in['valeur']);
                     if (!empty($in['valeur'])) epuise_noter($date, $j['nom']);
-                    sauvegarder();
+                    sauvegarder($k);
                     json_save(DATA . '/site.json', site_clean($d));
                     return [$k, site_load()[$k]];
                 }
@@ -785,6 +817,7 @@ if ($logged) {
     <button type="button" class="plus-btn" id="plus-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-liste"><span id="plus-txt">Plus</span><svg class="ico fleche"><use href="#i-bas"/></svg></button>
   </nav>
   <div class="haut-actions">
+    <button type="button" class="cloche" id="retour-arriere" hidden title="Revenir en arrière : annuler un enregistrement fait par erreur"><svg class="ico"><use href="#i-annuler"/></svg><span class="sr-only">Revenir en arrière</span></button>
     <button type="button" class="cloche" id="cloche" aria-haspopup="true" aria-expanded="false" aria-controls="notifs" title="Notifications récentes"><svg class="ico"><use href="#i-cloche"/></svg><span class="sr-only">Notifications</span><span class="cloche-nb" id="cloche-nb" hidden></span></button>
     <button type="button" class="qui" data-onglet="comptes" aria-selected="false" title="<?= $estAdmin ? 'Utilisateurs et mon compte' : 'Mon compte' ?> (<?= h($moi['email']) ?>)"><span class="avatar"><?= h(strtoupper(substr($moi['nom'] ?: $moi['identifiant'], 0, 1))) ?></span><span class="qui-nom"><?= h($moi['nom'] ?: $moi['identifiant']) ?></span></button>
     <a class="btn btn-discret" href="./" target="_blank" rel="noopener"><svg class="ico"><use href="#i-oeil"/></svg><span>Voir le site</span></a>
@@ -829,6 +862,7 @@ if ($logged) {
     <symbol id="i-haut" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m18 15-6-6-6 6"/></symbol>
     <symbol id="i-bas" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></symbol>
     <symbol id="i-suppr" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></g></symbol>
+    <symbol id="i-annuler" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></g></symbol>
     <symbol id="i-retour" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 12H5M12 19l-7-7 7-7"/></symbol>
     <symbol id="i-imprim" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></g></symbol>
     <symbol id="i-suivant" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></symbol>

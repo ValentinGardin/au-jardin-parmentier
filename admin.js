@@ -2100,6 +2100,7 @@
     // « Plus » : affiché en violet (avec le nom de la rubrique) quand on est dans l'un de ses onglets
     var dansPlus = document.querySelector('#plus-liste [data-onglet="' + onglet + '"]');
     document.getElementById('plus-btn').classList.toggle('actif', !!dansPlus);
+    document.getElementById('retour-arriere').hidden = VISITE || PARTS.indexOf(partActive()) < 0;
     document.getElementById('plus-txt').textContent = dansPlus ? dansPlus.textContent : 'Plus';
     app.innerHTML = (VISITE ? '<p class="bandeau-visite">' + ico('oeil') + '<span><b>Mode visite</b> : explorez librement, essayez les champs et les aperçus. Rien n’est enregistré sur le site.</span></p>' : '') +
       '<div class="panneau" data-panneau="' + onglet + '">' + VUES[onglet]() + '</div>';
@@ -2139,6 +2140,49 @@
     t.textContent = msg; t.className = 'toast' + (erreur ? ' erreur' : ''); t.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, erreur ? 7000 : 3200);
   }
+  // Message avec un bouton (ex. « Annuler » juste après un enregistrement) ; il reste affiché un peu plus longtemps
+  function toastAction(msg, libelle, fn) {
+    var t = document.getElementById('toast');
+    t.className = 'toast toast-action'; t.hidden = false;
+    t.innerHTML = '<span>' + esc(msg) + '</span><button type="button">' + ico('annuler') + esc(libelle) + '</button>';
+    t.querySelector('button').onclick = function () { t.hidden = true; fn(); };
+    clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 10000);
+  }
+
+  // =============== Revenir en arrière (annuler un enregistrement fait par erreur) ===============
+  // Avant chaque enregistrement, le serveur garde une copie du site : on peut remettre une partie (menu, cartes…) comme avant.
+  function restaurer(part, f, message) {
+    if (VISITE) return toast('Mode visite : rien n’est modifié.');
+    return api('restaurer', { part: part, f: f }).then(function (j) {
+      site[part] = j.data; saved[part] = clone(j.data);
+      if (part === SEM) specialOuvert = aSpecial(j.data);
+      render(true);
+      toastAction(message || 'C’est fait : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont revenus' : 'est revenu') + ' comme avant.', 'Rétablir', function () { restaurer(part, j.copie, 'Modification rétablie.'); });
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  function fenetreVersions() {
+    var part = partActive();
+    if (PARTS.indexOf(part) < 0) return;
+    getJSON('versions&part=' + part).then(function (j) {
+      var l = j.versions || [];
+      var d = document.createElement('div'); d.className = 'modale-fond';
+      d.innerHTML = '<div class="modale versions" role="dialog" aria-modal="true" aria-labelledby="v-t"><h2 id="v-t">Revenir en arrière</h2>' +
+        '<p>Choisissez l’enregistrement à annuler : ' + esc(NOMS[part]) + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'redeviennent' : 'redevient') + ' tel' + (NOMS[part].indexOf('les ') === 0 ? 's' : '') + ' qu’avant cet enregistrement (et ceux qui ont suivi). Les autres onglets ne changent pas.</p>' +
+        (sale(part) ? '<p class="alerte">Vos modifications pas encore enregistrées sur cet onglet seront perdues.</p>' : '') +
+        (l.length ? '<ul class="versions-liste">' + l.map(function (v, k) {
+          return '<li><span><b>' + (k === 0 ? 'Dernier enregistrement' : 'Enregistrement') + '</b><small>' + esc(quand(v.date)) + (v.qui ? ' · ' + esc(v.qui) : '') + '</small></span>' +
+            '<button type="button" class="btn ' + (k === 0 ? 'btn-violet' : 'btn-ligne') + '" data-v="' + esc(v.f) + '">' + ico('annuler') + 'Annuler celui-ci</button></li>';
+        }).join('') + '</ul>' : '<p class="vide">Aucun enregistrement récent à annuler pour cet onglet.</p>') +
+        '<div class="modale-actions"><button type="button" class="btn btn-discret" data-v="">Fermer</button></div></div>';
+      document.body.appendChild(d);
+      d.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-v]');
+        if (e.target === d || (b && !b.dataset.v)) return d.remove();
+        if (b) { d.remove(); restaurer(part, b.dataset.v); }
+      });
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  document.getElementById('retour-arriere').addEventListener('click', fenetreVersions);
 
   // Fenêtre de dialogue simple (remplace confirm)
   function demander(titre, texte, boutons) {
@@ -2234,7 +2278,8 @@
       site[part] = j.data; saved[part] = clone(j.data);
       if (part === SEM) specialOuvert = aSpecial(j.data);
       render(true);
-      toast('Enregistré : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont' : 'est') + ' à jour sur le site.');
+      var msg = 'Enregistré : ' + NOMS[part] + ' ' + (NOMS[part].indexOf('les ') === 0 ? 'sont' : 'est') + ' à jour sur le site.';
+      if (j.copie) toastAction(msg, 'Annuler', function () { restaurer(part, j.copie); }); else toast(msg);
       return true;
     }).catch(function (e) {
       toast(e.message === 'Failed to fetch' ? 'Pas de connexion internet : rien n’a été perdu, réessayez dans un instant.' : e.message, true);

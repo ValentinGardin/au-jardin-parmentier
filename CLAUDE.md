@@ -50,6 +50,8 @@ Playwright est préinstallé (`require('playwright')`). Penser à remettre les d
   à chaque événement (`evt_num`, compteur `evts` de data/numeros.json, `resa_evt_numeroter`) ; `num` reste le numéro interne unique.
   Affichage : `resa_num_txt()` (PHP), `numResa()` (admin.js) ; liste par événement = historique filtré (`historique({evt})`).
   Saisie au back-office : `formResa(null, null, {evt: id})` = mode événement (jours + produits de l'événement, compteurs `f.q`).
+- Retour en arrière : chaque enregistrement fait une copie (`sauvegarder($part)`, 60 copies, journal `data/sauvegardes/journal.json`) ;
+  « Annuler » après l'enregistrement et bouton ↶ en haut (`?api=versions`, `?api=restaurer` : ne remet que la partie concernée).
 - Connexion back-office : sessions 30 jours dans `data/sessions/`, « rester connecté » 60 jours (`data/souvenirs.json`,
   empreintes seulement), jeton CSRF lié au compte (`csrf_pour`, clé `data/secret.key`), ping toutes les 10 min (`?api=ping`).
 - Garder le site responsive (téléphone d'abord, pas de défilement horizontal, champs à 16 px sur iPhone).

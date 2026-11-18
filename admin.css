@@ -1155,3 +1155,16 @@ button.pastille-couleur{background:var(--blanc);font:inherit;font-size:.88rem;fo
 .jour-col .jour-etat{text-transform:none;letter-spacing:0;font-weight:600;font-size:.76rem;color:var(--gris);background-color:var(--blanc);width:100%}
 .est-info .jour-col .jour-etat{color:var(--violet)}
 .est-ferme .jour-col .jour-etat{color:var(--gris)}
+/* Revenir en arrière */
+.toast-action{display:flex;align-items:center;gap:.9rem;padding:.55rem .6rem .55rem 1.1rem}
+.toast-action button{display:inline-flex;align-items:center;gap:.35rem;flex:none;border:0;border-radius:9px;padding:.45rem .8rem;background:#fff;color:var(--vert);font:700 .85rem var(--texte);cursor:pointer}
+.toast-action button .ico{width:15px;height:15px}
+.versions{max-width:520px}
+.versions > p{color:var(--gris);font-size:.9rem}
+.versions-liste{list-style:none;margin:.8rem 0;padding:0;display:grid;gap:.4rem}
+.versions-liste li{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.6rem .8rem;border:1px solid var(--trait);border-radius:12px}
+.versions-liste li span{display:grid}
+.versions-liste small{color:var(--gris);font-size:.8rem}
+.versions-liste .btn{flex:none;font-size:.82rem;padding:.45rem .7rem}
+@media (max-width:560px){.versions-liste li{flex-direction:column;align-items:stretch}.toast-action{flex-wrap:wrap}}
+#retour-arriere[hidden]{display:none!important}
