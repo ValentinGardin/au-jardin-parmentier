@@ -448,7 +448,7 @@
       avant = document.activeElement;
       pop.hidden = false; document.body.classList.add('pop-ouvert');
       requestAnimationFrame(function () { pop.classList.add('visible'); });
-      pop.querySelector('.pop-fermer').focus();
+      var carte = pop.querySelector('.pop-carte'); carte.focus({ preventScroll: true });   // le clavier est dans la fenêtre, sans contour sur la croix
       try { localStorage.setItem(cle, String(Date.now())); } catch (err) {}
     };
     var fermerPop = function () {

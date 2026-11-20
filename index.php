@@ -664,26 +664,54 @@ $quandPremier = $premier ? ($premier['date'] === date('Y-m-d') ? 'Aujourd’hui'
 
 
 <?php $pop = null; foreach ($evts as $e) if ($e['popup']) { $pop = $e; break; }
-if ($pop): $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']); ?>
-<!-- Fenêtre d'accueil pour l'événement du moment (option « pop-up » dans le back-office) -->
+if ($pop):
+  $cl = couleurs_evt($pop['couleur']); $ph = photo($pop['photo']);
+  $iPop = array_search($pop, $s['evenements'], true); $popEnLigne = isset($evtEnLigne[$iPop]); $popOuvert = reservation_ouverte($pop);
+  $popDans = $pop['date'] ? (int)round((strtotime($pop['date']) - strtotime(date('Y-m-d'))) / 86400) : null;
+  $popEnCours = $pop['date'] && $pop['date'] <= date('Y-m-d') && evt_fin($pop) >= date('Y-m-d');
+  $popQuand = $popDans === null ? '' : ($popEnCours ? 'C’est aujourd’hui !' : ($popDans === 1 ? 'C’est demain !' : ($popDans > 1 ? 'Dans ' . $popDans . ' jours' : '')));
+  // l'essentiel de l'offre : formules et produits (pas le contenu des formules), avec leur prix ou « dès … » pour ceux à formats
+  $popLignes = [];
+  foreach ($pop['items'] as $k => $it) {
+    if ($it['cat']) { if ($it['prix'] !== '') $popLignes[] = ['Formule ' . $it['nom'], $it['prix'], $it['epuise'], implode(', ', array_map(function ($x) { return preg_replace('/ \(.*$/u', '', $x); }, evt_contenu($pop['items'], $k)))]; continue; }
+    if (evt_prix_cat($pop['items'], $k) !== '') continue;
+    $vs = evt_variantes($pop['items'], $k); $px = '';
+    if (count($vs) > 1) {   // le moins cher, avec sa propre unité (ex. « dès 4.50 € » la tranche, pas « /kg »)
+      $m = null; foreach ($vs as $v) if (prix_nombre($v['prix']) && (!$m || prix_nombre($v['prix']) < prix_nombre($m['prix']))) $m = $v;
+      if ($m) $px = 'dès ' . $m['prix'] . ($m['suffixe'] ?? '');
+    }
+    elseif ($vs) $px = $vs[0]['prix'] . ($vs[0]['suffixe'] ?? '');
+    $popLignes[] = [$it['nom'], $px, $it['epuise'], $it['accomp'] ?? ''];
+  }
+  $popPlus = max(0, count($popLignes) - 4); $popLignes = array_slice($popLignes, 0, 4); ?>
+<!-- Fenêtre d'accueil pour l'événement du moment (option « pop-up » dans le back-office).
+     Téléphone : panneau qui monte du bas, boutons toujours visibles. Ordinateur : carte centrée.
+     Bouton principal : « Réserver en ligne » si la commande en ligne est ouverte pour l'événement, sinon « Réserver au 09… ». -->
 <div class="pop" id="pop" hidden data-cle="<?= h(substr(md5($pop['titre'] . $pop['date']), 0, 10)) ?>">
-  <div class="pop-carte<?= $cl['clair'] ? ' evt-clair' : '' ?>" role="dialog" aria-modal="true" aria-labelledby="pop-titre" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
-    <button type="button" class="pop-fermer" data-pop-fermer aria-label="Fermer">×</button>
-<?php if ($ph): ?>    <img class="pop-img" <?= img_attrs(photo_fichier($pop['photo']), '(max-width: 500px) 92vw, 460px') ?> alt="<?= h(alt_photo($pop['titre'])) ?>" width="1000" height="750">
-<?php endif; ?>
-    <div class="pop-corps">
-<?php if ($pop['date']): ?>      <p class="evt-date"><span><?= h(ucfirst(evt_quand($pop))) ?></span></p>
-<?php endif; ?>      <h2 id="pop-titre"><?= h($pop['titre']) ?></h2>
-<?php if ($pop['accroche'] !== ''): ?>      <p class="pop-accroche"><?= h($pop['accroche']) ?></p>
-<?php endif; if ($pop['items']): ?>      <ul class="evt-items">
-<?php $nPop = 0; foreach ($pop['items'] as $k => $it): if ($it['cat'] || $nPop++ >= 4) continue; $px = evt_prix_cat($pop['items'], $k) === '' ? evt_prix($pop['items'], $k) : ''; ?>        <li><span><?= h($it['nom']) ?></span><?php if ($px !== ''): ?><i aria-hidden="true"></i><b><?= h($px) ?></b><?php endif; ?></li>
-<?php endforeach; ?>      </ul>
-<?php endif; ?>
-      <div class="pop-actions">
-<?php if (reservation_ouverte($pop)): ?>        <a class="btn btn-blanc" href="<?= $telHref ?>" data-evt="<?= h($pop['titre']) ?>">Réserver au <?= $tel ?></a>
-<?php endif; ?>        <a class="btn pop-detail" href="#evenements" data-pop-fermer>Voir le détail</a>
-      </div>
+  <div class="pop-carte<?= $cl['clair'] ? ' evt-clair' : '' ?>" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pop-titre" style="--fond-evt:<?= $cl['fond'] ?>;--texte-evt:<?= $cl['texte'] ?>;--accent-evt:<?= $cl['accent'] ?>">
+    <span class="pop-poignee" aria-hidden="true"></span>
+    <button type="button" class="pop-fermer" data-pop-fermer aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="pop-defile">
+<?php if ($ph): ?>      <img class="pop-img" <?= img_attrs(photo_fichier($pop['photo']), '(max-width: 600px) 100vw, 480px') ?> alt="<?= h(alt_photo($pop['titre'])) ?>" width="1000" height="750">
+<?php endif; ?>      <div class="pop-corps">
+<?php if ($pop['date']): ?>        <p class="pop-quand"><span><?= h(ucfirst(evt_quand($pop))) ?></span><?php if ($popQuand !== ''): ?><b><?= h($popQuand) ?></b><?php endif; ?></p>
+<?php endif; ?>        <h2 id="pop-titre"><?= h($pop['titre']) ?></h2>
+<?php if ($pop['accroche'] !== ''): ?>        <p class="pop-accroche"><?= h($pop['accroche']) ?></p>
+<?php endif; if ($popLignes): ?>        <ul class="pop-offre">
+<?php foreach ($popLignes as [$n, $px, $ep, $sous]): ?>          <li<?= $ep ? ' class="epuise"' : '' ?>><span><?= h($n) ?><?php if ($ep): ?> <em>Épuisé</em><?php endif; if ($sous !== ''): ?><small><?= h($sous) ?></small><?php endif; ?></span><?php if ($px !== ''): ?><b><?= h($px) ?></b><?php endif; ?></li>
+<?php endforeach; ?>        </ul>
+<?php if ($popPlus): ?>        <a class="pop-plus" href="#evenements" data-pop-fermer>+ <?= $popPlus ?> autre<?= $popPlus > 1 ? 's' : '' ?> produit<?= $popPlus > 1 ? 's' : '' ?> au menu</a>
+<?php endif; endif; if ($popOuvert && $pop['reservation']['active'] && $pop['reservation']['date']): ?>        <p class="pop-limite">Réservation jusqu’au <?= h(date_fr($pop['reservation']['date'], true)) ?> inclus</p>
+<?php endif; ?>      </div>
     </div>
+    <div class="pop-actions">
+<?php if ($popOuvert && $popEnLigne): ?>      <button type="button" class="btn pop-principal" data-reserver-evt="<?= $iPop ?>" data-pop-fermer data-evt="<?= h($pop['titre']) ?>">Réserver en ligne</button>
+      <p class="pop-second"><a href="<?= $telHref ?>" data-evt="<?= h($pop['titre']) ?>">ou par téléphone au <?= $tel ?></a> · <a href="#evenements" data-pop-fermer>voir le menu</a></p>
+<?php elseif ($popOuvert): ?>      <a class="btn pop-principal" href="<?= $telHref ?>" data-evt="<?= h($pop['titre']) ?>"><svg class="ico" aria-hidden="true"><use href="#i-tel"/></svg>Réserver au <?= $tel ?></a>
+      <p class="pop-second"><a href="#evenements" data-pop-fermer>Voir le menu complet</a></p>
+<?php else: ?>      <p class="pop-clos">Les réservations sont closes. Merci à tous !</p>
+      <a class="btn pop-principal" href="#evenements" data-pop-fermer>Voir le menu</a>
+<?php endif; ?>    </div>
   </div>
 </div>
 <?php endif; ?>
